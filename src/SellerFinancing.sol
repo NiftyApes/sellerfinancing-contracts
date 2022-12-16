@@ -29,7 +29,7 @@ contract NiftyApesSellerFinancing is
         0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 
     /// @dev A mapping for storing the seaport listing with its hash as the key
-    mapping(bytes32 => SeaportListing) private _orderHashToListing;
+    // mapping(bytes32 => SeaportListing) private _orderHashToListing;
 
     /// @dev A mapping to mark a signature as used.
     ///      The mapping allows users to withdraw offers that they made by signature.
@@ -48,22 +48,16 @@ contract NiftyApesSellerFinancing is
     // Mapping from nftContractAddress to token ID to index of the owner tokens list
     mapping(address => mapping(uint256 => uint256)) private _ownedTokensIndex;
 
-    /// @inheritdoc ISellOnSeaport
     address public seaportContractAddress;
 
-    /// @inheritdoc ISellOnSeaport
     address public seaportZone;
 
-    /// @inheritdoc ISellOnSeaport
     address public seaportFeeRecepient;
 
-    /// @inheritdoc ISellOnSeaport
     bytes32 public seaportZoneHash;
 
-    /// @inheritdoc ISellOnSeaport
     bytes32 public seaportConduitKey;
 
-    /// @inheritdoc ISellOnSeaport
     address public seaportConduit;
 
     /// @dev This empty reserved space is put in place to allow future versions to add new
@@ -90,17 +84,14 @@ contract NiftyApesSellerFinancing is
         seaportConduit = 0x1E0049783F008A0085193E00003D00cd54003c71;
     }
 
-    /// @inheritdoc IOffersAdmin
     function pause() external onlyOwner {
         _pause();
     }
 
-    /// @inheritdoc IOffersAdmin
     function unpause() external onlyOwner {
         _unpause();
     }
 
-    /// @inheritdoc IOffers
     function getOfferHash(Offer memory offer) public view returns (bytes32) {
         // return
         //     _hashTypedDataV4(
@@ -128,7 +119,6 @@ contract NiftyApesSellerFinancing is
         //     );
     }
 
-    /// @inheritdoc IOffers
     function getOfferSigner(Offer memory offer, bytes memory signature)
         public
         view
@@ -138,7 +128,6 @@ contract NiftyApesSellerFinancing is
         return ECDSABridge.recover(getOfferHash(offer), signature);
     }
 
-    /// @inheritdoc IOffers
     function getOfferSignatureStatus(bytes memory signature)
         external
         view
@@ -147,7 +136,6 @@ contract NiftyApesSellerFinancing is
         return _cancelledOrFinalized[signature];
     }
 
-    /// @inheritdoc IOffers
     function withdrawOfferSignature(Offer memory offer, bytes memory signature)
         external
         whenNotPaused
@@ -520,7 +508,6 @@ contract NiftyApesSellerFinancing is
     function repayLoan(address nftContractAddress, uint256 nftId)
         external
         payable
-        override
         whenNotPaused
         nonReentrant
     {
@@ -533,12 +520,11 @@ contract NiftyApesSellerFinancing is
         // _transferNft(nftContractAddress, nftId, address(this), nftOwner);
     }
 
-    /// @inheritdoc ILending
     function repayLoanForAccount(
         address nftContractAddress,
         uint256 nftId,
         uint32 expectedLoanBeginTimestamp
-    ) external payable override whenNotPaused nonReentrant {
+    ) external payable whenNotPaused nonReentrant {
         // LoanAuction memory loanAuction = _getLoanAuctionInternal(
         //     nftContractAddress,
         //     nftId
@@ -615,18 +601,13 @@ contract NiftyApesSellerFinancing is
         // emit FlashClaim(nftContractAddress, nftId, receiverAddress);
     }
 
-    function auctionDebt() {
-        _;
-    }
+    function auctionDebt() public {}
 
-    function refinanceLoan() {
-        _;
-    }
+    function refinanceLoan() public {}
 
     function balanceOf(address owner, address nftContractAddress)
         public
         view
-        override
         returns (uint256)
     {
         require(owner != address(0), "00035");
@@ -637,24 +618,21 @@ contract NiftyApesSellerFinancing is
         address owner,
         address nftContractAddress,
         uint256 index
-    ) public view override returns (uint256) {
+    ) public view returns (uint256) {
         require(index < balanceOf(owner, nftContractAddress), "00069");
         return _ownedTokens[owner][nftContractAddress][index];
     }
 
-    /// @inheritdoc IOffers
     function requireAvailableSignature(bytes memory signature) public view {
         require(!_cancelledOrFinalized[signature], "00032");
     }
 
-    /// @inheritdoc IOffers
     function requireSignature65(bytes memory signature) public pure {
         require(signature.length == 65, "00003");
     }
 
-    /// @inheritdoc IOffers
     function requireMinimumDuration(Offer memory offer) public pure {
-        require(offer.duration >= 1 days, "00011");
+        // require(offer.duration >= 1 days, "00011");
     }
 
     function _requireOfferNotExpired(Offer memory offer) internal view {
