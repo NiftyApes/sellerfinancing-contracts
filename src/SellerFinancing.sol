@@ -28,8 +28,23 @@ contract NiftyApesSellerFinancing is
     address private constant SANCTIONS_CONTRACT =
         0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 
+    /// @dev Constant typeHash for EIP-712 hashing of Offer struct
+    ///      If the Offer struct shape changes, this will need to change as well.
+    bytes32 private constant _OFFER_TYPEHASH =
+        keccak256(
+            "Offer(address creator,uint32 downPaymentBps,uint32 payPeriodPrincipalBps,uint32 payPeriodInterestRateBps,uint32 payPeriodDuration,nftContractAddress,uint256 nftId,address asset,uint32 expiration)"
+        );
+
     /// @dev A mapping for storing the seaport listing with its hash as the key
-    // mapping(bytes32 => SeaportListing) private _orderHashToListing;
+    mapping(bytes32 => SeaportListing) private _orderHashToListing;
+
+    // instead of address to nftId to struct, could create a loanHash from the address ID and loan ID/Nonce,
+    // and use that as the pointer to the loan Struct. - ks
+
+    /// @dev A mapping for a NFT to a loan auction.
+    ///      The mapping has to be broken into two parts since an NFT is denominated by its address (first part)
+    ///      and its nftId (second part) in our code base.
+    mapping(address => mapping(uint256 => LoanAuction)) private _loanAuctions;
 
     /// @dev A mapping to mark a signature as used.
     ///      The mapping allows users to withdraw offers that they made by signature.
@@ -37,6 +52,8 @@ contract NiftyApesSellerFinancing is
 
     /// @dev The status of sanctions checks. Can be set to false if oracle becomes malicious.
     bool internal _sanctionsPause;
+
+    // could mint an NFT and have these in an inherited contract - ks
 
     // Mapping owner to nftContractAddress to token count
     mapping(address => mapping(address => uint256)) private _balances;
@@ -93,30 +110,23 @@ contract NiftyApesSellerFinancing is
     }
 
     function getOfferHash(Offer memory offer) public view returns (bytes32) {
-        // return
-        //     _hashTypedDataV4(
-        //         keccak256(
-        //             abi.encode(
-        //                 0x428a8e8c29d93e1e11aecebd37fa09e4f7c542a1302c7ac497bf5f49662103a5,
-        //                 keccak256(
-        //                     abi.encode(
-        //                         offer.creator,
-        //                         offer.duration,
-        //                         offer.expiration,
-        //                         offer.fixedTerms,
-        //                         offer.floorTerm,
-        //                         offer.lenderOffer,
-        //                         offer.nftContractAddress,
-        //                         offer.nftId,
-        //                         offer.asset,
-        //                         offer.amount,
-        //                         offer.interestRatePerSecond,
-        //                         offer.floorTermLimit
-        //                     )
-        //                 )
-        //             )
-        //         )
-        //     );
+        return
+            _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        _OFFER_TYPEHASH,
+                        offer.creator,
+                        offer.downPaymentBps,
+                        offer.payPeriodPrincipalBps,
+                        offer.payPeriodInterestRateBps,
+                        offer.payPeriodDuration,
+                        offer.nftContractAddress,
+                        offer.nftId,
+                        offer.asset,
+                        offer.expiration
+                    )
+                )
+            );
     }
 
     function getOfferSigner(Offer memory offer, bytes memory signature)
