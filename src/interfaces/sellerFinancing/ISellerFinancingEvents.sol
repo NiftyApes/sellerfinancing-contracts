@@ -16,4 +16,16 @@ interface ISellerFinancingEvents {
         ISellerFinancingStructs.Offer offer,
         bytes signature
     );
+
+    /// @notice Emitted when a new loan is executed
+    /// @param nftContractAddress The nft contract address
+    /// @param nftId The nft id
+    /// @param receiver The receiver integration contract
+    /// @param loan The loan details
+    event LoanExecuted(
+        address indexed nftContractAddress,
+        uint256 indexed nftId,
+        address receiver,
+        ISellerFinancingStructs.Loan loan
+    );
 }
