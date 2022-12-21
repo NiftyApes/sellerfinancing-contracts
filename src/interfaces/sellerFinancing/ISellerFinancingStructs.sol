@@ -41,6 +41,7 @@ interface ISellerFinancingStructs {
         // beginning timestamp of loan
         uint32 lastUpdatedTimestamp;
         // The maximum amount of tokens that can be drawn from this loan
+        // change amount to principal
         uint128 amount;
         // SLOT 3 START
         uint32 downPaymentBps;
@@ -51,6 +52,7 @@ interface ISellerFinancingStructs {
         uint32 gracePeriodDuration;
         uint32 numLatePaymentTolerance;
         uint32 numLatePayments;
+        // should we have a numPayPeriods value?
     }
 
     struct SeaportListing {

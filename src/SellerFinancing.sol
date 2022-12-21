@@ -553,39 +553,35 @@ contract NiftyApesSellerFinancing is
         // });
     }
 
-    function repayLoan(address nftContractAddress, uint256 nftId)
-        external
-        payable
-        whenNotPaused
-        nonReentrant
-    {
-        // Loan memory loan = _getLoanInternal(
-        //     nftContractAddress,
-        //     nftId
-        // );
-        // address nftOwner = loan.nftOwner;
-        // _repayLoanAmount(nftContractAddress, nftId, true, 0, true);
-        // _transferNft(nftContractAddress, nftId, address(this), nftOwner);
-    }
-
-    function repayLoanForAccount(
+    function makePayment(
         address nftContractAddress,
         uint256 nftId,
-        uint32 expectedLoanBeginTimestamp
+        uint256 amount
     ) external payable whenNotPaused nonReentrant {
-        // Loan memory loan = _getLoanInternal(
-        //     nftContractAddress,
-        //     nftId
-        // );
-        // // requireExpectedLoanIsActive
-        // require(
-        //     loan.loanBeginTimestamp == expectedLoanBeginTimestamp,
-        //     "00027"
-        // );
-        // _requireIsNotSanctioned(msg.sender);
-        // address nftOwner = loan.nftOwner;
-        // _repayLoanAmount(nftContractAddress, nftId, true, 0, false);
-        // _transferNft(nftContractAddress, nftId, address(this), nftOwner);
+        Loan memory loan = _getLoan(nftContractAddress, nftId);
+        address nftOwner = loan.buyer;
+        // _repayLoanAmount(nftContractAddress, nftId, true, 0, true);
+        _transferNft(nftContractAddress, nftId, address(this), nftOwner);
+    }
+
+    function _makePayment(
+        address nftContractAddress,
+        uint256 nftId,
+        uint256 paymentAmount
+    ) public {
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+        _requireIsNotSanctioned(loan.buyer);
+        _requireIsNotSanctioned(msg.sender);
+        _requireOpenLoan(loan);
+
+        // check the currentPayPeriodEndTimestamp
+        // if late increment latePayment counter
+        // increment the currentPayPeriodBegin and End Timestamps equal to the payPeriodDuration
+        // calculate the % of principal and interest that must be paid to the seller
+        // calculate % interest to be paid to protocol
+        // check if payment decrements principal to 0
+        // pay out to seller and protocol
+        // if principal == 0 transfer nft and end loan
     }
 
     function seizeAsset(address nftContractAddress, uint256 nftId)
@@ -593,21 +589,22 @@ contract NiftyApesSellerFinancing is
         whenNotPaused
         nonReentrant
     {
-        // Loan storage loan = _getLoanInternal(
-        //     nftContractAddress,
-        //     nftId
-        // );
-        // ILiquidity(liquidityContractAddress).getCAsset(loan.asset); // Ensure asset mapping exists
-        // _requireIsNotSanctioned(loan.lender);
-        // _requireOpenLoan(loan);
-        // // requireLoanExpired
-        // require(_currentTimestamp32() >= loan.loanEndTimestamp, "00008");
-        // address currentLender = loan.lender;
-        // address nftOwner = loan.nftOwner;
-        // emit AssetSeized(nftContractAddress, nftId, loan);
-        // delete _loans[nftContractAddress][nftId];
-        // _transferNft(nftContractAddress, nftId, address(this), currentLender);
-        // _removeTokenFromOwnerEnumeration(nftOwner, nftContractAddress, nftId);
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+        _requireIsNotSanctioned(loan.seller);
+
+        // require principal is not 0
+        // does this require statement serve this need?
+        _requireOpenLoan(loan);
+
+        // requirePastGracePeriodOrMaxLatePayments
+
+        address currentLender = loan.seller;
+        address nftOwner = loan.buyer;
+
+        emit AssetSeized(nftContractAddress, nftId, loan);
+        delete _loans[nftContractAddress][nftId];
+        _transferNft(nftContractAddress, nftId, address(this), currentLender);
+        _removeTokenFromOwnerEnumeration(nftOwner, nftContractAddress, nftId);
     }
 
     function flashClaim(
@@ -738,6 +735,41 @@ contract NiftyApesSellerFinancing is
         }
     }
 
+    /// @dev Private function to remove a token from this extension's ownership-tracking data structures. Note that
+    /// while the token is not assigned a new owner, the `_ownedTokensIndex` mapping is _not_ updated: this allows for
+    /// gas optimizations e.g. when performing a transfer operation (avoiding double writes).
+    /// This has O(1) time complexity, but alters the order of the _ownedTokens array.
+    /// @param owner address representing the owner of the given token ID to be removed
+    /// @param nftContractAddress address nft collection address
+    /// @param tokenId uint256 ID of the token to be removed from the tokens list of the given address
+    function _removeTokenFromOwnerEnumeration(
+        address owner,
+        address nftContractAddress,
+        uint256 tokenId
+    ) private {
+        // To prevent a gap in from's tokens array, we store the last token in the index of the token to delete, and then delete the last slot (swap and pop).
+
+        uint256 lastTokenIndex = balanceOf(owner, nftContractAddress) - 1;
+        uint256 tokenIndex = _ownedTokensIndex[nftContractAddress][tokenId];
+
+        // When the token to delete is the last token, the swap operation is unnecessary
+        if (tokenIndex != lastTokenIndex) {
+            uint256 lastTokenId = _ownedTokens[owner][nftContractAddress][
+                lastTokenIndex
+            ];
+
+            _ownedTokens[owner][nftContractAddress][tokenIndex] = lastTokenId; // Move the last token to the slot of the to-delete token
+            _ownedTokensIndex[nftContractAddress][lastTokenId] = tokenIndex; // Update the moved token's index
+        }
+
+        // This also deletes the contents at the last position of the array
+        delete _ownedTokensIndex[nftContractAddress][tokenId];
+        delete _ownedTokens[owner][nftContractAddress][lastTokenIndex];
+
+        // decrease the owner's collection balance by one
+        _balances[owner][nftContractAddress] -= 1;
+    }
+
     function _currentTimestamp32() internal view returns (uint32) {
         return SafeCastUpgradeable.toUint32(block.timestamp);
     }
@@ -789,6 +821,10 @@ contract NiftyApesSellerFinancing is
 
     function _requireOfferDoesntExist(address offerCreator) internal pure {
         require(offerCreator == address(0), "00046");
+    }
+
+    function _requireOpenLoan(Loan storage loan) internal view {
+        require(loan.amount != 0, "00007");
     }
 
     function _markSignatureUsed(Offer memory offer, bytes memory signature)

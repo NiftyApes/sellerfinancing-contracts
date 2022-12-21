@@ -28,4 +28,14 @@ interface ISellerFinancingEvents {
         address receiver,
         ISellerFinancingStructs.Loan loan
     );
+
+    /// @notice Emitted when an asset is seized
+    /// @param nftContractAddress The nft contract address
+    /// @param nftId The nft id,
+    /// @param loan The loan details
+    event AssetSeized(
+        address indexed nftContractAddress,
+        uint256 indexed nftId,
+        ISellerFinancingStructs.Loan loan
+    );
 }
