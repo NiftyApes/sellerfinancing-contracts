@@ -21,6 +21,13 @@ interface ISellerFinancingStructs {
         // offer asset type
         address asset;
         uint32 expiration;
+        uint128 reservePrice;
+        bool buyNowAvailable;
+    }
+
+    struct buyerConfirmation {
+        bytes32 offerHash;
+        uint128 saleAmount;
     }
 
     struct Loan {
@@ -30,19 +37,18 @@ interface ISellerFinancingStructs {
         // of the underlying nft. This field tracks who to return the nft to if the loan gets repaid.
         address buyer;
         // end timestamp of loan
-        uint32 loanEndTimestamp;
+        uint32 periodEndTimestamp;
         // The current lender of a loan
         address seller;
         // SLOT 1 START
         // the asset in which the loan has been denominated
         address asset;
         // beginning timestamp of loan
-        uint32 loanBeginTimestamp;
-        // beginning timestamp of loan
-        uint32 lastUpdatedTimestamp;
+        uint32 periodBeginTimestamp;
         // The maximum amount of tokens that can be drawn from this loan
         // change amount to principal
-        uint128 amount;
+        uint128 totalPrincipal;
+        uint128 remainingPrincipal;
         // SLOT 3 START
         uint32 downPaymentBps;
         uint32 payPeriodPrincipalBps;

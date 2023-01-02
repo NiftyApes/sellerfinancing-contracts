@@ -75,6 +75,8 @@ contract NiftyApesSellerFinancing is
     // Mapping from nftContractAddress to token ID to index of the owner tokens list
     mapping(address => mapping(uint256 => uint256)) private _ownedTokensIndex;
 
+    uint16 public protocolInterestBps;
+
     address public seaportContractAddress;
 
     address public seaportZone;
@@ -99,6 +101,9 @@ contract NiftyApesSellerFinancing is
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+
+        // 21 bps == 2.52% APR
+        protocolInterestBps = 21;
 
         seaportZone = 0x004C00500000aD104D7DBd00e3ae0A5C00560C00;
         seaportFeeRecepient = 0x0000a26b00c1F0DF003000390027140000fAa719;
@@ -172,12 +177,165 @@ contract NiftyApesSellerFinancing is
         _markSignatureUsed(offer, signature);
     }
 
-    function buyWithFinancing(
+    function buyNowWithFinancingDirect(
+        Offer memory offer,
+        bytes memory signature
+    ) external whenNotPaused nonReentrant {
+        address seller = getOfferSigner(offer, signature);
+        _require721Owner(offer.nftContractAddress, offer.nftId, seller);
+        _requireAvailableSignature(signature);
+        _requireSignature65(signature);
+        _requireIsNotSanctioned(seller);
+        _requireIsNotSanctioned(msg.sender);
+        // requireOfferisValid
+        require(offer.nftContractAddress != address(0), "00004");
+        _requireOfferNotExpired(offer);
+        Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
+        // requireNoOpenLoan
+        require(loan.periodBeginTimestamp == 0, "00006");
+
+        // transfer of down payment
+        uint256 downPaymentAmount = (offer.reservePrice * MAX_BPS) /
+            offer.downPaymentBps;
+
+        // this transfer of value must go from buyer to seller directly. this function currently only transfers to this contract address
+        // it should also include the initial payment to the protocol
+        _arrangeAssetFromBuyer(msg.sender, offer.asset, downPaymentAmount);
+
+        // create loan
+        _createLoan(
+            loan,
+            offer,
+            seller,
+            msg.sender,
+            (offer.reservePrice - downPaymentAmount)
+        );
+
+        // Transfer nft from receiver contract to this contract as collateral, revert on failure
+        _transferNft(
+            offer.nftContractAddress,
+            offer.nftId,
+            seller,
+            address(this)
+        );
+
+        emit LoanExecuted(offer.nftContractAddress, offer.nftId, seller, loan);
+    }
+
+    function makePayment(
+        address nftContractAddress,
+        uint256 nftId,
+        uint256 amount
+    ) external payable whenNotPaused nonReentrant {
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+        _requireIsNotSanctioned(loan.buyer);
+        _requireIsNotSanctioned(msg.sender);
+        _requireOpenLoan(loan);
+
+        // check the currentPayPeriodEndTimestamp
+        if (_currentTimestamp32() > periodEndTimestamp) {
+            // if late increment latePayment counter
+            numLatePayments += 1;
+        }
+
+        // calculate the % of principal and interest that must be paid to the seller
+        uint256 minimumPrincipalPayment = ((loan.totalPrincipal * MAX_BPS) /
+            loan.payPeriodPrincipalBps);
+
+        // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
+        if (loan.remainingPrincipal < minimumPrincipalPayment) {
+            minimumPrincipalPayment = loan.remainingPrincipal;
+        }
+        // calculate % interest to be paid to seller
+        uint256 periodInterest = ((loan.remainingPrincipal * MAX_BPS) /
+            loan.payPeriodInterestRateBps);
+        // calculate % interest to be paid to protocol
+        uint256 protocolInterest = ((loan.remainingPrincipal * MAX_BPS) /
+            protocolInterestBps);
+
+        uint256 totalMinimumPayment = minimumPrincipalPayment +
+            periodInterest +
+            protocolInterest;
+        uint256 totalPossiblePayment = loan.remainingPrincipal +
+            periodInterest +
+            protocolInterest;
+
+        // payout seller and protocol
+        if (loan.asset == address(0)) {
+            // set msgValue value
+            uint256 msgValue = msg.value;
+            //require it to be larger than the total minimum payment
+            require(msgValue >= totalMinimumPayment, "00047");
+            // if msgValue is greater than the totalPossiblePayment send back the difference
+            if (msgValue > totalPossiblePayment) {
+                //send back value
+                payable(loan.buyer).sendValue(msgValue - totalPossiblePayment);
+                // adjust msgValue value
+                msgValue = totalPossiblePayment;
+            }
+
+            // payout seller
+            payable(loan.seller).sendValue(msgValue - protocolInterest);
+
+            // update loan struct
+            loan.remainingPricipal -
+                (msgValue - periodInterest - protocolInterest);
+        } else {
+            require(amount >= totalMinimumPayment, "00047");
+            // if amount is greater than the totalPossiblePayment adjust to only transfer the required amount
+            if (amount > totalPossiblePayment) {
+                amount = totalPossiblePayment;
+            }
+
+            IERC20Upgradeable asset = IERC20Upgradeable(offer.asset);
+            asset.safeTransferFrom(
+                msg.sender,
+                loan.seller,
+                amount - protocolInterest
+            );
+            asset.safeTransferFrom(msg.sender, owner(), protocolInterest);
+            // if we had an affiliate payment it would go here
+        }
+
+        // increment the currentPayPeriodBegin and End Timestamps equal to the payPeriodDuration
+        loan.periodBeginTimestamp += loan.payPeriodDuration;
+        loan.periodEndTimestamp += loan.payPeriodDuration;
+
+        // check if payment decrements principal to 0
+        if ((amount - periodInterest - protocolInterest)) {}
+
+        // if principal == 0 transfer nft and end loan
+        _transferNft(nftContractAddress, nftId, address(this), loan.buyer);
+
+        // update loan struct
+    }
+
+    function seizeAsset(address nftContractAddress, uint256 nftId)
+        external
+        whenNotPaused
+        nonReentrant
+    {
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+        _requireIsNotSanctioned(loan.seller);
+
+        // require principal is not 0
+        // does this require statement serve this need?
+        _requireOpenLoan(loan);
+
+        // requirePastGracePeriodOrMaxLatePayments
+
+        address currentLender = loan.seller;
+        address nftOwner = loan.buyer;
+
+        emit AssetSeized(nftContractAddress, nftId, loan);
+        delete _loans[nftContractAddress][nftId];
+        _transferNft(nftContractAddress, nftId, address(this), currentLender);
+        _removeTokenFromOwnerEnumeration(nftOwner, nftContractAddress, nftId);
+    }
+
+    function buyNowWithFinancing3rdParty(
         Offer memory offer,
         bytes memory signature,
-        // TODO @captn: simply providing this here doesnt feel quite right....
-        // perhaps we provide a minimum sale amount in the offer
-        uint256 saleAmount,
         address receiver,
         address buyer,
         bytes calldata data
@@ -193,8 +351,7 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(buyer);
         _requireIsNotSanctioned(receiver);
         // requireOfferisValid
-        // might want to use address(0) to mean ETH, could check another value in the offer struct
-        require(offer.asset != address(0), "00004");
+        require(offer.nftContractAddress != address(0), "00004");
         _requireOfferNotExpired(offer);
         Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
         // requireNoOpenLoan
@@ -202,12 +359,85 @@ contract NiftyApesSellerFinancing is
 
         // add transfer of down payment
 
-        uint256 downPaymentAmount = (saleAmount * MAX_BPS) /
+        uint256 downPaymentAmount = (offer.reservePrice * MAX_BPS) /
             offer.downPaymentBps;
 
         _arrangeAssetFromBuyer(buyer, offer.asset, downPaymentAmount);
 
         // if a direct sale, transfer value from this contract to seller transfer funds directly.
+
+        // add create loan
+
+        _createLoan(
+            loan,
+            offer,
+            seller,
+            buyer,
+            (offer.reservePrice - downPaymentAmount)
+        );
+
+        // we might need to provide this inside of an if statement, if external purchase
+        // execute opreation on receiver contract
+        require(
+            IFlashPurchaseReceiver(receiver).executeOperation(
+                offer.nftContractAddress,
+                offer.nftId,
+                msg.sender,
+                data
+            ),
+            "00052"
+        );
+
+        // Transfer nft from receiver contract to this contract as collateral, revert on failure
+        _transferNft(
+            offer.nftContractAddress,
+            offer.nftId,
+            receiver,
+            address(this)
+        );
+
+        emit LoanExecuted(
+            offer.nftContractAddress,
+            offer.nftId,
+            receiver,
+            loan
+        );
+    }
+
+    function acceptBidAndExecuteFinancing(
+        Offer memory offer,
+        // do we need to provide the signature here?
+        bytes memory signature,
+        uint256 saleAmount,
+        address receiver,
+        address buyer,
+        bytes calldata data
+    ) external whenNotPaused nonReentrant {
+        address seller = getOfferSigner(offer, signature);
+
+        // require msg.sender is seller
+
+        _require721Owner(offer.nftContractAddress, offer.nftId, seller);
+        // is this check sitll needed?
+        _requireOfferCreator(offer.creator, seller);
+        _requireAvailableSignature(signature);
+        _requireSignature65(signature);
+        // is offer.creator still needed in the offer struct?
+        _requireIsNotSanctioned(offer.creator);
+        _requireIsNotSanctioned(buyer);
+        _requireIsNotSanctioned(receiver);
+        // requireOfferisValid
+        // might want to use address(0) to mean ETH, could check another value in the offer struct
+        require(offer.nftContractAddress != address(0), "00004");
+        _requireOfferNotExpired(offer);
+        Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
+        // requireNoOpenLoan
+        require(loan.lastUpdatedTimestamp == 0, "00006");
+
+        // assume the transfer of down payment happened on a 3rd party marketplace
+
+        uint256 downPaymentAmount = (saleAmount * MAX_BPS) /
+            offer.downPaymentBps;
 
         // add create loan
 
@@ -252,78 +482,7 @@ contract NiftyApesSellerFinancing is
         uint256 nftId,
         address receiver,
         bytes calldata data
-    ) external whenNotPaused nonReentrant {
-        // address nftOwner = _requireNftOwner(nftContractAddress, nftId);
-        // _requireIsNotSanctioned(msg.sender);
-        // _requireIsNotSanctioned(nftOwner);
-        // Loan memory loan = ILending(lendingContractAddress)
-        //     .getLoan(nftContractAddress, nftId);
-        // // transfer NFT
-        // ILending(lendingContractAddress).transferNft(
-        //     nftContractAddress,
-        //     nftId,
-        //     receiver
-        // );
-        // address loanAsset;
-        // if (loan.asset != ETH_ADDRESS) {
-        //     loanAsset = loan.asset;
-        // }
-        // uint256 totalLoanPaymentAmount = _calculateTotalLoanPaymentAmount(
-        //     loan,
-        //     nftContractAddress,
-        //     nftId
-        // );
-        // uint256 assetBalanceBefore = _getAssetBalance(loan.asset);
-        // _ethTransferable = true;
-        // // execute firewalled external arbitrary functionality
-        // // function must send correct funds required to close the loan
-        // require(
-        //     IFlashSellReceiver(receiver).executeOperation(
-        //         nftContractAddress,
-        //         nftId,
-        //         loanAsset,
-        //         totalLoanPaymentAmount,
-        //         msg.sender,
-        //         data
-        //     ),
-        //     "00052"
-        // );
-        // _ethTransferable = false;
-        // uint256 assetBalanceAfter = _getAssetBalance(loan.asset);
-        // // Check assets amount recieved is equal to total loan amount required to close the loan
-        // _requireCorrectFundsSent(
-        //     assetBalanceAfter - assetBalanceBefore,
-        //     totalLoanPaymentAmount
-        // );
-        // if (loan.asset == ETH_ADDRESS) {
-        //     ILending(lendingContractAddress).repayLoanForAccountInternal{
-        //         value: totalLoanPaymentAmount
-        //     }(nftContractAddress, nftId, loan.loanBeginTimestamp);
-        // } else {
-        //     IERC20Upgradeable assetToken = IERC20Upgradeable(loan.asset);
-        //     uint256 allowance = assetToken.allowance(
-        //         address(this),
-        //         liquidityContractAddress
-        //     );
-        //     if (allowance > 0) {
-        //         assetToken.safeDecreaseAllowance(
-        //             liquidityContractAddress,
-        //             allowance
-        //         );
-        //     }
-        //     assetToken.safeIncreaseAllowance(
-        //         liquidityContractAddress,
-        //         totalLoanPaymentAmount
-        //     );
-        //     ILending(lendingContractAddress).repayLoanForAccountInternal(
-        //         nftContractAddress,
-        //         nftId,
-        //         loan.loanBeginTimestamp
-        //     );
-        // }
-        // // emit event
-        // emit FlashSell(nftContractAddress, nftId, receiver);
-    }
+    ) external whenNotPaused nonReentrant {}
 
     function listNftForSale(
         address nftContractAddress,
@@ -332,166 +491,19 @@ contract NiftyApesSellerFinancing is
         uint256 listingStartTime,
         uint256 listingEndTime,
         uint256 salt
-    ) external whenNotPaused nonReentrant returns (bytes32) {
-        // Loan memory loan = ILending(lendingContractAddress)
-        //     .getLoan(nftContractAddress, nftId);
-        // uint256 seaportFeeAmount = listingPrice - (listingPrice * 39) / 40;
-        // // validate inputs and its price wrt listingEndTime
-        // _requireNftOwner(loan);
-        // _requireIsNotSanctioned(msg.sender);
-        // _requireOpenLoan(loan);
-        // _requireListingValueGreaterThanLoanRepaymentAmountUntilListingExpiry(
-        //     loan,
-        //     listingPrice,
-        //     seaportFeeAmount,
-        //     listingEndTime
-        // );
-        // // construct Seaport Order
-        // ISeaport.Order[] memory order = _constructOrder(
-        //     nftContractAddress,
-        //     nftId,
-        //     listingPrice,
-        //     seaportFeeAmount,
-        //     listingStartTime,
-        //     listingEndTime,
-        //     loan.asset,
-        //     salt
-        // );
-        // // approve the NFT for Seaport address
-        // ILending(lendingContractAddress).approveNft(
-        //     nftContractAddress,
-        //     nftId,
-        //     seaportConduit
-        // );
-        // // call lending contract to validate listing to Seaport
-        // ILending(lendingContractAddress).validateSeaportOrderSellOnSeaport(
-        //     seaportContractAddress,
-        //     order
-        // );
-        // // get orderHash by calling ISeaport.getOrderHash()
-        // bytes32 orderHash = _getOrderHash(order[0]);
-        // // validate order status by calling ISeaport.getOrderStatus(orderHash)
-        // (bool validated, , , ) = ISeaport(seaportContractAddress)
-        //     .getOrderStatus(orderHash);
-        // require(validated, "00059");
-        // // store the listing with orderHash
-        // _orderHashToListing[orderHash] = SeaportListing(
-        //     nftContractAddress,
-        //     nftId,
-        //     listingPrice - seaportFeeAmount
-        // );
-        // // emit orderHash with it's listing
-        // emit ListedOnSeaport(nftContractAddress, nftId, orderHash, loan);
-        // return orderHash;
-    }
+    ) external whenNotPaused nonReentrant returns (bytes32) {}
 
     function validateSaleAndWithdraw(
         address nftContractAddress,
         uint256 nftId,
         bytes32 orderHash
-    ) external whenNotPaused nonReentrant {
-        // Loan memory loan = ILending(lendingContractAddress)
-        //     .getLoan(nftContractAddress, nftId);
-        // SeaportListing memory listing = _requireValidOrderHash(
-        //     nftContractAddress,
-        //     nftId,
-        //     orderHash
-        // );
-        // _requireLenderOrNftOwner(loan);
-        // _requireIsNotSanctioned(msg.sender);
-        // _requireOpenLoan(loan);
-        // // validate order status
-        // (bool valid, bool cancelled, uint256 filled, ) = ISeaport(
-        //     seaportContractAddress
-        // ).getOrderStatus(orderHash);
-        // require(valid, "00059");
-        // require(!cancelled, "00062");
-        // require(filled == 1, "00063");
-        // // close the loan and transfer remaining amount to the borrower
-        // uint256 totalLoanPaymentAmount = _calculateTotalLoanPaymentAmountAtTimestamp(
-        //         loan,
-        //         block.timestamp
-        //     );
-        // if (loan.asset == ETH_ADDRESS) {
-        //     // settle the loan
-        //     ILending(lendingContractAddress).repayLoanForAccountInternal{
-        //         value: totalLoanPaymentAmount
-        //     }(nftContractAddress, nftId, loan.loanBeginTimestamp);
-        //     // transfer the remaining to the borrower
-        //     payable(loan.nftOwner).sendValue(
-        //         listing.listingValue - totalLoanPaymentAmount
-        //     );
-        // } else {
-        //     // settle the loan
-        //     IERC20Upgradeable assetToken = IERC20Upgradeable(loan.asset);
-        //     uint256 allowance = assetToken.allowance(
-        //         address(this),
-        //         liquidityContractAddress
-        //     );
-        //     if (allowance > 0) {
-        //         assetToken.safeDecreaseAllowance(
-        //             liquidityContractAddress,
-        //             allowance
-        //         );
-        //     }
-        //     assetToken.safeIncreaseAllowance(
-        //         liquidityContractAddress,
-        //         totalLoanPaymentAmount
-        //     );
-        //     ILending(lendingContractAddress).repayLoanForAccountInternal(
-        //         nftContractAddress,
-        //         nftId,
-        //         loan.loanBeginTimestamp
-        //     );
-        //     // transfer the remaining to the borrower
-        //     IERC20Upgradeable(loan.asset).safeTransfer(
-        //         loan.nftOwner,
-        //         listing.listingValue - totalLoanPaymentAmount
-        //     );
-        // }
-    }
+    ) external whenNotPaused nonReentrant {}
 
     function cancelNftListing(ISeaport.OrderComponents memory orderComponents)
         external
         whenNotPaused
         nonReentrant
-    {
-        // bytes32 orderHash = ISeaport(seaportContractAddress).getOrderHash(
-        //     orderComponents
-        // );
-        // address nftContractAddress = orderComponents.offer[0].token;
-        // uint256 nftId = orderComponents.offer[0].identifierOrCriteria;
-        // Loan memory loan = ILending(lendingContractAddress)
-        //     .getLoan(nftContractAddress, nftId);
-        // // validate inputs
-        // _requireNftOwner(loan);
-        // _requireValidOrderHash(nftContractAddress, nftId, orderHash);
-        // _requireIsNotSanctioned(msg.sender);
-        // // validate order status
-        // (bool valid, bool cancelled, uint256 filled, ) = ISeaport(
-        //     seaportContractAddress
-        // ).getOrderStatus(orderHash);
-        // require(valid, "00059");
-        // require(!cancelled, "00062");
-        // require(filled == 0, "00063");
-        // ISeaport.OrderComponents[]
-        //     memory orderComponentsList = new ISeaport.OrderComponents[](1);
-        // orderComponentsList[0] = orderComponents;
-        // require(
-        //     ILending(lendingContractAddress).cancelOrderSellOnSeaport(
-        //         seaportContractAddress,
-        //         orderComponentsList
-        //     ),
-        //     "00065"
-        // );
-        // // emit orderHash with it's listing
-        // emit ListingCancelledSeaport(
-        //     nftContractAddress,
-        //     nftId,
-        //     orderHash,
-        //     loan
-        // );
-    }
+    {}
 
     function _constructOrder(
         address nftContractAddress,
@@ -502,110 +514,7 @@ contract NiftyApesSellerFinancing is
         uint256 listingEndTime,
         address asset,
         uint256 randomSalt
-    ) internal view returns (ISeaport.Order[] memory order) {
-        // ISeaport.ItemType considerationItemType = (
-        //     asset == ETH_ADDRESS
-        //         ? ISeaport.ItemType.NATIVE
-        //         : ISeaport.ItemType.ERC20
-        // );
-        // address considerationToken = (
-        //     asset == ETH_ADDRESS ? address(0) : asset
-        // );
-        // order = new ISeaport.Order[](1);
-        // order[0] = ISeaport.Order({
-        //     parameters: ISeaport.OrderParameters({
-        //         offerer: lendingContractAddress,
-        //         zone: seaportZone,
-        //         offer: new ISeaport.OfferItem[](1),
-        //         consideration: new ISeaport.ConsiderationItem[](2),
-        //         orderType: ISeaport.OrderType.FULL_OPEN,
-        //         startTime: listingStartTime,
-        //         endTime: listingEndTime,
-        //         zoneHash: seaportZoneHash,
-        //         salt: randomSalt,
-        //         conduitKey: seaportConduitKey,
-        //         totalOriginalConsiderationItems: 2
-        //     }),
-        //     signature: bytes("")
-        // });
-        // order[0].parameters.offer[0] = ISeaport.OfferItem({
-        //     itemType: ISeaport.ItemType.ERC721,
-        //     token: nftContractAddress,
-        //     identifierOrCriteria: nftId,
-        //     startAmount: 1,
-        //     endAmount: 1
-        // });
-        // order[0].parameters.consideration[0] = ISeaport.ConsiderationItem({
-        //     itemType: considerationItemType,
-        //     token: considerationToken,
-        //     identifierOrCriteria: 0,
-        //     startAmount: listingPrice - seaportFeeAmount,
-        //     endAmount: listingPrice - seaportFeeAmount,
-        //     recipient: payable(address(this))
-        // });
-        // order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
-        //     itemType: considerationItemType,
-        //     token: considerationToken,
-        //     identifierOrCriteria: 0,
-        //     startAmount: seaportFeeAmount,
-        //     endAmount: seaportFeeAmount,
-        //     recipient: payable(seaportFeeRecepient)
-        // });
-    }
-
-    function makePayment(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 amount
-    ) external payable whenNotPaused nonReentrant {
-        Loan memory loan = _getLoan(nftContractAddress, nftId);
-        address nftOwner = loan.buyer;
-        // _repayLoanAmount(nftContractAddress, nftId, true, 0, true);
-        _transferNft(nftContractAddress, nftId, address(this), nftOwner);
-    }
-
-    function _makePayment(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 paymentAmount
-    ) public {
-        Loan storage loan = _getLoan(nftContractAddress, nftId);
-        _requireIsNotSanctioned(loan.buyer);
-        _requireIsNotSanctioned(msg.sender);
-        _requireOpenLoan(loan);
-
-        // check the currentPayPeriodEndTimestamp
-        // if late increment latePayment counter
-        // increment the currentPayPeriodBegin and End Timestamps equal to the payPeriodDuration
-        // calculate the % of principal and interest that must be paid to the seller
-        // calculate % interest to be paid to protocol
-        // check if payment decrements principal to 0
-        // pay out to seller and protocol
-        // if principal == 0 transfer nft and end loan
-    }
-
-    function seizeAsset(address nftContractAddress, uint256 nftId)
-        external
-        whenNotPaused
-        nonReentrant
-    {
-        Loan storage loan = _getLoan(nftContractAddress, nftId);
-        _requireIsNotSanctioned(loan.seller);
-
-        // require principal is not 0
-        // does this require statement serve this need?
-        _requireOpenLoan(loan);
-
-        // requirePastGracePeriodOrMaxLatePayments
-
-        address currentLender = loan.seller;
-        address nftOwner = loan.buyer;
-
-        emit AssetSeized(nftContractAddress, nftId, loan);
-        delete _loans[nftContractAddress][nftId];
-        _transferNft(nftContractAddress, nftId, address(this), currentLender);
-        _removeTokenFromOwnerEnumeration(nftOwner, nftContractAddress, nftId);
-    }
+    ) internal view returns (ISeaport.Order[] memory order) {}
 
     function flashClaim(
         address receiverAddress,
@@ -688,15 +597,8 @@ contract NiftyApesSellerFinancing is
         loan.asset = offer.asset;
         loan.amount = uint128(amount);
         // TODO @captn: need to check this math. feels weird.
-        loan.loanEndTimestamp =
-            _currentTimestamp32() +
-            uint32(
-                (offer.payPeriodDuration *
-                    (amount /
-                        ((amount * MAX_BPS) / offer.payPeriodPrincipalBps)))
-            );
+        loan.periodEndTimestamp = _currentTimestamp32() + payPeriodDuration;
         loan.loanBeginTimestamp = _currentTimestamp32();
-        loan.lastUpdatedTimestamp = _currentTimestamp32();
         loan.downPaymentBps = offer.downPaymentBps;
         loan.payPeriodPrincipalBps = offer.payPeriodPrincipalBps;
         loan.payPeriodInterestRateBps = offer.payPeriodInterestRateBps;
