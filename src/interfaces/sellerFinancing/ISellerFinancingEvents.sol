@@ -29,9 +29,31 @@ interface ISellerFinancingEvents {
         ISellerFinancingStructs.Loan loan
     );
 
+    /// @notice Emitted when a payment is made toward the loan
+    /// @param nftContractAddress The nft contract address
+    /// @param nftId The nft id
+    /// @param amount The amount paid twoard the loamn
+    /// @param loan The loan details
+    event PaymentMade(
+        address indexed nftContractAddress,
+        uint256 indexed nftId,
+        uint256 amount,
+        ISellerFinancingStructs.Loan loan
+    );
+
+    /// @notice Emitted when a loan is fully repaid
+    /// @param nftContractAddress The nft contract address
+    /// @param nftId The nft id
+    /// @param loan The loan details
+    event LoanRepaid(
+        address indexed nftContractAddress,
+        uint256 indexed nftId,
+        ISellerFinancingStructs.Loan loan
+    );
+
     /// @notice Emitted when an asset is seized
     /// @param nftContractAddress The nft contract address
-    /// @param nftId The nft id,
+    /// @param nftId The nft id
     /// @param loan The loan details
     event AssetSeized(
         address indexed nftContractAddress,

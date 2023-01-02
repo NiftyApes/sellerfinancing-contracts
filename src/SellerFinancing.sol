@@ -264,7 +264,7 @@ contract NiftyApesSellerFinancing is
         if (loan.asset == address(0)) {
             // set msgValue value
             uint256 msgValue = msg.value;
-            //require it to be larger than the total minimum payment
+            //require msgValue to be larger than the total minimum payment
             require(msgValue >= totalMinimumPayment, "00047");
             // if msgValue is greater than the totalPossiblePayment send back the difference
             if (msgValue > totalPossiblePayment) {
@@ -277,10 +277,14 @@ contract NiftyApesSellerFinancing is
             // payout seller
             payable(loan.seller).sendValue(msgValue - protocolInterest);
 
+            // payout owner
+            payable(owner()).sendValue(msgValue - protocolInterest);
+
             // update loan struct
             loan.remainingPricipal -
                 (msgValue - periodInterest - protocolInterest);
         } else {
+            //require amount to be larger than the total minimum payment
             require(amount >= totalMinimumPayment, "00047");
             // if amount is greater than the totalPossiblePayment adjust to only transfer the required amount
             if (amount > totalPossiblePayment) {
@@ -288,26 +292,41 @@ contract NiftyApesSellerFinancing is
             }
 
             IERC20Upgradeable asset = IERC20Upgradeable(offer.asset);
+            // payout seller
             asset.safeTransferFrom(
                 msg.sender,
                 loan.seller,
                 amount - protocolInterest
             );
+
+            // payout owner
             asset.safeTransferFrom(msg.sender, owner(), protocolInterest);
+
             // if we had an affiliate payment it would go here
+
+            // update loan struct
+            loan.remainingPricipal -
+                (amount - periodInterest - protocolInterest);
         }
 
         // increment the currentPayPeriodBegin and End Timestamps equal to the payPeriodDuration
         loan.periodBeginTimestamp += loan.payPeriodDuration;
         loan.periodEndTimestamp += loan.payPeriodDuration;
 
-        // check if payment decrements principal to 0
-        if ((amount - periodInterest - protocolInterest)) {}
+        // check if remianingPrincipal is 0
+        if (loan.remainingPrincipal == 0) {
+            // if principal == 0 transfer nft and end loan
+            _transferNft(nftContractAddress, nftId, address(this), loan.buyer);
+            //emit paymentMade event
+            emit PaymentMade(nftContractAddress, nftId, amount, loan);
+            // emit loan repaid event
+            emit LoanRepaid(nftContractAddress, nftId, loan);
 
-        // if principal == 0 transfer nft and end loan
-        _transferNft(nftContractAddress, nftId, address(this), loan.buyer);
-
-        // update loan struct
+            // delete loan
+            delete loan;
+        }
+        //else only emit paymentMade event
+        else {}
     }
 
     function seizeAsset(address nftContractAddress, uint256 nftId)
