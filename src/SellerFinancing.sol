@@ -219,6 +219,12 @@ contract NiftyApesSellerFinancing is
             address(this)
         );
 
+        _addTokenToOwnerEnumeration(
+            msg.sender,
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
         emit LoanExecuted(offer.nftContractAddress, offer.nftId, seller, loan);
     }
 
@@ -668,6 +674,21 @@ contract NiftyApesSellerFinancing is
             IERC20Upgradeable asset = IERC20Upgradeable(offerAsset);
             asset.safeTransferFrom(buyer, address(this), downPaymentAmount);
         }
+    }
+
+    /// @dev Private function to add a token to this extension's ownership-tracking data structures.
+    /// @param owner address representing the new owner of the given token ID
+    /// @param nftContractAddress address nft collection address
+    /// @param tokenId uint256 ID of the token to be added to the tokens list of the given address
+    function _addTokenToOwnerEnumeration(
+        address owner,
+        address nftContractAddress,
+        uint256 tokenId
+    ) private {
+        uint256 length = _balances[owner][nftContractAddress];
+        _ownedTokens[owner][nftContractAddress][length] = tokenId;
+        _ownedTokensIndex[nftContractAddress][tokenId] = length;
+        _balances[owner][nftContractAddress] += 1;
     }
 
     /// @dev Private function to remove a token from this extension's ownership-tracking data structures. Note that
