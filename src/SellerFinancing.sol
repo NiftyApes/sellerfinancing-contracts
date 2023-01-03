@@ -233,9 +233,9 @@ contract NiftyApesSellerFinancing is
         _requireOpenLoan(loan);
 
         // check the currentPayPeriodEndTimestamp
-        if (_currentTimestamp32() > periodEndTimestamp) {
+        if (_currentTimestamp32() > loan.periodEndTimestamp) {
             // if late increment latePayment counter
-            numLatePayments += 1;
+            loan.numLatePayments += 1;
         }
 
         // calculate the % of principal and interest that must be paid to the seller
@@ -281,7 +281,7 @@ contract NiftyApesSellerFinancing is
             payable(owner()).sendValue(msgValue - protocolInterest);
 
             // update loan struct
-            loan.remainingPricipal -
+            loan.remainingPrincipal -
                 (msgValue - periodInterest - protocolInterest);
         } else {
             //require amount to be larger than the total minimum payment
@@ -291,7 +291,7 @@ contract NiftyApesSellerFinancing is
                 amount = totalPossiblePayment;
             }
 
-            IERC20Upgradeable asset = IERC20Upgradeable(offer.asset);
+            IERC20Upgradeable asset = IERC20Upgradeable(loan.asset);
             // payout seller
             asset.safeTransferFrom(
                 msg.sender,
@@ -305,13 +305,9 @@ contract NiftyApesSellerFinancing is
             // if we had an affiliate payment it would go here
 
             // update loan struct
-            loan.remainingPricipal -
+            loan.remainingPrincipal -
                 (amount - periodInterest - protocolInterest);
         }
-
-        // increment the currentPayPeriodBegin and End Timestamps equal to the payPeriodDuration
-        loan.periodBeginTimestamp += loan.payPeriodDuration;
-        loan.periodEndTimestamp += loan.payPeriodDuration;
 
         // check if remianingPrincipal is 0
         if (loan.remainingPrincipal == 0) {
@@ -323,10 +319,17 @@ contract NiftyApesSellerFinancing is
             emit LoanRepaid(nftContractAddress, nftId, loan);
 
             // delete loan
-            delete loan;
+            delete _loans[nftContractAddress][nftId];
         }
-        //else only emit paymentMade event
-        else {}
+        //else emit paymentMade event and update loan
+        else {
+            // increment the currentPayPeriodBegin and End Timestamps equal to the payPeriodDuration
+            loan.periodBeginTimestamp += loan.payPeriodDuration;
+            loan.periodEndTimestamp += loan.payPeriodDuration;
+
+            //emit paymentMade event
+            emit PaymentMade(nftContractAddress, nftId, amount, loan);
+        }
     }
 
     function seizeAsset(address nftContractAddress, uint256 nftId)
@@ -374,7 +377,7 @@ contract NiftyApesSellerFinancing is
         _requireOfferNotExpired(offer);
         Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
         // requireNoOpenLoan
-        require(loan.lastUpdatedTimestamp == 0, "00006");
+        // require(loan.lastUpdatedTimestamp == 0, "00006");
 
         // add transfer of down payment
 
@@ -451,7 +454,7 @@ contract NiftyApesSellerFinancing is
         _requireOfferNotExpired(offer);
         Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
         // requireNoOpenLoan
-        require(loan.lastUpdatedTimestamp == 0, "00006");
+        // require(loan.lastUpdatedTimestamp == 0, "00006");
 
         // assume the transfer of down payment happened on a 3rd party marketplace
 
@@ -614,10 +617,12 @@ contract NiftyApesSellerFinancing is
         loan.buyer = buyer;
         loan.seller = seller;
         loan.asset = offer.asset;
-        loan.amount = uint128(amount);
-        // TODO @captn: need to check this math. feels weird.
-        loan.periodEndTimestamp = _currentTimestamp32() + payPeriodDuration;
-        loan.loanBeginTimestamp = _currentTimestamp32();
+        loan.totalPrincipal = uint128(amount);
+        loan.remainingPrincipal = uint128(amount);
+        loan.periodEndTimestamp =
+            _currentTimestamp32() +
+            offer.payPeriodDuration;
+        loan.periodBeginTimestamp = _currentTimestamp32();
         loan.downPaymentBps = offer.downPaymentBps;
         loan.payPeriodPrincipalBps = offer.payPeriodPrincipalBps;
         loan.payPeriodInterestRateBps = offer.payPeriodInterestRateBps;
@@ -745,7 +750,7 @@ contract NiftyApesSellerFinancing is
     }
 
     function _requireOpenLoan(Loan storage loan) internal view {
-        require(loan.amount != 0, "00007");
+        require(loan.remainingPrincipal != 0, "00007");
     }
 
     function _markSignatureUsed(Offer memory offer, bytes memory signature)
