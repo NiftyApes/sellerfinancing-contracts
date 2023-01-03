@@ -11,7 +11,7 @@ interface ISellerFinancingStructs {
         uint32 payPeriodInterestRateBps;
         uint32 payPeriodDuration;
         uint32 gracePeriodDuration;
-        uint32 numLatePaymentTolerance;
+        uint32 numLatePaymentsTolerance;
         // offer NFT contract address
         address nftContractAddress;
         // SLOT 2 START
@@ -53,10 +53,9 @@ interface ISellerFinancingStructs {
         uint32 downPaymentBps;
         uint32 payPeriodPrincipalBps;
         uint32 payPeriodInterestRateBps;
-        // when someone makes a payment, does the next payment period begin after that payment or on a regular schedule?
         uint32 payPeriodDuration;
         uint32 gracePeriodDuration;
-        uint32 numLatePaymentTolerance;
+        uint32 numLatePaymentsTolerance;
         uint32 numLatePayments;
         // should we have a numPayPeriods value?
     }

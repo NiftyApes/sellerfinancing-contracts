@@ -332,27 +332,36 @@ contract NiftyApesSellerFinancing is
         }
     }
 
+    // currently callable by anyone, should it only be callable by the seller?
     function seizeAsset(address nftContractAddress, uint256 nftId)
         external
         whenNotPaused
         nonReentrant
     {
         Loan storage loan = _getLoan(nftContractAddress, nftId);
+
         _requireIsNotSanctioned(loan.seller);
-
         // require principal is not 0
-        // does this require statement serve this need?
-        _requireOpenLoan(loan);
-
+        require(loan.remainingPrincipal != 0, "loan repaid");
         // requirePastGracePeriodOrMaxLatePayments
+        require(
+            _currentTimestamp32() >
+                loan.periodEndTimestamp + loan.gracePeriodDuration ||
+                loan.numLatePayments > loan.numLatePaymentsTolerance,
+            "Asset not seizable"
+        );
 
-        address currentLender = loan.seller;
-        address nftOwner = loan.buyer;
+        address currentSeller = loan.seller;
+        address currentBuyer = loan.buyer;
 
         emit AssetSeized(nftContractAddress, nftId, loan);
         delete _loans[nftContractAddress][nftId];
-        _transferNft(nftContractAddress, nftId, address(this), currentLender);
-        _removeTokenFromOwnerEnumeration(nftOwner, nftContractAddress, nftId);
+        _transferNft(nftContractAddress, nftId, address(this), currentSeller);
+        _removeTokenFromOwnerEnumeration(
+            currentBuyer,
+            nftContractAddress,
+            nftId
+        );
     }
 
     function buyNowWithFinancing3rdParty(
@@ -628,7 +637,7 @@ contract NiftyApesSellerFinancing is
         loan.payPeriodInterestRateBps = offer.payPeriodInterestRateBps;
         loan.payPeriodDuration = offer.payPeriodDuration;
         loan.gracePeriodDuration = offer.gracePeriodDuration;
-        loan.numLatePaymentTolerance = offer.numLatePaymentTolerance;
+        loan.numLatePaymentsTolerance = offer.numLatePaymentsTolerance;
         loan.numLatePayments = 0;
     }
 
