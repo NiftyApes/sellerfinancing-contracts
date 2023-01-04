@@ -13,7 +13,7 @@ interface ISellerFinancingEvents {
     event OfferSignatureUsed(
         address indexed nftContractAddress,
         uint256 indexed nftId,
-        ISellerFinancingStructs.Offer offer,
+        ISellerFinancingStructs.SellOffer offer,
         bytes signature
     );
 

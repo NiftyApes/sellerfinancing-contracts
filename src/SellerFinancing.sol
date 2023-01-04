@@ -127,7 +127,11 @@ contract NiftyApesSellerFinancing is
     // TODO @captn: need to make sale offers (full value and with financing)
     // on marketplace at time of financing offer creation. Probably not smart contract work.
 
-    function getOfferHash(Offer memory offer) public view returns (bytes32) {
+    function getSellOfferHash(SellOffer memory offer)
+        public
+        view
+        returns (bytes32)
+    {
         return
             _hashTypedDataV4(
                 keccak256(
@@ -148,13 +152,40 @@ contract NiftyApesSellerFinancing is
             );
     }
 
-    function getOfferSigner(Offer memory offer, bytes memory signature)
+    function getSellOfferSigner(SellOffer memory offer, bytes memory signature)
         public
         view
         override
         returns (address)
     {
-        return ECDSABridge.recover(getOfferHash(offer), signature);
+        return ECDSABridge.recover(getSellOfferHash(offer), signature);
+    }
+
+    function getBuyOfferHash(BuyOffer memory buyOffer)
+        public
+        view
+        returns (bytes32)
+    {
+        return
+            _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        _OFFER_TYPEHASH,
+                        buyOffer.sellOfferHash,
+                        buyOffer.saleAmount,
+                        buyOffer.expiration
+                    )
+                )
+            );
+    }
+
+    function getBuyOfferSigner(BuyOffer memory buyOffer, bytes memory signature)
+        public
+        view
+        override
+        returns (address)
+    {
+        return ECDSABridge.recover(getBuyOfferHash(buyOffer), signature);
     }
 
     function getOfferSignatureStatus(bytes memory signature)
@@ -165,23 +196,24 @@ contract NiftyApesSellerFinancing is
         return _cancelledOrFinalized[signature];
     }
 
-    function withdrawOfferSignature(Offer memory offer, bytes memory signature)
-        external
-        whenNotPaused
-    {
+    // need to implement same unction for buyOfferSignatures
+    function withdrawOfferSignature(
+        SellOffer memory offer,
+        bytes memory signature
+    ) external whenNotPaused {
         _requireAvailableSignature(signature);
         _requireSignature65(signature);
-        address signer = getOfferSigner(offer, signature);
+        address signer = getSellOfferSigner(offer, signature);
         _requireSigner(signer, msg.sender);
         _requireOfferCreator(offer.creator, msg.sender);
         _markSignatureUsed(offer, signature);
     }
 
     function buyNowWithFinancingDirect(
-        Offer memory offer,
+        SellOffer memory offer,
         bytes memory signature
-    ) external whenNotPaused nonReentrant {
-        address seller = getOfferSigner(offer, signature);
+    ) external payable whenNotPaused nonReentrant {
+        address seller = getSellOfferSigner(offer, signature);
         _require721Owner(offer.nftContractAddress, offer.nftId, seller);
         _requireAvailableSignature(signature);
         _requireSignature65(signature);
@@ -200,7 +232,16 @@ contract NiftyApesSellerFinancing is
 
         // this transfer of value must go from buyer to seller directly. this function currently only transfers to this contract address
         // it should also include the initial payment to the protocol
-        _arrangeAssetFromBuyer(msg.sender, offer.asset, downPaymentAmount);
+        if (offer.asset == address(0)) {
+            require(msg.value >= downPaymentAmount, "00047");
+            if (msg.value > downPaymentAmount) {
+                payable(msg.sender).sendValue(msg.value - downPaymentAmount);
+            }
+            payable(seller).sendValue(downPaymentAmount);
+        } else {
+            IERC20Upgradeable asset = IERC20Upgradeable(offer.asset);
+            asset.safeTransferFrom(msg.sender, seller, downPaymentAmount);
+        }
 
         // create loan
         _createLoan(
@@ -370,56 +411,79 @@ contract NiftyApesSellerFinancing is
         );
     }
 
-    function buyNowWithFinancing3rdParty(
-        Offer memory offer,
-        bytes memory signature,
+    function buyWithFinancing3rdParty(
+        SellOffer memory sellOffer,
+        bytes memory sellSignature,
+        BuyOffer memory buyOffer,
+        bytes memory buySignature,
         address receiver,
-        address buyer,
         bytes calldata data
-    ) external whenNotPaused nonReentrant {
-        address seller = getOfferSigner(offer, signature);
-        _require721Owner(offer.nftContractAddress, offer.nftId, seller);
-        // is this check sitll needed?
-        _requireOfferCreator(offer.creator, seller);
-        _requireAvailableSignature(signature);
-        _requireSignature65(signature);
-        // is offer.creator still needed in the offer struct?
-        _requireIsNotSanctioned(offer.creator);
+    ) external payable whenNotPaused nonReentrant {
+        address seller = getSellOfferSigner(sellOffer, sellSignature);
+        _require721Owner(sellOffer.nftContractAddress, sellOffer.nftId, seller);
+        _requireAvailableSignature(sellSignature);
+        _requireSignature65(sellSignature);
+        address buyer = getBuyOfferSigner(buyOffer, buySignature);
+        _requireAvailableSignature(buySignature);
+        _requireSignature65(buySignature);
+        _requireIsNotSanctioned(seller);
         _requireIsNotSanctioned(buyer);
-        _requireIsNotSanctioned(receiver);
-        // requireOfferisValid
-        require(offer.nftContractAddress != address(0), "00004");
-        _requireOfferNotExpired(offer);
-        Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
+        _requireIsNotSanctioned(msg.sender);
+        // requireSellOfferisValid
+        require(sellOffer.nftContractAddress != address(0), "00004");
+        _requireOfferNotExpired(sellOffer);
+        _requireOfferNotExpired(buyOffer);
+
+        Loan storage loan = _getLoan(
+            sellOffer.nftContractAddress,
+            sellOffer.nftId
+        );
         // requireNoOpenLoan
-        // require(loan.lastUpdatedTimestamp == 0, "00006");
+        require(loan.periodBeginTimestamp == 0, "00006");
 
-        // add transfer of down payment
-
-        uint256 downPaymentAmount = (offer.reservePrice * MAX_BPS) /
-            offer.downPaymentBps;
-
-        _arrangeAssetFromBuyer(buyer, offer.asset, downPaymentAmount);
-
-        // if a direct sale, transfer value from this contract to seller transfer funds directly.
-
-        // add create loan
-
-        _createLoan(
-            loan,
-            offer,
-            seller,
-            buyer,
-            (offer.reservePrice - downPaymentAmount)
+        //requireSufficientSaleAmount
+        require(
+            buyOffer.saleAmount >= sellOffer.reservePrice,
+            "reserve price not met"
         );
 
-        // we might need to provide this inside of an if statement, if external purchase
+        // TODO: how does this value pass through to the marketplace?
+        // My biggest questions are around royalties and marketplace fees.
+        // Are those normally taken out of the seller profit? or marked up on the buyer side?
+        // transfer of down payment
+        uint256 downPaymentAmount = (buyOffer.saleAmount * MAX_BPS) /
+            sellOffer.downPaymentBps;
+
+        // payout the seller via receiver contract
+        if (sellOffer.asset == address(0)) {
+            require(msg.value >= downPaymentAmount, "00047");
+            if (msg.value > downPaymentAmount) {
+                // send excess value back to buyer
+                payable(buyer).sendValue(msg.value - downPaymentAmount);
+            }
+            // send downPayment to receiver contract
+            // this value will be passed through 3rd party marketplace to seller
+            payable(receiver).sendValue(downPaymentAmount);
+        } else {
+            IERC20Upgradeable asset = IERC20Upgradeable(sellOffer.asset);
+            asset.safeTransferFrom(buyer, receiver, downPaymentAmount);
+        }
+
+        // create loan
+        _createLoan(
+            loan,
+            sellOffer,
+            seller,
+            buyer,
+            (buyOffer.saleAmount - downPaymentAmount)
+        );
+
         // execute opreation on receiver contract
         require(
             IFlashPurchaseReceiver(receiver).executeOperation(
-                offer.nftContractAddress,
-                offer.nftId,
-                msg.sender,
+                sellOffer.nftContractAddress,
+                sellOffer.nftId,
+                buyer,
                 data
             ),
             "00052"
@@ -427,88 +491,21 @@ contract NiftyApesSellerFinancing is
 
         // Transfer nft from receiver contract to this contract as collateral, revert on failure
         _transferNft(
-            offer.nftContractAddress,
-            offer.nftId,
+            sellOffer.nftContractAddress,
+            sellOffer.nftId,
             receiver,
             address(this)
         );
 
-        emit LoanExecuted(
-            offer.nftContractAddress,
-            offer.nftId,
-            receiver,
-            loan
-        );
-    }
-
-    function acceptBidAndExecuteFinancing(
-        Offer memory offer,
-        // do we need to provide the signature here?
-        bytes memory signature,
-        uint256 saleAmount,
-        address receiver,
-        address buyer,
-        bytes calldata data
-    ) external whenNotPaused nonReentrant {
-        address seller = getOfferSigner(offer, signature);
-
-        // require msg.sender is seller
-
-        _require721Owner(offer.nftContractAddress, offer.nftId, seller);
-        // is this check sitll needed?
-        _requireOfferCreator(offer.creator, seller);
-        _requireAvailableSignature(signature);
-        _requireSignature65(signature);
-        // is offer.creator still needed in the offer struct?
-        _requireIsNotSanctioned(offer.creator);
-        _requireIsNotSanctioned(buyer);
-        _requireIsNotSanctioned(receiver);
-        // requireOfferisValid
-        // might want to use address(0) to mean ETH, could check another value in the offer struct
-        require(offer.nftContractAddress != address(0), "00004");
-        _requireOfferNotExpired(offer);
-        Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
-        // requireNoOpenLoan
-        // require(loan.lastUpdatedTimestamp == 0, "00006");
-
-        // assume the transfer of down payment happened on a 3rd party marketplace
-
-        uint256 downPaymentAmount = (saleAmount * MAX_BPS) /
-            offer.downPaymentBps;
-
-        // add create loan
-
-        _createLoan(
-            loan,
-            offer,
-            seller,
+        _addTokenToOwnerEnumeration(
             buyer,
-            (saleAmount - downPaymentAmount)
-        );
-
-        // we might need to provide this inside of an if statement, if external purchase
-        // execute opreation on receiver contract
-        require(
-            IFlashPurchaseReceiver(receiver).executeOperation(
-                offer.nftContractAddress,
-                offer.nftId,
-                msg.sender,
-                data
-            ),
-            "00052"
-        );
-
-        // Transfer nft from receiver contract to this contract as collateral, revert on failure
-        _transferNft(
-            offer.nftContractAddress,
-            offer.nftId,
-            receiver,
-            address(this)
+            sellOffer.nftContractAddress,
+            sellOffer.nftId
         );
 
         emit LoanExecuted(
-            offer.nftContractAddress,
-            offer.nftId,
+            sellOffer.nftContractAddress,
+            sellOffer.nftId,
             receiver,
             loan
         );
@@ -592,10 +589,6 @@ contract NiftyApesSellerFinancing is
         // emit FlashClaim(nftContractAddress, nftId, receiverAddress);
     }
 
-    function auctionDebt() public {}
-
-    function refinanceLoan() public {}
-
     function balanceOf(address owner, address nftContractAddress)
         public
         view
@@ -624,7 +617,7 @@ contract NiftyApesSellerFinancing is
 
     function _createLoan(
         Loan storage loan,
-        Offer memory offer,
+        SellOffer memory offer,
         address seller,
         address buyer,
         uint256 amount
@@ -658,22 +651,6 @@ contract NiftyApesSellerFinancing is
             to,
             nftId
         );
-    }
-
-    function _arrangeAssetFromBuyer(
-        address buyer,
-        address offerAsset,
-        uint256 downPaymentAmount
-    ) internal {
-        if (offerAsset == address(0)) {
-            require(msg.value >= downPaymentAmount, "00047");
-            if (msg.value > downPaymentAmount) {
-                payable(buyer).sendValue(msg.value - downPaymentAmount);
-            }
-        } else {
-            IERC20Upgradeable asset = IERC20Upgradeable(offerAsset);
-            asset.safeTransferFrom(buyer, address(this), downPaymentAmount);
-        }
     }
 
     /// @dev Private function to add a token to this extension's ownership-tracking data structures.
@@ -746,7 +723,7 @@ contract NiftyApesSellerFinancing is
         require(signature.length == 65, "00003");
     }
 
-    function _requireOfferNotExpired(Offer memory offer) internal view {
+    function _requireOfferNotExpired(SellOffer memory offer) internal view {
         require(
             offer.expiration > SafeCastUpgradeable.toUint32(block.timestamp),
             "00010"
@@ -783,7 +760,7 @@ contract NiftyApesSellerFinancing is
         require(loan.remainingPrincipal != 0, "00007");
     }
 
-    function _markSignatureUsed(Offer memory offer, bytes memory signature)
+    function _markSignatureUsed(SellOffer memory offer, bytes memory signature)
         internal
     {
         _cancelledOrFinalized[signature] = true;
