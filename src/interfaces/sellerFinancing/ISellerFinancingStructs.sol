@@ -2,7 +2,7 @@
 pragma solidity 0.8.13;
 
 interface ISellerFinancingStructs {
-    struct SellOffer {
+    struct Offer {
         // SLOT 0 START
         // Offer creator
         address creator;
@@ -23,12 +23,6 @@ interface ISellerFinancingStructs {
         uint32 expiration;
         uint128 reservePrice;
         bool buyNowAvailable;
-    }
-
-    struct BuyOffer {
-        bytes32 sellOfferHash;
-        uint128 saleAmount;
-        uint32 expiration;
     }
 
     struct Loan {

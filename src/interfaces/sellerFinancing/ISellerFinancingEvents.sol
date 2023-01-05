@@ -13,7 +13,7 @@ interface ISellerFinancingEvents {
     event OfferSignatureUsed(
         address indexed nftContractAddress,
         uint256 indexed nftId,
-        ISellerFinancingStructs.SellOffer offer,
+        ISellerFinancingStructs.Offer offer,
         bytes signature
     );
 
@@ -58,6 +58,30 @@ interface ISellerFinancingEvents {
     event AssetSeized(
         address indexed nftContractAddress,
         uint256 indexed nftId,
+        ISellerFinancingStructs.Loan loan
+    );
+
+    /// @notice Emitted when an locked NFT is listed for sale through Seaport
+    /// @param nftContractAddress The nft contract address
+    /// @param nftId The tokenId of the listed NFT
+    /// @param orderHash The hash of the order which listed the NFT
+    /// @param loan The loan details at the time of listing
+    event ListedOnSeaport(
+        address indexed nftContractAddress,
+        uint256 indexed nftId,
+        bytes32 indexed orderHash,
+        ISellerFinancingStructs.Loan loan
+    );
+
+    /// @notice Emitted when a seaport NFT listing thorugh NiftyApes is cancelled by the borrower
+    /// @param nftContractAddress The nft contract address
+    /// @param nftId The tokenId of the listed NFT
+    /// @param orderHash The hash of the order which listed the NFT
+    /// @param loan The loan details at the time of listing
+    event ListingCancelledSeaport(
+        address indexed nftContractAddress,
+        uint256 indexed nftId,
+        bytes32 indexed orderHash,
         ISellerFinancingStructs.Loan loan
     );
 }

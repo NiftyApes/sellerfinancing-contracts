@@ -15,15 +15,12 @@ interface ISellerFinancing is
     /// @notice Returns an EIP712 standard compatible hash for a given offer
     ///         This hash can be signed to create a valid offer.
     /// @param offer The offer to compute the hash for
-    function getOfferHash(SellOffer memory offer)
-        external
-        view
-        returns (bytes32);
+    function getOfferHash(Offer memory offer) external view returns (bytes32);
 
     /// @notice Returns the signer of an offer or throws an error.
     /// @param offer The offer to use for retrieving the signer
     /// @param signature The signature to use for retrieving the signer
-    function getOfferSigner(SellOffer memory offer, bytes memory signature)
+    function getOfferSigner(Offer memory offer, bytes memory signature)
         external
         returns (address);
 
@@ -39,7 +36,7 @@ interface ISellerFinancing is
     /// @param offer The offer to withdraw
     /// @param signature The signature of the offer
     function withdrawOfferSignature(
-        SellOffer memory offer,
+        Offer memory offer,
         bytes calldata signature
     ) external;
 }

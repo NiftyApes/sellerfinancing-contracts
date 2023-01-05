@@ -124,14 +124,7 @@ contract NiftyApesSellerFinancing is
         _unpause();
     }
 
-    // TODO @captn: need to make sale offers (full value and with financing)
-    // on marketplace at time of financing offer creation. Probably not smart contract work.
-
-    function getSellOfferHash(SellOffer memory offer)
-        public
-        view
-        returns (bytes32)
-    {
+    function getOfferHash(Offer memory offer) public view returns (bytes32) {
         return
             _hashTypedDataV4(
                 keccak256(
@@ -152,40 +145,13 @@ contract NiftyApesSellerFinancing is
             );
     }
 
-    function getSellOfferSigner(SellOffer memory offer, bytes memory signature)
+    function getOfferSigner(Offer memory offer, bytes memory signature)
         public
         view
         override
         returns (address)
     {
-        return ECDSABridge.recover(getSellOfferHash(offer), signature);
-    }
-
-    function getBuyOfferHash(BuyOffer memory buyOffer)
-        public
-        view
-        returns (bytes32)
-    {
-        return
-            _hashTypedDataV4(
-                keccak256(
-                    abi.encode(
-                        _OFFER_TYPEHASH,
-                        buyOffer.sellOfferHash,
-                        buyOffer.saleAmount,
-                        buyOffer.expiration
-                    )
-                )
-            );
-    }
-
-    function getBuyOfferSigner(BuyOffer memory buyOffer, bytes memory signature)
-        public
-        view
-        override
-        returns (address)
-    {
-        return ECDSABridge.recover(getBuyOfferHash(buyOffer), signature);
+        return ECDSABridge.recover(getOfferHash(offer), signature);
     }
 
     function getOfferSignatureStatus(bytes memory signature)
@@ -196,24 +162,25 @@ contract NiftyApesSellerFinancing is
         return _cancelledOrFinalized[signature];
     }
 
-    // need to implement same unction for buyOfferSignatures
-    function withdrawOfferSignature(
-        SellOffer memory offer,
-        bytes memory signature
-    ) external whenNotPaused {
+    function withdrawOfferSignature(Offer memory offer, bytes memory signature)
+        external
+        whenNotPaused
+    {
         _requireAvailableSignature(signature);
         _requireSignature65(signature);
-        address signer = getSellOfferSigner(offer, signature);
+        address signer = getOfferSigner(offer, signature);
         _requireSigner(signer, msg.sender);
         _requireOfferCreator(offer.creator, msg.sender);
         _markSignatureUsed(offer, signature);
     }
 
-    function buyNowWithFinancingDirect(
-        SellOffer memory offer,
-        bytes memory signature
-    ) external payable whenNotPaused nonReentrant {
-        address seller = getSellOfferSigner(offer, signature);
+    function buyNowWithFinancing(Offer memory offer, bytes memory signature)
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+    {
+        address seller = getOfferSigner(offer, signature);
         _require721Owner(offer.nftContractAddress, offer.nftId, seller);
         _requireAvailableSignature(signature);
         _requireSignature65(signature);
@@ -411,106 +378,6 @@ contract NiftyApesSellerFinancing is
         );
     }
 
-    function buyWithFinancing3rdParty(
-        SellOffer memory sellOffer,
-        bytes memory sellSignature,
-        BuyOffer memory buyOffer,
-        bytes memory buySignature,
-        address receiver,
-        bytes calldata data
-    ) external payable whenNotPaused nonReentrant {
-        address seller = getSellOfferSigner(sellOffer, sellSignature);
-        _require721Owner(sellOffer.nftContractAddress, sellOffer.nftId, seller);
-        _requireAvailableSignature(sellSignature);
-        _requireSignature65(sellSignature);
-        address buyer = getBuyOfferSigner(buyOffer, buySignature);
-        _requireAvailableSignature(buySignature);
-        _requireSignature65(buySignature);
-        _requireIsNotSanctioned(seller);
-        _requireIsNotSanctioned(buyer);
-        _requireIsNotSanctioned(msg.sender);
-        // requireSellOfferisValid
-        require(sellOffer.nftContractAddress != address(0), "00004");
-        _requireOfferNotExpired(sellOffer);
-        _requireOfferNotExpired(buyOffer);
-
-        Loan storage loan = _getLoan(
-            sellOffer.nftContractAddress,
-            sellOffer.nftId
-        );
-        // requireNoOpenLoan
-        require(loan.periodBeginTimestamp == 0, "00006");
-
-        //requireSufficientSaleAmount
-        require(
-            buyOffer.saleAmount >= sellOffer.reservePrice,
-            "reserve price not met"
-        );
-
-        // TODO: how does this value pass through to the marketplace?
-        // My biggest questions are around royalties and marketplace fees.
-        // Are those normally taken out of the seller profit? or marked up on the buyer side?
-        // transfer of down payment
-        uint256 downPaymentAmount = (buyOffer.saleAmount * MAX_BPS) /
-            sellOffer.downPaymentBps;
-
-        // payout the seller via receiver contract
-        if (sellOffer.asset == address(0)) {
-            require(msg.value >= downPaymentAmount, "00047");
-            if (msg.value > downPaymentAmount) {
-                // send excess value back to buyer
-                payable(buyer).sendValue(msg.value - downPaymentAmount);
-            }
-            // send downPayment to receiver contract
-            // this value will be passed through 3rd party marketplace to seller
-            payable(receiver).sendValue(downPaymentAmount);
-        } else {
-            IERC20Upgradeable asset = IERC20Upgradeable(sellOffer.asset);
-            asset.safeTransferFrom(buyer, receiver, downPaymentAmount);
-        }
-
-        // create loan
-        _createLoan(
-            loan,
-            sellOffer,
-            seller,
-            buyer,
-            (buyOffer.saleAmount - downPaymentAmount)
-        );
-
-        // execute opreation on receiver contract
-        require(
-            IFlashPurchaseReceiver(receiver).executeOperation(
-                sellOffer.nftContractAddress,
-                sellOffer.nftId,
-                buyer,
-                data
-            ),
-            "00052"
-        );
-
-        // Transfer nft from receiver contract to this contract as collateral, revert on failure
-        _transferNft(
-            sellOffer.nftContractAddress,
-            sellOffer.nftId,
-            receiver,
-            address(this)
-        );
-
-        _addTokenToOwnerEnumeration(
-            buyer,
-            sellOffer.nftContractAddress,
-            sellOffer.nftId
-        );
-
-        emit LoanExecuted(
-            sellOffer.nftContractAddress,
-            sellOffer.nftId,
-            receiver,
-            loan
-        );
-    }
-
     function instantSell(
         address nftContractAddress,
         uint256 nftId,
@@ -525,7 +392,55 @@ contract NiftyApesSellerFinancing is
         uint256 listingStartTime,
         uint256 listingEndTime,
         uint256 salt
-    ) external whenNotPaused nonReentrant returns (bytes32) {}
+    ) external whenNotPaused nonReentrant returns (bytes32) {
+        Loan memory loan = _getLoan(nftContractAddress, nftId);
+        uint256 seaportFeeAmount = listingPrice - (listingPrice * 39) / 40;
+
+        // validate inputs and its price wrt listingEndTime
+        _requireNftOwner(loan);
+        _requireIsNotSanctioned(msg.sender);
+        _requireOpenLoan(loan);
+        _requireListingValueGreaterThanLoanRepaymentAmountUntilListingExpiry(
+            loan,
+            listingPrice,
+            seaportFeeAmount,
+            listingEndTime
+        );
+
+        // construct Seaport Order
+        ISeaport.Order[] memory order = _constructOrder(
+            nftContractAddress,
+            nftId,
+            listingPrice,
+            seaportFeeAmount,
+            listingStartTime,
+            listingEndTime,
+            loan.asset,
+            salt
+        );
+        // approve the NFT for Seaport address
+        IERC721Upgradeable(nftContractAddress).approve(seaportConduit, nftId);
+
+        // call lending contract to validate listing to Seaport
+        ISeaport(seaportContractAddress).validate(order);
+        // get orderHash by calling ISeaport.getOrderHash()
+        bytes32 orderHash = _getOrderHash(order[0]);
+        // validate order status by calling ISeaport.getOrderStatus(orderHash)
+        (bool validated, , , ) = ISeaport(seaportContractAddress)
+            .getOrderStatus(orderHash);
+        require(validated, "00059");
+
+        // store the listing with orderHash
+        _orderHashToListing[orderHash] = SeaportListing(
+            nftContractAddress,
+            nftId,
+            listingPrice - seaportFeeAmount
+        );
+
+        // emit orderHash with it's listing
+        emit ListedOnSeaport(nftContractAddress, nftId, orderHash, loan);
+        return orderHash;
+    }
 
     function validateSaleAndWithdraw(
         address nftContractAddress,
@@ -548,7 +463,55 @@ contract NiftyApesSellerFinancing is
         uint256 listingEndTime,
         address asset,
         uint256 randomSalt
-    ) internal view returns (ISeaport.Order[] memory order) {}
+    ) internal view returns (ISeaport.Order[] memory order) {
+        ISeaport.ItemType considerationItemType = (
+            asset == address(0)
+                ? ISeaport.ItemType.NATIVE
+                : ISeaport.ItemType.ERC20
+        );
+        address considerationToken = (asset == address(0) ? address(0) : asset);
+
+        order = new ISeaport.Order[](1);
+        order[0] = ISeaport.Order({
+            parameters: ISeaport.OrderParameters({
+                offerer: address(this),
+                zone: seaportZone,
+                offer: new ISeaport.OfferItem[](1),
+                consideration: new ISeaport.ConsiderationItem[](2),
+                orderType: ISeaport.OrderType.FULL_OPEN,
+                startTime: listingStartTime,
+                endTime: listingEndTime,
+                zoneHash: seaportZoneHash,
+                salt: randomSalt,
+                conduitKey: seaportConduitKey,
+                totalOriginalConsiderationItems: 2
+            }),
+            signature: bytes("")
+        });
+        order[0].parameters.offer[0] = ISeaport.OfferItem({
+            itemType: ISeaport.ItemType.ERC721,
+            token: nftContractAddress,
+            identifierOrCriteria: nftId,
+            startAmount: 1,
+            endAmount: 1
+        });
+        order[0].parameters.consideration[0] = ISeaport.ConsiderationItem({
+            itemType: considerationItemType,
+            token: considerationToken,
+            identifierOrCriteria: 0,
+            startAmount: listingPrice - seaportFeeAmount,
+            endAmount: listingPrice - seaportFeeAmount,
+            recipient: payable(address(this))
+        });
+        order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
+            itemType: considerationItemType,
+            token: considerationToken,
+            identifierOrCriteria: 0,
+            startAmount: seaportFeeAmount,
+            endAmount: seaportFeeAmount,
+            recipient: payable(seaportFeeRecepient)
+        });
+    }
 
     function flashClaim(
         address receiverAddress,
@@ -617,7 +580,7 @@ contract NiftyApesSellerFinancing is
 
     function _createLoan(
         Loan storage loan,
-        SellOffer memory offer,
+        Offer memory offer,
         address seller,
         address buyer,
         uint256 amount
@@ -703,6 +666,75 @@ contract NiftyApesSellerFinancing is
         _balances[owner][nftContractAddress] -= 1;
     }
 
+    function _requireListingValueGreaterThanLoanRepaymentAmountUntilListingExpiry(
+        Loan memory loan,
+        uint256 listingPrice,
+        uint256 seaportFeeAmount,
+        uint256 listingEndTime
+    ) internal view {
+        require(
+            listingPrice - seaportFeeAmount >=
+                _calculateTotalLoanPaymentAmountAtTimestamp(
+                    loan,
+                    listingEndTime
+                ),
+            "00060"
+        );
+    }
+
+    // this funciton needs to be rewritten
+    function _calculateTotalLoanPaymentAmountAtTimestamp(
+        Loan memory loan,
+        uint256 timestamp
+    ) internal view returns (uint256) {
+        uint256 timePassed = timestamp - loan.lastUpdatedTimestamp;
+
+        uint256 lenderInterest = (timePassed * loan.interestRatePerSecond);
+        uint256 protocolInterest = (timePassed *
+            loan.protocolInterestRatePerSecond);
+
+        uint256 interestThreshold;
+        interestThreshold = 0;
+
+        lenderInterest = lenderInterest > interestThreshold
+            ? lenderInterest
+            : interestThreshold;
+
+        return
+            loan.accumulatedLenderInterest +
+            loan.accumulatedPaidProtocolInterest +
+            loan.unpaidProtocolInterest +
+            loan.slashableLenderInterest +
+            loan.amountDrawn +
+            lenderInterest +
+            protocolInterest;
+    }
+
+    function _getOrderHash(ISeaport.Order memory order)
+        internal
+        view
+        returns (bytes32 orderHash)
+    {
+        // Derive order hash by supplying order parameters along with counter.
+        orderHash = ISeaport(seaportContractAddress).getOrderHash(
+            ISeaport.OrderComponents(
+                order.parameters.offerer,
+                order.parameters.zone,
+                order.parameters.offer,
+                order.parameters.consideration,
+                order.parameters.orderType,
+                order.parameters.startTime,
+                order.parameters.endTime,
+                order.parameters.zoneHash,
+                order.parameters.salt,
+                order.parameters.conduitKey,
+                ISeaport(seaportContractAddress).getCounter(
+                    order.parameters.offerer
+                )
+            )
+        );
+    }
+
     function _currentTimestamp32() internal view returns (uint32) {
         return SafeCastUpgradeable.toUint32(block.timestamp);
     }
@@ -723,7 +755,7 @@ contract NiftyApesSellerFinancing is
         require(signature.length == 65, "00003");
     }
 
-    function _requireOfferNotExpired(SellOffer memory offer) internal view {
+    function _requireOfferNotExpired(Offer memory offer) internal view {
         require(
             offer.expiration > SafeCastUpgradeable.toUint32(block.timestamp),
             "00010"
@@ -760,7 +792,11 @@ contract NiftyApesSellerFinancing is
         require(loan.remainingPrincipal != 0, "00007");
     }
 
-    function _markSignatureUsed(SellOffer memory offer, bytes memory signature)
+    function _requireNftOwner(Loan memory loan) internal view {
+        require(msg.sender == loan.buyer, "00021");
+    }
+
+    function _markSignatureUsed(Offer memory offer, bytes memory signature)
         internal
     {
         _cancelledOrFinalized[signature] = true;
