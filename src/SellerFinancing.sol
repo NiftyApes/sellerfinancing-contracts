@@ -393,7 +393,7 @@ contract NiftyApesSellerFinancing is
         uint256 listingEndTime,
         uint256 salt
     ) external whenNotPaused nonReentrant returns (bytes32) {
-        Loan memory loan = _getLoan(nftContractAddress, nftId);
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
         uint256 seaportFeeAmount = listingPrice - (listingPrice * 39) / 40;
 
         // validate inputs and its price wrt listingEndTime
@@ -403,8 +403,7 @@ contract NiftyApesSellerFinancing is
         _requireListingValueGreaterThanLoanRepaymentAmountUntilListingExpiry(
             loan,
             listingPrice,
-            seaportFeeAmount,
-            listingEndTime
+            seaportFeeAmount
         );
 
         // construct Seaport Order
@@ -421,7 +420,7 @@ contract NiftyApesSellerFinancing is
         // approve the NFT for Seaport address
         IERC721Upgradeable(nftContractAddress).approve(seaportConduit, nftId);
 
-        // call lending contract to validate listing to Seaport
+        // validate listing to Seaport
         ISeaport(seaportContractAddress).validate(order);
         // get orderHash by calling ISeaport.getOrderHash()
         bytes32 orderHash = _getOrderHash(order[0]);
@@ -669,45 +668,33 @@ contract NiftyApesSellerFinancing is
     function _requireListingValueGreaterThanLoanRepaymentAmountUntilListingExpiry(
         Loan memory loan,
         uint256 listingPrice,
-        uint256 seaportFeeAmount,
-        uint256 listingEndTime
+        uint256 seaportFeeAmount
     ) internal view {
         require(
             listingPrice - seaportFeeAmount >=
-                _calculateTotalLoanPaymentAmountAtTimestamp(
-                    loan,
-                    listingEndTime
-                ),
+                _calculateTotalLoanPaymentAmount(loan),
             "00060"
         );
     }
 
     // this funciton needs to be rewritten
-    function _calculateTotalLoanPaymentAmountAtTimestamp(
-        Loan memory loan,
-        uint256 timestamp
-    ) internal view returns (uint256) {
-        uint256 timePassed = timestamp - loan.lastUpdatedTimestamp;
-
-        uint256 lenderInterest = (timePassed * loan.interestRatePerSecond);
-        uint256 protocolInterest = (timePassed *
-            loan.protocolInterestRatePerSecond);
-
-        uint256 interestThreshold;
-        interestThreshold = 0;
-
-        lenderInterest = lenderInterest > interestThreshold
-            ? lenderInterest
-            : interestThreshold;
-
-        return
-            loan.accumulatedLenderInterest +
-            loan.accumulatedPaidProtocolInterest +
-            loan.unpaidProtocolInterest +
-            loan.slashableLenderInterest +
-            loan.amountDrawn +
-            lenderInterest +
-            protocolInterest;
+    function _calculateTotalLoanPaymentAmount(Loan memory loan)
+        internal
+        view
+        returns (uint256 totalPayment)
+    {
+        // add remainingPrincipal
+        totalPayment += loan.remainingPrincipal;
+        // check if current timestamp is before or after the period begin timestamp
+        // if after add interest payments for seller and protocol
+        if (_currentTimestamp32() > loan.periodBeginTimestamp) {
+            totalPayment +=
+                // calculate % interest to be paid to seller
+                ((loan.remainingPrincipal * MAX_BPS) /
+                    loan.payPeriodInterestRateBps) +
+                // calculate % interest to be paid to protocol
+                ((loan.remainingPrincipal * MAX_BPS) / protocolInterestBps);
+        }
     }
 
     function _getOrderHash(ISeaport.Order memory order)
@@ -792,7 +779,7 @@ contract NiftyApesSellerFinancing is
         require(loan.remainingPrincipal != 0, "00007");
     }
 
-    function _requireNftOwner(Loan memory loan) internal view {
+    function _requireNftOwner(Loan storage loan) internal view {
         require(msg.sender == loan.buyer, "00021");
     }
 
