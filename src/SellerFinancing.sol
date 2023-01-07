@@ -400,9 +400,12 @@ contract NiftyApesSellerFinancing is
             loanAsset = loan.asset;
         }
 
-        uint256 totalLoanPaymentAmount = _calculateTotalLoanPaymentAmount(loan);
+        (
+            uint256 totalLoanPaymentAmount,
+            uint256 protocolInterest
+        ) = _calculateTotalLoanPaymentAmount(loan);
 
-        uint256 assetBalanceBefore = _getAssetBalance(loan.asset);
+        uint256 assetBalanceBefore = _getAssetBalance(loanAsset);
 
         // approve the NFT for Seaport conduit
         IERC721Upgradeable(nftContractAddress).approve(
@@ -418,8 +421,6 @@ contract NiftyApesSellerFinancing is
         );
         _requireValidOrderAssets(order, nftContractAddress, nftId, loanAsset);
 
-        // check that sellAmount is sufficient to pay off loan plus interest
-
         // execute sale
 
         require(
@@ -430,7 +431,7 @@ contract NiftyApesSellerFinancing is
             "00048"
         );
 
-        uint256 assetBalanceAfter = _getAssetBalance(loan.asset);
+        uint256 assetBalanceAfter = _getAssetBalance(loanAsset);
 
         uint256 amountReceivedFromSale = assetBalanceAfter - assetBalanceBefore;
 
@@ -438,7 +439,7 @@ contract NiftyApesSellerFinancing is
         require(amountReceivedFromSale >= totalLoanPaymentAmount, "00057");
 
         // payout seller and protocol
-        if (loan.asset == address(0)) {
+        if (loanAsset == address(0)) {
             // payout seller
             payable(loan.seller).sendValue(
                 totalLoanPaymentAmount - protocolInterest
@@ -446,6 +447,14 @@ contract NiftyApesSellerFinancing is
 
             // payout owner
             payable(owner()).sendValue(protocolInterest);
+
+            // if there is a profit, payout buyer
+            if (amountReceivedFromSale > totalLoanPaymentAmount) {
+                // payout buyer
+                payable(buyer).sendValue(
+                    amountReceivedFromSale - totalLoanPaymentAmount
+                );
+            }
         } else {
             IERC20Upgradeable asset = IERC20Upgradeable(loan.asset);
             // payout seller
@@ -458,27 +467,24 @@ contract NiftyApesSellerFinancing is
             // payout owner
             asset.safeTransferFrom(msg.sender, owner(), protocolInterest);
 
-            // if we had an affiliate payment it would go here
-        }
-
-        // if there is a profit in the sale, transfer funds to buyer
-        if (amountReceivedFromSale > totalLoanPaymentAmount) {
-            if (loan.asset == address(0)) {
+            // if there is a profit, payout buyer
+            if (amountReceivedFromSale > totalLoanPaymentAmount) {
                 // payout buyer
-                payable(buyer).sendValue(
-                    amountReceivedFromSale - totalLoanPaymentAmount
-                );
-            } else {
-                // payout owner
                 asset.safeTransferFrom(
                     address(this),
                     buyer,
                     amountReceivedFromSale - totalLoanPaymentAmount
                 );
             }
+
+            // if we had an affiliate payment it would go here
         }
+
         // emit sell event
+        emit InstantSell(nftContractAddress, nftId, loan);
+
         // delete loan
+        delete _loans[nftContractAddress][nftId];
     }
 
     function listNftForSale(
@@ -541,13 +547,123 @@ contract NiftyApesSellerFinancing is
         address nftContractAddress,
         uint256 nftId,
         bytes32 orderHash
-    ) external whenNotPaused nonReentrant {}
+    ) external whenNotPaused nonReentrant {
+        Loan memory loan = _getLoan(nftContractAddress, nftId);
+
+        SeaportListing memory listing = _requireValidOrderHash(
+            nftContractAddress,
+            nftId,
+            orderHash
+        );
+        _requireLenderOrNftOwner(loan);
+        _requireIsNotSanctioned(msg.sender);
+        _requireOpenLoan(loan);
+
+        // validate order status
+        (bool valid, bool cancelled, uint256 filled, ) = ISeaport(
+            seaportContractAddress
+        ).getOrderStatus(orderHash);
+        require(valid, "00059");
+        require(!cancelled, "00062");
+        require(filled == 1, "00063");
+
+        // close the loan and transfer remaining amount to the borrower
+        (
+            uint256 totalLoanPaymentAmount,
+            uint256 protocolInterest
+        ) = _calculateTotalLoanPaymentAmount(loan);
+
+        // require assets received are enough to settle the loan
+        require(listing.listingValue >= totalLoanPaymentAmount, "00057");
+
+        // payout seller and protocol
+        if (loanAsset == address(0)) {
+            // payout seller
+            payable(loan.seller).sendValue(
+                totalLoanPaymentAmount - protocolInterest
+            );
+
+            // payout owner
+            payable(owner()).sendValue(protocolInterest);
+
+            // if there is a profit, payout buyer
+            if (listing.listingValue > totalLoanPaymentAmount) {
+                // payout buyer
+                payable(buyer).sendValue(
+                    listing.listingValue - totalLoanPaymentAmount
+                );
+            }
+        } else {
+            IERC20Upgradeable asset = IERC20Upgradeable(loan.asset);
+            // payout seller
+            asset.safeTransferFrom(
+                msg.sender,
+                loan.seller,
+                totalLoanPaymentAmount - protocolInterest
+            );
+
+            // payout owner
+            asset.safeTransferFrom(msg.sender, owner(), protocolInterest);
+
+            // if there is a profit, payout buyer
+            if (listing.listingValue > totalLoanPaymentAmount) {
+                // payout buyer
+                asset.safeTransferFrom(
+                    address(this),
+                    buyer,
+                    listing.listingValue - totalLoanPaymentAmount
+                );
+            }
+
+            // if we had an affiliate payment it would go here
+        }
+
+        // emit loan repaid event
+        //delete loan
+    }
 
     function cancelNftListing(ISeaport.OrderComponents memory orderComponents)
         external
         whenNotPaused
         nonReentrant
-    {}
+    {
+        bytes32 orderHash = ISeaport(seaportContractAddress).getOrderHash(
+            orderComponents
+        );
+        address nftContractAddress = orderComponents.offer[0].token;
+        uint256 nftId = orderComponents.offer[0].identifierOrCriteria;
+
+        Loan memory loan = _getLoan(nftContractAddress, nftId);
+
+        // validate inputs
+        _requireNftOwner(loan);
+        _requireValidOrderHash(nftContractAddress, nftId, orderHash);
+        _requireIsNotSanctioned(msg.sender);
+
+        // validate order status
+        (bool valid, bool cancelled, uint256 filled, ) = ISeaport(
+            seaportContractAddress
+        ).getOrderStatus(orderHash);
+        require(valid, "00059");
+        require(!cancelled, "00062");
+        require(filled == 0, "00063");
+
+        ISeaport.OrderComponents[]
+            memory orderComponentsList = new ISeaport.OrderComponents[](1);
+        orderComponentsList[0] = orderComponents;
+        require(
+            ISeaport(seaportContractAddress).cancel(orderComponentsList),
+            "00065"
+        );
+
+        // emit orderHash with it's listing
+        emit ListingCancelledSeaport(
+            nftContractAddress,
+            nftId,
+            orderHash,
+            loan
+        );
+    }
 
     function flashClaim(
         address receiverAddress,
@@ -652,6 +768,14 @@ contract NiftyApesSellerFinancing is
         );
     }
 
+    function _getAssetBalance(address asset) internal view returns (uint256) {
+        if (asset == address(0)) {
+            return address(this).balance;
+        } else {
+            return IERC20Upgradeable(asset).balanceOf(address(this));
+        }
+    }
+
     /// @dev Private function to add a token to this extension's ownership-tracking data structures.
     /// @param owner address representing the new owner of the given token ID
     /// @param nftContractAddress address nft collection address
@@ -707,9 +831,11 @@ contract NiftyApesSellerFinancing is
         uint256 listingPrice,
         uint256 seaportFeeAmount
     ) internal view {
+        (uint256 totalLoanPaymentAmount, ) = _calculateTotalLoanPaymentAmount(
+            loan
+        );
         require(
-            listingPrice - seaportFeeAmount >=
-                _calculateTotalLoanPaymentAmount(loan),
+            listingPrice - seaportFeeAmount >= totalLoanPaymentAmount,
             "00060"
         );
     }
@@ -717,19 +843,22 @@ contract NiftyApesSellerFinancing is
     function _calculateTotalLoanPaymentAmount(Loan memory loan)
         internal
         view
-        returns (uint256 totalPayment)
+        returns (uint256 totalPayment, uint256 protocolInterest)
     {
         // add remainingPrincipal
         totalPayment += loan.remainingPrincipal;
         // check if current timestamp is before or after the period begin timestamp
         // if after add interest payments for seller and protocol
         if (_currentTimestamp32() > loan.periodBeginTimestamp) {
+            // calculate % interest to be paid to protocol
+            protocolInterest += ((loan.remainingPrincipal * MAX_BPS) /
+                protocolInterestBps);
             totalPayment +=
                 // calculate % interest to be paid to seller
                 ((loan.remainingPrincipal * MAX_BPS) /
                     loan.payPeriodInterestRateBps) +
-                // calculate % interest to be paid to protocol
-                ((loan.remainingPrincipal * MAX_BPS) / protocolInterestBps);
+                // add protocolInterest
+                protocolInterest;
         }
     }
 

@@ -61,6 +61,17 @@ interface ISellerFinancingEvents {
         ISellerFinancingStructs.Loan loan
     );
 
+    /// @notice Emitted when an NFT is sold instantly on Seaport
+    /// @param nftContractAddress The nft contract address
+    /// @param nftId The tokenId of the NFT which was put as collateral
+    /// @param loan The loan details at the time of listing
+
+    event InstantSell(
+        address indexed nftContractAddress,
+        uint256 indexed nftId,
+        ISellerFinancingStructs.Loan loan
+    );
+
     /// @notice Emitted when an locked NFT is listed for sale through Seaport
     /// @param nftContractAddress The nft contract address
     /// @param nftId The tokenId of the listed NFT
