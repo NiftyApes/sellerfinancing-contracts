@@ -77,6 +77,8 @@ contract NiftyApesSellerFinancing is
 
     uint16 public protocolInterestBps;
 
+    address public wethContractAddress;
+
     address public seaportContractAddress;
 
     address public seaportZone;
@@ -104,6 +106,8 @@ contract NiftyApesSellerFinancing is
 
         // 21 bps == 2.52% APR
         protocolInterestBps = 21;
+
+        wethContractAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
         seaportZone = 0x004C00500000aD104D7DBd00e3ae0A5C00560C00;
         seaportFeeRecepient = 0x0000a26b00c1F0DF003000390027140000fAa719;
@@ -381,19 +385,19 @@ contract NiftyApesSellerFinancing is
     function instantSell(
         address nftContractAddress,
         uint256 nftId,
-        address receiver,
         bytes calldata data
     ) external whenNotPaused nonReentrant {
         // require statements
         // get loan
 
-        address buyer = _requireNftOwner(nftContractAddress, nftId);
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+
+        _requireNftOwner(loan);
         _requireIsNotSanctioned(msg.sender);
-        _requireIsNotSanctioned(buyer);
+        _requireIsNotSanctioned(loan.buyer);
 
         //require buyer is msg.sender
-
-        Loan memory loan = _getLoan(nftContractAddress, nftId);
+        require(msg.sender == loan.buyer);
 
         address loanAsset;
         if (loan.asset != address(0)) {
@@ -451,7 +455,7 @@ contract NiftyApesSellerFinancing is
             // if there is a profit, payout buyer
             if (amountReceivedFromSale > totalLoanPaymentAmount) {
                 // payout buyer
-                payable(buyer).sendValue(
+                payable(loan.buyer).sendValue(
                     amountReceivedFromSale - totalLoanPaymentAmount
                 );
             }
@@ -472,7 +476,7 @@ contract NiftyApesSellerFinancing is
                 // payout buyer
                 asset.safeTransferFrom(
                     address(this),
-                    buyer,
+                    loan.buyer,
                     amountReceivedFromSale - totalLoanPaymentAmount
                 );
             }
@@ -548,7 +552,7 @@ contract NiftyApesSellerFinancing is
         uint256 nftId,
         bytes32 orderHash
     ) external whenNotPaused nonReentrant {
-        Loan memory loan = _getLoan(nftContractAddress, nftId);
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
 
         SeaportListing memory listing = _requireValidOrderHash(
             nftContractAddress,
@@ -576,6 +580,11 @@ contract NiftyApesSellerFinancing is
         // require assets received are enough to settle the loan
         require(listing.listingValue >= totalLoanPaymentAmount, "00057");
 
+        address loanAsset;
+        if (loan.asset != address(0)) {
+            loanAsset = loan.asset;
+        }
+
         // payout seller and protocol
         if (loanAsset == address(0)) {
             // payout seller
@@ -589,7 +598,7 @@ contract NiftyApesSellerFinancing is
             // if there is a profit, payout buyer
             if (listing.listingValue > totalLoanPaymentAmount) {
                 // payout buyer
-                payable(buyer).sendValue(
+                payable(loan.buyer).sendValue(
                     listing.listingValue - totalLoanPaymentAmount
                 );
             }
@@ -610,7 +619,7 @@ contract NiftyApesSellerFinancing is
                 // payout buyer
                 asset.safeTransferFrom(
                     address(this),
-                    buyer,
+                    loan.buyer,
                     listing.listingValue - totalLoanPaymentAmount
                 );
             }
@@ -633,7 +642,7 @@ contract NiftyApesSellerFinancing is
         address nftContractAddress = orderComponents.offer[0].token;
         uint256 nftId = orderComponents.offer[0].identifierOrCriteria;
 
-        Loan memory loan = _getLoan(nftContractAddress, nftId);
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
 
         // validate inputs
         _requireNftOwner(loan);
@@ -992,6 +1001,19 @@ contract NiftyApesSellerFinancing is
         }
     }
 
+    function _requireValidOrderHash(
+        address nftContractAddress,
+        uint256 nftId,
+        bytes32 orderHash
+    ) internal view returns (SeaportListing memory listing) {
+        listing = _orderHashToListing[orderHash];
+        require(
+            listing.nftContractAddress == nftContractAddress &&
+                listing.nftId == nftId,
+            "00064"
+        );
+    }
+
     function _currentTimestamp32() internal view returns (uint32) {
         return SafeCastUpgradeable.toUint32(block.timestamp);
     }
@@ -1051,6 +1073,10 @@ contract NiftyApesSellerFinancing is
 
     function _requireNftOwner(Loan storage loan) internal view {
         require(msg.sender == loan.buyer, "00021");
+    }
+
+    function _requireLenderOrNftOwner(Loan memory loan) internal view {
+        require(msg.sender == loan.buyer || msg.sender == loan.seller, "00061");
     }
 
     function _markSignatureUsed(Offer memory offer, bytes memory signature)
