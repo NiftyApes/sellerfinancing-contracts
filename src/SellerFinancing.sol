@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
 import "./interfaces/sellerFinancing/ISellerFinancing.sol";
 import "./interfaces/seaport/ISeaport.sol";
 import "./interfaces/sanctions/SanctionsList.sol";
-import "./flashPurchase/interfaces/IFlashPurchaseReceiver.sol";
+import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 
@@ -368,6 +368,7 @@ contract NiftyApesSellerFinancing is
                 loan.numLatePayments > loan.numLatePaymentsTolerance,
             "Asset not seizable"
         );
+        // require that nft is still owned by protocol, could have been sold but loan not closed.
 
         address currentSeller = loan.seller;
         address currentBuyer = loan.buyer;
@@ -627,8 +628,10 @@ contract NiftyApesSellerFinancing is
             // if we had an affiliate payment it would go here
         }
 
-        // emit loan repaid event
-        //delete loan
+        // emit saleValidated event
+
+        // delete loan
+        delete _loans[nftContractAddress][nftId];
     }
 
     function cancelNftListing(ISeaport.OrderComponents memory orderComponents)
@@ -680,37 +683,30 @@ contract NiftyApesSellerFinancing is
         uint256 nftId,
         bytes calldata data
     ) external whenNotPaused nonReentrant {
-        // address nftOwner = _requireNftOwner(nftContractAddress, nftId);
-        // _requireIsNotSanctioned(msg.sender);
-        // _requireIsNotSanctioned(nftOwner);
-        // // instantiate receiver contract
-        // IFlashClaimReceiver receiver = IFlashClaimReceiver(receiverAddress);
-        // // transfer NFT
-        // _transferNft(
-        //     nftContractAddress,
-        //     nftId,
-        //     receiverAddress
-        // );
-        // // execute firewalled external arbitrary functionality
-        // // function must approve this contract to transferFrom NFT in order to return to lending.sol
-        // require(
-        //     receiver.executeOperation(
-        //         msg.sender,
-        //         nftContractAddress,
-        //         nftId,
-        //         data
-        //     ),
-        //     "00058"
-        // );
-        // // transfer nft back to Lending.sol and require return occurs
-        // _transferNft(
-        //     nftContractAddress,
-        //     nftId,
-        //     receiverAddress,
-        //     lendingContractAddress
-        // );
-        // // emit event
-        // emit FlashClaim(nftContractAddress, nftId, receiverAddress);
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+
+        _requireNftOwner(loan);
+        _requireIsNotSanctioned(msg.sender);
+        _requireIsNotSanctioned(loan.buyer);
+        // instantiate receiver contract
+        IFlashClaimReceiver receiver = IFlashClaimReceiver(receiverAddress);
+        // transfer NFT
+        _transferNft(nftContractAddress, nftId, address(this), receiverAddress);
+        // execute firewalled external arbitrary functionality
+        // function must approve this contract to transferFrom NFT in order to return to lending.sol
+        require(
+            receiver.executeOperation(
+                msg.sender,
+                nftContractAddress,
+                nftId,
+                data
+            ),
+            "00058"
+        );
+        // transfer nft back to Lending.sol and require return occurs
+        _transferNft(nftContractAddress, nftId, receiverAddress, address(this));
+        // emit event
+        emit FlashClaim(nftContractAddress, nftId, receiverAddress);
     }
 
     function balanceOf(address owner, address nftContractAddress)

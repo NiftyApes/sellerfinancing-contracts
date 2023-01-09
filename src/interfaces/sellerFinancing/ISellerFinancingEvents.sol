@@ -95,4 +95,14 @@ interface ISellerFinancingEvents {
         bytes32 indexed orderHash,
         ISellerFinancingStructs.Loan loan
     );
+
+    /// @notice Emitted when a flashClaim is executed on an NFT
+    /// @param nftContractAddress The address of the NFT collection
+    /// @param nftId The id of the specified NFT
+    /// @param receiverAddress The address of the external contract that will receive and return the nft
+    event FlashClaim(
+        address nftContractAddress,
+        uint256 nftId,
+        address receiverAddress
+    );
 }
