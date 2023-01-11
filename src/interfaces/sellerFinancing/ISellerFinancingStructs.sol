@@ -30,11 +30,11 @@ interface ISellerFinancingStructs {
         // The original owner of the nft.
         // If there is an active loan on an nft, nifty apes contracts become the holder (original owner)
         // of the underlying nft. This field tracks who to return the nft to if the loan gets repaid.
-        address buyer;
+        uint32 buyerNftId;
         // end timestamp of loan
         uint32 periodEndTimestamp;
         // The current lender of a loan
-        address seller;
+        address sellerNftId;
         // SLOT 1 START
         // the asset in which the loan has been denominated
         address asset;
