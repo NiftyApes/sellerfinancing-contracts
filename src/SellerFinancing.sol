@@ -111,7 +111,7 @@ contract NiftyApesSellerFinancing is
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         ERC721EnumerableUpgradeable.__ERC721Enumerable_init();
 
-        // 25bps == 3% APR
+        // 25bps/30days == 3% APR
         protocolInterestBps = 25;
 
         loanNftNonce = 0;
