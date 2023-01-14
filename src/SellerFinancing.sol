@@ -50,6 +50,10 @@ contract NiftyApesSellerFinancing is
     /// @dev A mapping for storing the seaport listing with its hash as the key
     mapping(bytes32 => SeaportListing) private _orderHashToListing;
 
+    // increaments by two for each loan, once for buyerNftId, once for sellerNftId
+    // use this rather than totalSupply because we burn NFTs and would have duplicate ids
+    uint256 loanNftNonce;
+
     // instead of address to nftId to struct, could create a loanHash from the address ID and loan ID/Nonce,
     // and use that as the pointer to the loan Struct. - ks
 
@@ -107,8 +111,10 @@ contract NiftyApesSellerFinancing is
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         ERC721EnumerableUpgradeable.__ERC721Enumerable_init();
 
-        // 21 bps == 2.52% APR
-        protocolInterestBps = 21;
+        // 25bps == 3% APR
+        protocolInterestBps = 25;
+
+        loanNftNonce = 0;
 
         wethContractAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -218,12 +224,13 @@ contract NiftyApesSellerFinancing is
         }
 
         // mint buyer nft
-        // need to find a better nftId than totalSupply, since we are burning nfts the totaly supply will decrement and we will have duplicates.
-        uint256 buyerNftId = totalSupply();
+        uint256 buyerNftId = loanNftNonce;
+        loanNftNonce++;
         _safeMint(msg.sender, buyerNftId);
 
         // mint seller nft
-        uint256 sellerNftId = totalSupply();
+        uint256 sellerNftId = loanNftNonce;
+        loanNftNonce++;
         _safeMint(seller, sellerNftId);
 
         // create loan
