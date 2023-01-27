@@ -60,4 +60,11 @@ interface ISellerFinancingStructs {
         uint256 nftId;
         uint256 listingValue;
     }
+
+    struct SeaportUtilvalues {
+        address seaportZone;
+        bytes32 seaportZoneHash;
+        bytes32 seaportConduitKey;
+        address seaportFeeRecepient;
+    }
 }

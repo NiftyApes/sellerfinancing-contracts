@@ -17,6 +17,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 
 import "./lib/ECDSABridge.sol";
+import "./lib/SeaportUtils.sol";
 
 /// @title NiftyApes Seller Financing
 /// @custom:version 1.0
@@ -193,6 +194,9 @@ contract NiftyApesSellerFinancing is
         whenNotPaused
         nonReentrant
     {
+        // repeated calls
+        // 1. sanctions checks
+        // 2. _getLoan
         address seller = getOfferSigner(offer, signature);
         _require721Owner(offer.nftContractAddress, offer.nftId, seller);
         _requireAvailableSignature(signature);
@@ -206,12 +210,15 @@ contract NiftyApesSellerFinancing is
         // requireNoOpenLoan
         require(loan.periodBeginTimestamp == 0, "00006");
 
+        // reservePrive might be a confusing label in this v1 system without the ability to conduct an auction
+        // implementing a scaling solution like diamond pattern now might allow us to move faster in the future
+        // to add additional functinality without a re-write
+
         // transfer of down payment
         uint256 downPaymentAmount = (offer.reservePrice * MAX_BPS) /
             offer.downPaymentBps;
 
-        // this transfer of value must go from buyer to seller directly. this function currently only transfers to this contract address
-        // it should also include the initial payment to the protocol
+        // initial down payment from buyer to seller
         if (offer.asset == address(0)) {
             require(msg.value >= downPaymentAmount, "00047");
             if (msg.value > downPaymentAmount) {
@@ -313,14 +320,14 @@ contract NiftyApesSellerFinancing is
                     msgValue - totalPossiblePayment
                 );
                 // adjust msgValue value
-                msgValue = totalPossiblePayment;
+                msgValue -= totalPossiblePayment;
             }
 
             // payout seller
             payable(sellerAddress).sendValue(msgValue - protocolInterest);
 
             // payout owner
-            payable(owner()).sendValue(msgValue - protocolInterest);
+            payable(owner()).sendValue(protocolInterest);
 
             // update loan struct
             loan.remainingPrincipal -
@@ -481,7 +488,13 @@ contract NiftyApesSellerFinancing is
             data,
             (ISeaport.Order, bytes32)
         );
-        _requireValidOrderAssets(order, nftContractAddress, nftId, loanAsset);
+        SeaportUtils.requireValidOrderAssets(
+            order,
+            nftContractAddress,
+            nftId,
+            loanAsset,
+            wethContractAddress
+        );
 
         // execute sale
 
@@ -573,6 +586,7 @@ contract NiftyApesSellerFinancing is
         delete _loans[nftContractAddress][nftId];
     }
 
+    // if sale is for less than the loan principal all funds should go to the seller.
     function listNftForSale(
         address nftContractAddress,
         uint256 nftId,
@@ -594,8 +608,15 @@ contract NiftyApesSellerFinancing is
             seaportFeeAmount
         );
 
+        SeaportUtilvalues memory values;
+        values.seaportZone = seaportZone;
+        values.seaportZoneHash = seaportZoneHash;
+        values.seaportConduitKey = seaportConduitKey;
+        values.seaportFeeRecepient = seaportFeeRecepient;
+
         // construct Seaport Order
-        ISeaport.Order[] memory order = _constructOrder(
+        ISeaport.Order[] memory order = SeaportUtils.constructOrder(
+            values,
             nftContractAddress,
             nftId,
             listingPrice,
@@ -611,7 +632,10 @@ contract NiftyApesSellerFinancing is
         // validate listing to Seaport
         ISeaport(seaportContractAddress).validate(order);
         // get orderHash by calling ISeaport.getOrderHash()
-        bytes32 orderHash = _getOrderHash(order[0]);
+        bytes32 orderHash = SeaportUtils.getOrderHash(
+            seaportContractAddress,
+            order[0]
+        );
         // validate order status by calling ISeaport.getOrderStatus(orderHash)
         (bool validated, , , ) = ISeaport(seaportContractAddress)
             .getOrderStatus(orderHash);
@@ -963,141 +987,11 @@ contract NiftyApesSellerFinancing is
         }
     }
 
-    function _getOrderHash(ISeaport.Order memory order)
-        internal
-        view
-        returns (bytes32 orderHash)
-    {
-        // Derive order hash by supplying order parameters along with counter.
-        orderHash = ISeaport(seaportContractAddress).getOrderHash(
-            ISeaport.OrderComponents(
-                order.parameters.offerer,
-                order.parameters.zone,
-                order.parameters.offer,
-                order.parameters.consideration,
-                order.parameters.orderType,
-                order.parameters.startTime,
-                order.parameters.endTime,
-                order.parameters.zoneHash,
-                order.parameters.salt,
-                order.parameters.conduitKey,
-                ISeaport(seaportContractAddress).getCounter(
-                    order.parameters.offerer
-                )
-            )
-        );
-    }
-
-    function _constructOrder(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 listingPrice,
-        uint256 seaportFeeAmount,
-        uint256 listingStartTime,
-        uint256 listingEndTime,
-        address asset,
-        uint256 randomSalt
-    ) internal view returns (ISeaport.Order[] memory order) {
-        ISeaport.ItemType considerationItemType = (
-            asset == address(0)
-                ? ISeaport.ItemType.NATIVE
-                : ISeaport.ItemType.ERC20
-        );
-        address considerationToken = (asset == address(0) ? address(0) : asset);
-
-        order = new ISeaport.Order[](1);
-        order[0] = ISeaport.Order({
-            parameters: ISeaport.OrderParameters({
-                offerer: address(this),
-                zone: seaportZone,
-                offer: new ISeaport.OfferItem[](1),
-                consideration: new ISeaport.ConsiderationItem[](2),
-                orderType: ISeaport.OrderType.FULL_OPEN,
-                startTime: listingStartTime,
-                endTime: listingEndTime,
-                zoneHash: seaportZoneHash,
-                salt: randomSalt,
-                conduitKey: seaportConduitKey,
-                totalOriginalConsiderationItems: 2
-            }),
-            signature: bytes("")
-        });
-        order[0].parameters.offer[0] = ISeaport.OfferItem({
-            itemType: ISeaport.ItemType.ERC721,
-            token: nftContractAddress,
-            identifierOrCriteria: nftId,
-            startAmount: 1,
-            endAmount: 1
-        });
-        order[0].parameters.consideration[0] = ISeaport.ConsiderationItem({
-            itemType: considerationItemType,
-            token: considerationToken,
-            identifierOrCriteria: 0,
-            startAmount: listingPrice - seaportFeeAmount,
-            endAmount: listingPrice - seaportFeeAmount,
-            recipient: payable(address(this))
-        });
-        order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
-            itemType: considerationItemType,
-            token: considerationToken,
-            identifierOrCriteria: 0,
-            startAmount: seaportFeeAmount,
-            endAmount: seaportFeeAmount,
-            recipient: payable(seaportFeeRecepient)
-        });
-    }
-
-    function _requireValidOrderAssets(
-        ISeaport.Order memory order,
-        address nftContractAddress,
-        uint256 nftId,
-        address loanAsset
-    ) internal view {
-        require(
-            order.parameters.consideration[0].itemType ==
-                ISeaport.ItemType.ERC721,
-            "00067"
-        );
-        require(
-            order.parameters.consideration[0].token == nftContractAddress,
-            "00067"
-        );
-        require(
-            order.parameters.consideration[0].identifierOrCriteria == nftId,
-            "00067"
-        );
-        require(
-            order.parameters.offer[0].itemType == ISeaport.ItemType.ERC20,
-            "00067"
-        );
-        require(
-            order.parameters.consideration[1].itemType ==
-                ISeaport.ItemType.ERC20,
-            "00067"
-        );
-        if (loanAsset == address(0)) {
-            require(
-                order.parameters.offer[0].token == wethContractAddress,
-                "00067"
-            );
-            require(
-                order.parameters.consideration[1].token == wethContractAddress,
-                "00067"
-            );
-        } else {
-            require(order.parameters.offer[0].token == loanAsset, "00067");
-            require(
-                order.parameters.consideration[1].token == loanAsset,
-                "00067"
-            );
-        }
-    }
-
     function _requireValidOrderHash(
         address nftContractAddress,
         uint256 nftId,
         bytes32 orderHash
-    ) internal view returns (SeaportListing memory listing) {
+    ) internal view returns (ISellerFinancing.SeaportListing memory listing) {
         listing = _orderHashToListing[orderHash];
         require(
             listing.nftContractAddress == nftContractAddress &&
