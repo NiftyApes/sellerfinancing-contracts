@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
@@ -26,7 +26,7 @@ contract NiftyApesSellerFinancing is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     EIP712Upgradeable,
-    ERC721EnumerableUpgradeable,
+    ERC721Upgradeable,
     ISellerFinancing
 {
     using AddressUpgradeable for address payable;
@@ -91,7 +91,10 @@ contract NiftyApesSellerFinancing is
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
-        ERC721EnumerableUpgradeable.__ERC721Enumerable_init();
+        ERC721Upgradeable.__ERC721_init(
+            "NiftyApes_SellerFinancingReceipts",
+            "NANERS"
+        );
 
         // 25bps/30days == 3% APR
         protocolInterestBps = 25;
