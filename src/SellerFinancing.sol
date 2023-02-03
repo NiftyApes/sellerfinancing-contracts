@@ -213,7 +213,13 @@ contract NiftyApesSellerFinancing is
             offer.nftId
         );
 
-        emit LoanExecuted(offer.nftContractAddress, offer.nftId, seller, loan);
+        emit LoanExecuted(
+            offer.nftContractAddress,
+            offer.nftId,
+            seller,
+            loan,
+            offer
+        );
     }
 
     function makePayment(address nftContractAddress, uint256 nftId)
