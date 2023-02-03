@@ -43,7 +43,7 @@ contract NiftyApesSellerFinancing is
     ///      If the Offer struct shape changes, this will need to change as well.
     bytes32 private constant _OFFER_TYPEHASH =
         keccak256(
-            "Offer(address creator,uint32 downPaymentBps,uint32 payPeriodPrincipalBps,uint32 payPeriodInterestRateBps,uint32 payPeriodDuration,nftContractAddress,uint256 nftId,uint32 expiration)"
+            "Offer(address creator,uint32 downPaymentBps,uint32 minimumPrincipalPerPeriod,uint32 periodInterestRateBps,uint32 periodDuration,nftContractAddress,uint256 nftId,uint32 expiration)"
         );
 
     // increaments by two for each loan, once for buyerNftId, once for sellerNftId
@@ -112,14 +112,14 @@ contract NiftyApesSellerFinancing is
                     abi.encode(
                         _OFFER_TYPEHASH,
                         offer.creator,
-                        offer.downPaymentBps,
-                        offer.payPeriodPrincipalBps,
-                        offer.payPeriodInterestRateBps,
-                        offer.payPeriodDuration,
+                        offer.price,
+                        offer.downPaymentAmount,
+                        offer.minimumPrincipalPerPeriod,
+                        offer.periodInterestRateBps,
+                        offer.periodDuration,
                         offer.nftContractAddress,
                         offer.nftId,
-                        offer.expiration,
-                        offer.price
+                        offer.expiration
                     )
                 )
             );
@@ -173,16 +173,12 @@ contract NiftyApesSellerFinancing is
         // requireNoOpenLoan
         require(loan.periodBeginTimestamp == 0, "00006");
 
-        // transfer of down payment
-        uint256 downPaymentAmount = (offer.price * MAX_BPS) /
-            offer.downPaymentBps;
-
         // initial down payment from buyer to seller
-        require(msg.value >= downPaymentAmount, "00047");
-        if (msg.value > downPaymentAmount) {
-            payable(msg.sender).sendValue(msg.value - downPaymentAmount);
+        require(msg.value >= offer.downPaymentAmount, "00047");
+        if (msg.value > offer.downPaymentAmount) {
+            payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
         }
-        payable(seller).sendValue(downPaymentAmount);
+        payable(seller).sendValue(offer.downPaymentAmount);
 
         // mint buyer nft
         uint256 buyerNftId = loanNftNonce;
@@ -200,7 +196,7 @@ contract NiftyApesSellerFinancing is
             offer,
             sellerNftId,
             buyerNftId,
-            (offer.price - downPaymentAmount)
+            (offer.price - offer.downPaymentAmount)
         );
 
         // Transfer nft from receiver contract to this contract as collateral, revert on failure
@@ -234,9 +230,7 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(msg.sender);
         _requireOpenLoan(loan);
 
-        // calculate the % of principal and interest that must be paid to the seller
-        uint256 minimumPrincipalPayment = ((loan.totalPrincipal * MAX_BPS) /
-            loan.payPeriodPrincipalBps);
+        uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod;
 
         // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
         if (loan.remainingPrincipal < minimumPrincipalPayment) {
@@ -244,7 +238,7 @@ contract NiftyApesSellerFinancing is
         }
         // calculate % interest to be paid to seller
         uint256 periodInterest = ((loan.remainingPrincipal * MAX_BPS) /
-            loan.payPeriodInterestRateBps);
+            loan.periodInterestRateBps);
 
         uint256 totalMinimumPayment = minimumPrincipalPayment + periodInterest;
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
@@ -300,9 +294,9 @@ contract NiftyApesSellerFinancing is
         }
         //else emit paymentMade event and update loan
         else {
-            // increment the currentPayPeriodBegin and End Timestamps equal to the payPeriodDuration
-            loan.periodBeginTimestamp += loan.payPeriodDuration;
-            loan.periodEndTimestamp += loan.payPeriodDuration;
+            // increment the currentperiodBegin and End Timestamps equal to the periodDuration
+            loan.periodBeginTimestamp += loan.periodDuration;
+            loan.periodEndTimestamp += loan.periodDuration;
 
             //emit paymentMade event
             emit PaymentMade(nftContractAddress, nftId, msgValue, loan);
@@ -420,16 +414,12 @@ contract NiftyApesSellerFinancing is
     ) internal {
         loan.sellerNftId = sellerNftId;
         loan.buyerNftId = buyerNftId;
-        loan.totalPrincipal = uint128(amount);
         loan.remainingPrincipal = uint128(amount);
-        loan.periodEndTimestamp =
-            _currentTimestamp32() +
-            offer.payPeriodDuration;
+        loan.periodEndTimestamp = _currentTimestamp32() + offer.periodDuration;
         loan.periodBeginTimestamp = _currentTimestamp32();
-        loan.downPaymentBps = offer.downPaymentBps;
-        loan.payPeriodPrincipalBps = offer.payPeriodPrincipalBps;
-        loan.payPeriodInterestRateBps = offer.payPeriodInterestRateBps;
-        loan.payPeriodDuration = offer.payPeriodDuration;
+        loan.minimumPrincipalPerPeriod = offer.minimumPrincipalPerPeriod;
+        loan.periodInterestRateBps = offer.periodInterestRateBps;
+        loan.periodDuration = offer.periodDuration;
     }
 
     function _transferNft(
