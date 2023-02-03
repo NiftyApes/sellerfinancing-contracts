@@ -118,7 +118,8 @@ contract NiftyApesSellerFinancing is
                         offer.payPeriodDuration,
                         offer.nftContractAddress,
                         offer.nftId,
-                        offer.expiration
+                        offer.expiration,
+                        offer.price
                     )
                 )
             );
@@ -172,12 +173,8 @@ contract NiftyApesSellerFinancing is
         // requireNoOpenLoan
         require(loan.periodBeginTimestamp == 0, "00006");
 
-        // reservePrive might be a confusing label in this v1 system without the ability to conduct an auction
-        // implementing a scaling solution like diamond pattern now might allow us to move faster in the future
-        // to add additional functinality without a re-write
-
         // transfer of down payment
-        uint256 downPaymentAmount = (offer.reservePrice * MAX_BPS) /
+        uint256 downPaymentAmount = (offer.price * MAX_BPS) /
             offer.downPaymentBps;
 
         // initial down payment from buyer to seller
@@ -203,7 +200,7 @@ contract NiftyApesSellerFinancing is
             offer,
             sellerNftId,
             buyerNftId,
-            (offer.reservePrice - downPaymentAmount)
+            (offer.price - downPaymentAmount)
         );
 
         // Transfer nft from receiver contract to this contract as collateral, revert on failure
@@ -253,7 +250,6 @@ contract NiftyApesSellerFinancing is
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
         // payout seller
-
         // set msgValue value
         uint256 msgValue = msg.value;
         //require msgValue to be larger than the total minimum payment

@@ -17,7 +17,7 @@ interface ISellerFinancingStructs {
         uint256 nftId; // ignored if floorTerm is true
         // SLOT 3 START
         uint32 expiration;
-        uint128 reservePrice;
+        uint128 price;
     }
 
     struct Loan {
