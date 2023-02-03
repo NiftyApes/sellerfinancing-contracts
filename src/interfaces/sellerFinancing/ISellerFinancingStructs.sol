@@ -16,11 +16,8 @@ interface ISellerFinancingStructs {
         // offer NFT ID
         uint256 nftId; // ignored if floorTerm is true
         // SLOT 3 START
-        // offer asset type
-        address asset;
         uint32 expiration;
         uint128 reservePrice;
-        bool buyNowAvailable;
     }
 
     struct Loan {
@@ -34,8 +31,6 @@ interface ISellerFinancingStructs {
         // end timestamp of loan
         uint32 periodEndTimestamp;
         // SLOT 1 START
-        // the asset in which the loan has been denominated
-        address asset;
         // beginning timestamp of loan
         uint32 periodBeginTimestamp;
         // The maximum amount of tokens that can be drawn from this loan

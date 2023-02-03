@@ -43,7 +43,7 @@ contract NiftyApesSellerFinancing is
     ///      If the Offer struct shape changes, this will need to change as well.
     bytes32 private constant _OFFER_TYPEHASH =
         keccak256(
-            "Offer(address creator,uint32 downPaymentBps,uint32 payPeriodPrincipalBps,uint32 payPeriodInterestRateBps,uint32 payPeriodDuration,nftContractAddress,uint256 nftId,address asset,uint32 expiration)"
+            "Offer(address creator,uint32 downPaymentBps,uint32 payPeriodPrincipalBps,uint32 payPeriodInterestRateBps,uint32 payPeriodDuration,nftContractAddress,uint256 nftId,uint32 expiration)"
         );
 
     // increaments by two for each loan, once for buyerNftId, once for sellerNftId
@@ -118,7 +118,6 @@ contract NiftyApesSellerFinancing is
                         offer.payPeriodDuration,
                         offer.nftContractAddress,
                         offer.nftId,
-                        offer.asset,
                         offer.expiration
                     )
                 )
@@ -182,16 +181,11 @@ contract NiftyApesSellerFinancing is
             offer.downPaymentBps;
 
         // initial down payment from buyer to seller
-        if (offer.asset == address(0)) {
-            require(msg.value >= downPaymentAmount, "00047");
-            if (msg.value > downPaymentAmount) {
-                payable(msg.sender).sendValue(msg.value - downPaymentAmount);
-            }
-            payable(seller).sendValue(downPaymentAmount);
-        } else {
-            IERC20Upgradeable asset = IERC20Upgradeable(offer.asset);
-            asset.safeTransferFrom(msg.sender, seller, downPaymentAmount);
+        require(msg.value >= downPaymentAmount, "00047");
+        if (msg.value > downPaymentAmount) {
+            payable(msg.sender).sendValue(msg.value - downPaymentAmount);
         }
+        payable(seller).sendValue(downPaymentAmount);
 
         // mint buyer nft
         uint256 buyerNftId = loanNftNonce;
@@ -229,11 +223,12 @@ contract NiftyApesSellerFinancing is
         emit LoanExecuted(offer.nftContractAddress, offer.nftId, seller, loan);
     }
 
-    function makePayment(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 amount
-    ) external payable whenNotPaused nonReentrant {
+    function makePayment(address nftContractAddress, uint256 nftId)
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+    {
         Loan storage loan = _getLoan(nftContractAddress, nftId);
         address buyerAddress = ownerOf(loan.buyerNftId);
         address sellerAddress = ownerOf(loan.sellerNftId);
@@ -258,43 +253,24 @@ contract NiftyApesSellerFinancing is
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
         // payout seller
-        if (loan.asset == address(0)) {
-            // set msgValue value
-            uint256 msgValue = msg.value;
-            //require msgValue to be larger than the total minimum payment
-            require(msgValue >= totalMinimumPayment, "00047");
-            // if msgValue is greater than the totalPossiblePayment send back the difference
-            if (msgValue > totalPossiblePayment) {
-                //send back value
-                payable(buyerAddress).sendValue(
-                    msgValue - totalPossiblePayment
-                );
-                // adjust msgValue value
-                msgValue -= totalPossiblePayment;
-            }
 
-            // payout seller
-            payable(sellerAddress).sendValue(msgValue);
-
-            // update loan struct
-            loan.remainingPrincipal - (msgValue - periodInterest);
-        } else {
-            //require amount to be larger than the total minimum payment
-            require(amount >= totalMinimumPayment, "00047");
-            // if amount is greater than the totalPossiblePayment adjust to only transfer the required amount
-            if (amount > totalPossiblePayment) {
-                amount = totalPossiblePayment;
-            }
-
-            IERC20Upgradeable asset = IERC20Upgradeable(loan.asset);
-            // payout seller
-            asset.safeTransferFrom(msg.sender, sellerAddress, amount);
-
-            // if we had an affiliate payment it would go here
-
-            // update loan struct
-            loan.remainingPrincipal - (amount - periodInterest);
+        // set msgValue value
+        uint256 msgValue = msg.value;
+        //require msgValue to be larger than the total minimum payment
+        require(msgValue >= totalMinimumPayment, "00047");
+        // if msgValue is greater than the totalPossiblePayment send back the difference
+        if (msgValue > totalPossiblePayment) {
+            //send back value
+            payable(buyerAddress).sendValue(msgValue - totalPossiblePayment);
+            // adjust msgValue value
+            msgValue -= totalPossiblePayment;
         }
+
+        // payout seller
+        payable(sellerAddress).sendValue(msgValue);
+
+        // update loan struct
+        loan.remainingPrincipal -= uint128(msgValue - periodInterest);
 
         // check if remianingPrincipal is 0
         if (loan.remainingPrincipal == 0) {
@@ -319,7 +295,7 @@ contract NiftyApesSellerFinancing is
             _burn(loan.sellerNftId);
 
             //emit paymentMade event
-            emit PaymentMade(nftContractAddress, nftId, amount, loan);
+            emit PaymentMade(nftContractAddress, nftId, msgValue, loan);
             // emit loan repaid event
             emit LoanRepaid(nftContractAddress, nftId, loan);
 
@@ -333,7 +309,7 @@ contract NiftyApesSellerFinancing is
             loan.periodEndTimestamp += loan.payPeriodDuration;
 
             //emit paymentMade event
-            emit PaymentMade(nftContractAddress, nftId, amount, loan);
+            emit PaymentMade(nftContractAddress, nftId, msgValue, loan);
         }
     }
 
@@ -448,7 +424,6 @@ contract NiftyApesSellerFinancing is
     ) internal {
         loan.sellerNftId = sellerNftId;
         loan.buyerNftId = buyerNftId;
-        loan.asset = offer.asset;
         loan.totalPrincipal = uint128(amount);
         loan.remainingPrincipal = uint128(amount);
         loan.periodEndTimestamp =
@@ -472,14 +447,6 @@ contract NiftyApesSellerFinancing is
             to,
             nftId
         );
-    }
-
-    function _getAssetBalance(address asset) internal view returns (uint256) {
-        if (asset == address(0)) {
-            return address(this).balance;
-        } else {
-            return IERC20Upgradeable(asset).balanceOf(address(this));
-        }
     }
 
     /// @dev Private function to add a token to this extension's ownership-tracking data structures.
