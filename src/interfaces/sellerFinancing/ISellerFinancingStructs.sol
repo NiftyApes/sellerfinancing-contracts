@@ -54,17 +54,4 @@ interface ISellerFinancingStructs {
         uint32 numLatePayments;
         // should we have a numPayPeriods value?
     }
-
-    struct SeaportListing {
-        address nftContractAddress;
-        uint256 nftId;
-        uint256 listingValue;
-    }
-
-    struct SeaportUtilvalues {
-        address seaportZone;
-        bytes32 seaportZoneHash;
-        bytes32 seaportConduitKey;
-        address seaportFeeRecepient;
-    }
 }
