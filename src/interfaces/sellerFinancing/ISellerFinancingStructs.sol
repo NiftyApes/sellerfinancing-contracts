@@ -10,8 +10,6 @@ interface ISellerFinancingStructs {
         uint32 payPeriodPrincipalBps;
         uint32 payPeriodInterestRateBps;
         uint32 payPeriodDuration;
-        uint32 gracePeriodDuration;
-        uint32 numLatePaymentsTolerance;
         // offer NFT contract address
         address nftContractAddress;
         // SLOT 2 START
@@ -49,9 +47,5 @@ interface ISellerFinancingStructs {
         uint32 payPeriodPrincipalBps;
         uint32 payPeriodInterestRateBps;
         uint32 payPeriodDuration;
-        uint32 gracePeriodDuration;
-        uint32 numLatePaymentsTolerance;
-        uint32 numLatePayments;
-        // should we have a numPayPeriods value?
     }
 }

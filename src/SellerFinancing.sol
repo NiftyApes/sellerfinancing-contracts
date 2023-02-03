@@ -116,7 +116,6 @@ contract NiftyApesSellerFinancing is
                         offer.payPeriodPrincipalBps,
                         offer.payPeriodInterestRateBps,
                         offer.payPeriodDuration,
-                        offer.gracePeriodDuration,
                         offer.nftContractAddress,
                         offer.nftId,
                         offer.asset,
@@ -243,12 +242,6 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(msg.sender);
         _requireOpenLoan(loan);
 
-        // check the currentPayPeriodEndTimestamp
-        if (_currentTimestamp32() > loan.periodEndTimestamp) {
-            // if late increment latePayment counter
-            loan.numLatePayments += 1;
-        }
-
         // calculate the % of principal and interest that must be paid to the seller
         uint256 minimumPrincipalPayment = ((loan.totalPrincipal * MAX_BPS) /
             loan.payPeriodPrincipalBps);
@@ -357,11 +350,9 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(sellerAddress);
         // require principal is not 0
         require(loan.remainingPrincipal != 0, "loan repaid");
-        // requirePastGracePeriodOrMaxLatePayments
+        // requireLoanInDefault
         require(
-            _currentTimestamp32() >
-                loan.periodEndTimestamp + loan.gracePeriodDuration ||
-                loan.numLatePayments > loan.numLatePaymentsTolerance,
+            _currentTimestamp32() > loan.periodEndTimestamp,
             "Asset not seizable"
         );
         // require that nft is still owned by protocol, could have been sold but sale not validated.
@@ -468,9 +459,6 @@ contract NiftyApesSellerFinancing is
         loan.payPeriodPrincipalBps = offer.payPeriodPrincipalBps;
         loan.payPeriodInterestRateBps = offer.payPeriodInterestRateBps;
         loan.payPeriodDuration = offer.payPeriodDuration;
-        loan.gracePeriodDuration = offer.gracePeriodDuration;
-        loan.numLatePaymentsTolerance = offer.numLatePaymentsTolerance;
-        loan.numLatePayments = 0;
     }
 
     function _transferNft(
