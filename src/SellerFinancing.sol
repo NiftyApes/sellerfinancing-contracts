@@ -77,8 +77,6 @@ contract NiftyApesSellerFinancing is
     // Mapping from nftContractAddress to token ID to index of the owner tokens list
     mapping(address => mapping(uint256 => uint256)) private _ownedTokensIndex;
 
-    uint16 public protocolInterestBps;
-
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting storage.
     uint256[500] private __gap;
@@ -95,9 +93,6 @@ contract NiftyApesSellerFinancing is
             "NiftyApes_SellerFinancingReceipts",
             "NANERS"
         );
-
-        // 25bps/30days == 3% APR
-        protocolInterestBps = 25;
 
         loanNftNonce = 0;
     }
@@ -265,18 +260,11 @@ contract NiftyApesSellerFinancing is
         // calculate % interest to be paid to seller
         uint256 periodInterest = ((loan.remainingPrincipal * MAX_BPS) /
             loan.payPeriodInterestRateBps);
-        // calculate % interest to be paid to protocol
-        uint256 protocolInterest = ((loan.remainingPrincipal * MAX_BPS) /
-            protocolInterestBps);
 
-        uint256 totalMinimumPayment = minimumPrincipalPayment +
-            periodInterest +
-            protocolInterest;
-        uint256 totalPossiblePayment = loan.remainingPrincipal +
-            periodInterest +
-            protocolInterest;
+        uint256 totalMinimumPayment = minimumPrincipalPayment + periodInterest;
+        uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
-        // payout seller and protocol
+        // payout seller
         if (loan.asset == address(0)) {
             // set msgValue value
             uint256 msgValue = msg.value;
@@ -293,14 +281,10 @@ contract NiftyApesSellerFinancing is
             }
 
             // payout seller
-            payable(sellerAddress).sendValue(msgValue - protocolInterest);
-
-            // payout owner
-            payable(owner()).sendValue(protocolInterest);
+            payable(sellerAddress).sendValue(msgValue);
 
             // update loan struct
-            loan.remainingPrincipal -
-                (msgValue - periodInterest - protocolInterest);
+            loan.remainingPrincipal - (msgValue - periodInterest);
         } else {
             //require amount to be larger than the total minimum payment
             require(amount >= totalMinimumPayment, "00047");
@@ -311,20 +295,12 @@ contract NiftyApesSellerFinancing is
 
             IERC20Upgradeable asset = IERC20Upgradeable(loan.asset);
             // payout seller
-            asset.safeTransferFrom(
-                msg.sender,
-                sellerAddress,
-                amount - protocolInterest
-            );
-
-            // payout owner
-            asset.safeTransferFrom(msg.sender, owner(), protocolInterest);
+            asset.safeTransferFrom(msg.sender, sellerAddress, amount);
 
             // if we had an affiliate payment it would go here
 
             // update loan struct
-            loan.remainingPrincipal -
-                (amount - periodInterest - protocolInterest);
+            loan.remainingPrincipal - (amount - periodInterest);
         }
 
         // check if remianingPrincipal is 0
