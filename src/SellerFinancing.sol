@@ -174,12 +174,35 @@ contract NiftyApesSellerFinancing is
         // requireNoOpenLoan
         require(loan.periodBeginTimestamp == 0, "00006");
 
-        // initial down payment from buyer to seller
+        // ensure msg.value is sufficient for downPayment
         require(msg.value >= offer.downPaymentAmount, "00047");
+
+        // if msg.value is too high, return excess value
         if (msg.value > offer.downPaymentAmount) {
             payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
         }
-        payable(seller).sendValue(offer.downPaymentAmount);
+
+        // query royalty recipients and amounts
+        (
+            address payable[] memory recipients,
+            uint256[] memory amounts
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyaltyView(
+                    offer.nftContractAddress,
+                    offer.nftId,
+                    offer.downPaymentAmount
+                );
+
+        uint256 totalRoyaltiesPaid;
+
+        // pay out royalties
+        for (uint256 i = 0; i < recipients.length; i++) {
+            payable(recipients[i]).sendValue(amounts[i]);
+            totalRoyaltiesPaid += amounts[i];
+        }
+
+        // pay out seller
+        payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
 
         // mint buyer nft
         uint256 buyerNftId = loanNftNonce;
@@ -239,6 +262,8 @@ contract NiftyApesSellerFinancing is
 
         uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod;
 
+        // could call royalties here and subtract out of interest calculation
+
         // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
         if (loan.remainingPrincipal < minimumPrincipalPayment) {
             minimumPrincipalPayment = loan.remainingPrincipal;
@@ -250,7 +275,6 @@ contract NiftyApesSellerFinancing is
         uint256 totalMinimumPayment = minimumPrincipalPayment + periodInterest;
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
-        // payout seller
         // set msgValue value
         uint256 msgValue = msg.value;
         //require msgValue to be larger than the total minimum payment
@@ -260,11 +284,32 @@ contract NiftyApesSellerFinancing is
             //send back value
             payable(buyerAddress).sendValue(msgValue - totalPossiblePayment);
             // adjust msgValue value
-            msgValue -= totalPossiblePayment;
+            msgValue = totalPossiblePayment;
+        }
+
+        // This means that the buyer is paying interest on the royalty amount over time. Is that right?
+        // The alternative is to payout out full royalty on down payment.
+        // query royalty recipients and amounts
+        (
+            address payable[] memory recipients,
+            uint256[] memory amounts
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyaltyView(
+                    nftContractAddress,
+                    nftId,
+                    msgValue - periodInterest
+                );
+
+        uint256 totalRoyaltiesPaid;
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients.length; i++) {
+            payable(recipients[i]).sendValue(amounts[i]);
+            totalRoyaltiesPaid += amounts[i];
         }
 
         // payout seller
-        payable(sellerAddress).sendValue(msgValue);
+        payable(sellerAddress).sendValue(msgValue - totalRoyaltiesPaid);
 
         // update loan struct
         loan.remainingPrincipal -= uint128(msgValue - periodInterest);
