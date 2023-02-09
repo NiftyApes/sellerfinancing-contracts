@@ -173,6 +173,8 @@ contract NiftyApesSellerFinancing is
         Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
         // requireNoOpenLoan
         require(loan.periodBeginTimestamp == 0, "00006");
+        // require24HourMinimumDuration
+        require(loan.periodDuration >= 1 days, "00006");
 
         // ensure msg.value is sufficient for downPayment
         require(msg.value >= offer.downPaymentAmount, "00047");
@@ -262,8 +264,6 @@ contract NiftyApesSellerFinancing is
 
         uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod;
 
-        // could call royalties here and subtract out of interest calculation
-
         // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
         if (loan.remainingPrincipal < minimumPrincipalPayment) {
             minimumPrincipalPayment = loan.remainingPrincipal;
@@ -287,18 +287,12 @@ contract NiftyApesSellerFinancing is
             msgValue = totalPossiblePayment;
         }
 
-        // This means that the buyer is paying interest on the royalty amount over time. Is that right?
-        // The alternative is to payout out full royalty on down payment.
         // query royalty recipients and amounts
         (
             address payable[] memory recipients,
             uint256[] memory amounts
         ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyaltyView(
-                    nftContractAddress,
-                    nftId,
-                    msgValue - periodInterest
-                );
+                .getRoyaltyView(nftContractAddress, nftId, msgValue);
 
         uint256 totalRoyaltiesPaid;
 
