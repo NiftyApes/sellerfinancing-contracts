@@ -151,7 +151,6 @@ contract NiftyApesSellerFinancing is
         _requireSignature65(signature);
         address signer = getOfferSigner(offer, signature);
         _requireSigner(signer, msg.sender);
-        _requireOfferCreator(offer.creator, msg.sender);
         _markSignatureUsed(offer, signature);
     }
 
