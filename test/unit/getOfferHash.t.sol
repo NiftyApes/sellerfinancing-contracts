@@ -33,7 +33,7 @@ contract TestGetOfferHash is
 
         bytes32 functionOfferHash = sellerFinancing.getOfferHash(offer);
 
-        bytes32 expectedFunctionHash = 0xb1ac6b863d84c0b8fa89458520ff97046da67774b2f0f670106df362493ab87e;
+        bytes32 expectedFunctionHash = 0x810911412828c4d5a4bf920bce5e82db3994a23ac57fc545a94d6a48168ce7c0;
 
         assertEq(functionOfferHash, expectedFunctionHash);
     }

@@ -79,7 +79,7 @@ contract OffersLoansFixtures is
     function offerStructFromFields(
         FuzzedOfferFields memory fuzzed,
         FixedOfferFields memory fixedFields
-    ) internal view returns (Offer memory) {
+    ) internal pure returns (Offer memory) {
         return
             Offer({
                 creator: fixedFields.creator,

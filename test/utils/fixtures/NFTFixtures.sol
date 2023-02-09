@@ -29,5 +29,7 @@ contract NFTFixtures is Test, UsersFixtures {
             address(seller2),
             6974
         );
+
+        vm.stopPrank();
     }
 }
