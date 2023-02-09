@@ -44,12 +44,12 @@ contract NiftyApesSellerFinancing is
     ///      If the Offer struct shape changes, this will need to change as well.
     bytes32 private constant _OFFER_TYPEHASH =
         keccak256(
-            "Offer(address creator,uint32 downPaymentBps,uint32 minimumPrincipalPerPeriod,uint32 periodInterestRateBps,uint32 periodDuration,nftContractAddress,uint256 nftId,uint32 expiration)"
+            "Offer(offer.price,offer.downPaymentAmount,offer.minimumPrincipalPerPeriod,offer.nftId,offer.nftContractAddress,offer.creator,offer.periodInterestRateBps,offer.periodDuration,offer.expiration)"
         );
 
     // increaments by two for each loan, once for buyerNftId, once for sellerNftId
     // use this rather than totalSupply because we burn NFTs and would have duplicate ids
-    uint256 loanNftNonce;
+    uint256 private loanNftNonce;
 
     // instead of address to nftId to struct, could create a loanHash from the address ID and loan ID/Nonce,
     // and use that as the pointer to the loan Struct. - ks
@@ -112,14 +112,14 @@ contract NiftyApesSellerFinancing is
                 keccak256(
                     abi.encode(
                         _OFFER_TYPEHASH,
-                        offer.creator,
                         offer.price,
                         offer.downPaymentAmount,
                         offer.minimumPrincipalPerPeriod,
+                        offer.nftId,
+                        offer.nftContractAddress,
+                        offer.creator,
                         offer.periodInterestRateBps,
                         offer.periodDuration,
-                        offer.nftContractAddress,
-                        offer.nftId,
                         offer.expiration
                     )
                 )
@@ -195,13 +195,13 @@ contract NiftyApesSellerFinancing is
 
         uint256 totalRoyaltiesPaid;
 
-        // pay out royalties
+        // payout royalties
         for (uint256 i = 0; i < recipients.length; i++) {
             payable(recipients[i]).sendValue(amounts[i]);
             totalRoyaltiesPaid += amounts[i];
         }
 
-        // pay out seller
+        // payout seller
         payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
 
         // mint buyer nft
