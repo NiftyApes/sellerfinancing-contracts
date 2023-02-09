@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
 import "../../utils/fixtures/SellerFinancingDeployment.sol";
-import "../../../src/interfaces/sellerFinancing/ISellerFinancing.sol";
+import "../../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
 import "../../common/BaseTest.sol";
 
@@ -16,7 +16,7 @@ uint256 constant MAX_FEE = 1_000;
 contract OffersLoansFixtures is
     Test,
     BaseTest,
-    ISellerFinancing,
+    ISellerFinancingStructs,
     SellerFinancingDeployment
 {
     struct FuzzedOfferFields {
@@ -45,7 +45,7 @@ contract OffersLoansFixtures is
         // but specific fields can be overridden in tests
         defaultFixedOfferFields = FixedOfferFields({
             creator: seller1,
-            nftContractAddress: address(mockNft),
+            nftContractAddress: boredApeYachtClub,
             nftId: 1
         });
 
@@ -65,7 +65,7 @@ contract OffersLoansFixtures is
         // -10 ether to give refinancing seller some wiggle room for fees
 
         vm.assume(fuzzed.price > ~uint32(0));
-        vm.assume(fuzzed.price < (defaultEthLiquiditySupplied * 50) / 100);
+        vm.assume(fuzzed.price < (defaultInitialEthBalance * 50) / 100);
 
         vm.assume(fuzzed.downPaymentAmount < fuzzed.price);
         vm.assume(fuzzed.minimumPrincipalPerPeriod < fuzzed.downPaymentAmount);
@@ -99,7 +99,7 @@ contract OffersLoansFixtures is
         returns (bytes memory)
     {
         // This is the EIP712 signed hash
-        bytes32 offerHash = offers.getOfferHash(offer);
+        bytes32 offerHash = sellerFinancing.getOfferHash(offer);
 
         return sign(signerPrivateKey, offerHash);
     }

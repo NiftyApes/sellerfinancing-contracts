@@ -39,4 +39,6 @@ interface ISellerFinancing is
         Offer memory offer,
         bytes calldata signature
     ) external;
+
+    function initialize() external;
 }
