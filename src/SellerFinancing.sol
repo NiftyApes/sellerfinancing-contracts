@@ -44,7 +44,7 @@ contract NiftyApesSellerFinancing is
     ///      If the Offer struct shape changes, this will need to change as well.
     bytes32 private constant _OFFER_TYPEHASH =
         keccak256(
-            "Offer(offer.price,offer.downPaymentAmount,offer.minimumPrincipalPerPeriod,offer.nftId,offer.nftContractAddress,offer.creator,offer.periodInterestRateBps,offer.periodDuration,offer.expiration)"
+            "Offer(uint128 price,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,)"
         );
 
     // increaments by two for each loan, once for buyerNftId, once for sellerNftId
