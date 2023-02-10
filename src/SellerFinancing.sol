@@ -154,7 +154,7 @@ contract NiftyApesSellerFinancing is
         _markSignatureUsed(offer, signature);
     }
 
-    function buyNowWithFinancing(Offer memory offer, bytes memory signature)
+    function buyWithFinancing(Offer memory offer, bytes memory signature)
         external
         payable
         whenNotPaused
@@ -442,8 +442,16 @@ contract NiftyApesSellerFinancing is
         return _ownedTokens[owner][nftContractAddress][index];
     }
 
+    function getLoan(address nftContractAddress, uint256 nftId)
+        external
+        view
+        returns (Loan memory)
+    {
+        return _getLoan(nftContractAddress, nftId);
+    }
+
     function _getLoan(address nftContractAddress, uint256 nftId)
-        internal
+        private
         view
         returns (Loan storage)
     {

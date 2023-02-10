@@ -40,5 +40,30 @@ interface ISellerFinancing is
         bytes calldata signature
     ) external;
 
+    /// @notice Returns a loan identified by a given nft.
+    /// @param nftContractAddress The address of the NFT collection
+    /// @param nftId The id of a specified NFT
+    function getLoan(address nftContractAddress, uint256 nftId)
+        external
+        view
+        returns (Loan memory);
+
+    /// @notice Returns the total NFTs from a given collection owned by a user which has active loans in NiftyApes.
+    /// @param owner The address of the owner
+    /// @param nftContractAddress The address of the NFT collection
+    function balanceOf(address owner, address nftContractAddress)
+        external
+        returns (uint256);
+
+    /// @notice Returns an NFT token ID owned by `owner` at a given `index` of its token list.
+    /// @param owner The address of the user
+    /// @param nftContractAddress The address of the NFT collection
+    /// @param index The index of the owner's token list
+    function tokenOfOwnerByIndex(
+        address owner,
+        address nftContractAddress,
+        uint256 index
+    ) external returns (uint256);
+
     function initialize() external;
 }

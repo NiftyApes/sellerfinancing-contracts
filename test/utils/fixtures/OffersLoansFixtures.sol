@@ -45,7 +45,7 @@ contract OffersLoansFixtures is
         // but specific fields can be overridden in tests
         defaultFixedOfferFields = FixedOfferFields({
             creator: seller1,
-            nftContractAddress: boredApeYachtClub,
+            nftContractAddress: address(boredApeYachtClub),
             nftId: 1
         });
 
