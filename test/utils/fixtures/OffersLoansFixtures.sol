@@ -46,7 +46,7 @@ contract OffersLoansFixtures is
         defaultFixedOfferFields = FixedOfferFields({
             creator: seller1,
             nftContractAddress: address(boredApeYachtClub),
-            nftId: 1
+            nftId: 8661
         });
 
         // in addition to fuzz tests, we have fast unit tests
@@ -102,5 +102,16 @@ contract OffersLoansFixtures is
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
 
         return sign(signerPrivateKey, offerHash);
+    }
+
+    function seller1CreateOffer(Offer memory offer)
+        internal
+        returns (bytes memory signature)
+    {
+        vm.startPrank(seller1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
+        vm.stopPrank();
+
+        return signOffer(seller1_private_key, offer);
     }
 }

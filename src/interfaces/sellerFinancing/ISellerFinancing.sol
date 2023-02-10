@@ -40,6 +40,13 @@ interface ISellerFinancing is
         bytes calldata signature
     ) external;
 
+    /// @notice Start a loan as buyer using a signed offer.
+    /// @param offer The details of the financing offer
+    /// @param signature A signed offerHash
+    function buyWithFinancing(Offer calldata offer, bytes memory signature)
+        external
+        payable;
+
     /// @notice Returns a loan identified by a given nft.
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT

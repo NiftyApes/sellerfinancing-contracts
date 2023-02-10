@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
@@ -15,8 +16,9 @@ import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
-
 import "./lib/ECDSABridge.sol";
+
+import "../test/common/Console.sol";
 
 /// @title NiftyApes Seller Financing
 /// @custom:version 1.0
@@ -28,6 +30,7 @@ contract NiftyApesSellerFinancing is
     ReentrancyGuardUpgradeable,
     EIP712Upgradeable,
     ERC721Upgradeable,
+    ERC721HolderUpgradeable,
     ISellerFinancing
 {
     using AddressUpgradeable for address payable;
@@ -90,6 +93,7 @@ contract NiftyApesSellerFinancing is
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+        ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init(
             "NiftyApes_SellerFinancingReceipts",
             "NANERS"
@@ -173,8 +177,7 @@ contract NiftyApesSellerFinancing is
         // requireNoOpenLoan
         require(loan.periodBeginTimestamp == 0, "00006");
         // require24HourMinimumDuration
-        require(loan.periodDuration >= 1 days, "00006");
-
+        require(offer.periodDuration >= 1 days, "00006");
         // ensure msg.value is sufficient for downPayment
         require(msg.value >= offer.downPaymentAmount, "00047");
 
@@ -224,7 +227,7 @@ contract NiftyApesSellerFinancing is
             (offer.price - offer.downPaymentAmount)
         );
 
-        // Transfer nft from receiver contract to this contract as collateral, revert on failure
+        // Transfer nft from seller to this contract, revert on failure
         _transferNft(
             offer.nftContractAddress,
             offer.nftId,

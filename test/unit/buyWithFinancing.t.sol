@@ -14,7 +14,10 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
 
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(1), address(sellerFinancing));
+        assertEq(
+            boredApeYachtClub.ownerOf(offer.nftId),
+            address(sellerFinancing)
+        );
         // balance increments to one
         assertEq(
             sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)),
@@ -27,27 +30,33 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
                 address(boredApeYachtClub),
                 0
             ),
-            1
+            offer.nftId
         );
         // loan auction exists
         assertEq(
             sellerFinancing
-                .getLoan(address(boredApeYachtClub), 1)
+                .getLoan(address(boredApeYachtClub), offer.nftId)
                 .periodBeginTimestamp,
             block.timestamp
         );
     }
 
-    // function _test_executeLoanByBorrower_simplest_case(
-    //     FuzzedOfferFields memory fuzzed
-    // ) private {
-    //     Offer memory offer = offerStructFromFields(
-    //         fuzzed,
-    //         defaultFixedOfferFields
-    //     );
-    //     createOfferAndTryToExecuteLoanByBorrower(offer, "should work");
-    //     assertionsForExecutedLoan(offer);
-    // }
+    function _test_executeLoanByBorrower_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        bytes memory offerSignature = seller1CreateOffer(offer);
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer);
+    }
 
     // function test_fuzz_executeLoanByBorrower_simplest_case(
     //     FuzzedOfferFields memory fuzzed
@@ -55,11 +64,11 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     //     _test_executeLoanByBorrower_simplest_case(fuzzed);
     // }
 
-    // function test_unit_executeLoanByBorrower_simplest_case_eth() public {
-    //     FuzzedOfferFields
-    //         memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-    //     _test_executeLoanByBorrower_simplest_case(fixedForSpeed);
-    // }
+    function test_unit_executeLoanByBorrower_simplest_case() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_executeLoanByBorrower_simplest_case(fixedForSpeed);
+    }
 
     // function _test_executeLoanByBorrower_events(FuzzedOfferFields memory fuzzed)
     //     private
