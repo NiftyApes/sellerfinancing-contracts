@@ -62,15 +62,14 @@ contract OffersLoansFixtures is
     }
 
     modifier validateFuzzedOfferFields(FuzzedOfferFields memory fuzzed) {
-        vm.assume(fuzzed.price > ~uint32(0));
-        // vm.assume(fuzzed.downPaymentAmount > ~uint32(0));
-        // vm.assume(fuzzed.minimumPrincipalPerPeriod > ~uint32(0));
-        vm.assume(fuzzed.price < uint128(defaultInitialEthBalance));
+        vm.assume(fuzzed.price > 0);
+        vm.assume(fuzzed.downPaymentAmount > 0);
+        vm.assume(fuzzed.minimumPrincipalPerPeriod > 0);
 
         vm.assume(fuzzed.price > fuzzed.downPaymentAmount);
         vm.assume(fuzzed.downPaymentAmount >= fuzzed.minimumPrincipalPerPeriod);
-        vm.assume(fuzzed.periodDuration >= 1 days);
-        vm.assume(fuzzed.periodDuration <= ~uint32(0) - block.timestamp);
+        vm.assume(fuzzed.periodDuration > 1 days);
+        vm.assume(fuzzed.periodDuration <= (~uint32(0) - block.timestamp));
         vm.assume(fuzzed.expiration > block.timestamp);
         _;
     }
