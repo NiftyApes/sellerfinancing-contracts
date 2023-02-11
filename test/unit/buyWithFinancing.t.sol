@@ -3,6 +3,7 @@ pragma solidity 0.8.13;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
@@ -39,6 +40,38 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
                 .periodBeginTimestamp,
             block.timestamp
         );
+        // buyer NFT minted to buyer
+        assertEq(
+            IERC721Upgradeable(address(sellerFinancing)).ownerOf(0),
+            buyer1
+        );
+        // seller NFT minted to seller
+        assertEq(
+            IERC721Upgradeable(address(sellerFinancing)).ownerOf(1),
+            seller1
+        );
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        assertEq(loan.buyerNftId, 0);
+        assertEq(loan.sellerNftId, 1);
+        assertEq(
+            loan.remainingPrincipal,
+            offer.price - offer.downPaymentAmount
+        );
+        assertEq(
+            loan.minimumPrincipalPerPeriod,
+            offer.minimumPrincipalPerPeriod
+        );
+        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
+        assertEq(loan.periodDuration, offer.periodDuration);
+        assertEq(
+            loan.periodEndTimestamp,
+            block.timestamp + offer.periodDuration
+        );
+        assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
     function _test_executeLoanByBorrower_simplest_case(
@@ -58,11 +91,11 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         assertionsForExecutedLoan(offer);
     }
 
-    // function test_fuzz_executeLoanByBorrower_simplest_case(
-    //     FuzzedOfferFields memory fuzzed
-    // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_executeLoanByBorrower_simplest_case(fuzzed);
-    // }
+    function test_fuzz_executeLoanByBorrower_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_executeLoanByBorrower_simplest_case(fuzzed);
+    }
 
     function test_unit_executeLoanByBorrower_simplest_case() public {
         FuzzedOfferFields
