@@ -74,36 +74,30 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function _test_executeLoanByBorrower_simplest_case(
+    function _test_buyWithFinancing_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(
             fuzzed,
             defaultFixedOfferFields
         );
-        bytes memory offerSignature = seller1CreateOffer(offer);
-        vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
-            offer,
-            offerSignature
-        );
-        vm.stopPrank();
+        createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
     }
 
-    function test_fuzz_executeLoanByBorrower_simplest_case(
+    function test_fuzz_buyWithFinancing_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_executeLoanByBorrower_simplest_case(fuzzed);
+        _test_buyWithFinancing_simplest_case(fuzzed);
     }
 
-    function test_unit_executeLoanByBorrower_simplest_case() public {
+    function test_unit_buyWithFinancing_simplest_case() public {
         FuzzedOfferFields
             memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_executeLoanByBorrower_simplest_case(fixedForSpeed);
+        _test_buyWithFinancing_simplest_case(fixedForSpeed);
     }
 
-    // function _test_executeLoanByBorrower_events(FuzzedOfferFields memory fuzzed)
+    // function _test_buyWithFinancing_events(FuzzedOfferFields memory fuzzed)
     //     private
     // {
     //     Offer memory offer = offerStructFromFields(
@@ -119,22 +113,22 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     //     vm.expectEmit(true, true, false, false);
     //     emit LoanExecuted(offer.nftContractAddress, offer.nftId, loan);
 
-    //     createOfferAndTryToExecuteLoanByBorrower(offer, "should work");
+    //     createOfferAndTryTobuyWithFinancing(offer, "should work");
     // }
 
-    // function test_unit_executeLoanByBorrower_events() public {
-    //     _test_executeLoanByBorrower_events(
+    // function test_unit_buyWithFinancing_events() public {
+    //     _test_buyWithFinancing_events(
     //         defaultFixedFuzzedFieldsForFastUnitTesting
     //     );
     // }
 
-    // function test_fuzz_executeLoanByBorrower_events(
+    // function test_fuzz_buyWithFinancing_events(
     //     FuzzedOfferFields memory fuzzed
     // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_executeLoanByBorrower_events(fuzzed);
+    //     _test_buyWithFinancing_events(fuzzed);
     // }
 
-    // function _test_cannot_executeLoanByBorrower_if_offer_expired(
+    // function _test_cannot_buyWithFinancing_if_offer_expired(
     //     FuzzedOfferFields memory fuzzed
     // ) private {
     //     Offer memory offer = offerStructFromFields(
@@ -144,22 +138,22 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     //     createOffer(offer, seller1);
     //     vm.warp(offer.expiration);
     //     approvesellerFinancing(offer);
-    //     tryToExecuteLoanByBorrower(offer, "00010");
+    //     tryTobuyWithFinancing(offer, "00010");
     // }
 
-    // function test_fuzz_cannot_executeLoanByBorrower_if_offer_expired(
+    // function test_fuzz_cannot_buyWithFinancing_if_offer_expired(
     //     FuzzedOfferFields memory fuzzed
     // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_executeLoanByBorrower_if_offer_expired(fuzzed);
+    //     _test_cannot_buyWithFinancing_if_offer_expired(fuzzed);
     // }
 
-    // function test_unit_cannot_executeLoanByBorrower_if_offer_expired() public {
-    //     _test_cannot_executeLoanByBorrower_if_offer_expired(
+    // function test_unit_cannot_buyWithFinancing_if_offer_expired() public {
+    //     _test_cannot_buyWithFinancing_if_offer_expired(
     //         defaultFixedFuzzedFieldsForFastUnitTesting
     //     );
     // }
 
-    // function _test_cannot_executeLoanByBorrower_if_dont_own_nft(
+    // function _test_cannot_buyWithFinancing_if_dont_own_nft(
     //     FuzzedOfferFields memory fuzzed
     // ) private {
     //     Offer memory offer = offerStructFromFields(
@@ -171,22 +165,22 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     //     vm.startPrank(buyer1);
     //     boredApeYachtClub.safeTransferFrom(buyer1, buyer2, 1);
     //     vm.stopPrank();
-    //     tryToExecuteLoanByBorrower(offer, "00021");
+    //     tryTobuyWithFinancing(offer, "00021");
     // }
 
-    // function test_fuzz_cannot_executeLoanByBorrower_if_dont_own_nft(
+    // function test_fuzz_cannot_buyWithFinancing_if_dont_own_nft(
     //     FuzzedOfferFields memory fuzzed
     // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_executeLoanByBorrower_if_dont_own_nft(fuzzed);
+    //     _test_cannot_buyWithFinancing_if_dont_own_nft(fuzzed);
     // }
 
-    // function test_unit_cannot_executeLoanByBorrower_if_dont_own_nft() public {
-    //     _test_cannot_executeLoanByBorrower_if_dont_own_nft(
+    // function test_unit_cannot_buyWithFinancing_if_dont_own_nft() public {
+    //     _test_cannot_buyWithFinancing_if_dont_own_nft(
     //         defaultFixedFuzzedFieldsForFastUnitTesting
     //     );
     // }
 
-    // function _test_cannot_executeLoanByBorrower_if_loan_active(
+    // function _test_cannot_buyWithFinancing_if_loan_active(
     //     FuzzedOfferFields memory fuzzed
     // ) private {
     //     defaultFixedOfferFields.sellerOffer = true;
@@ -201,24 +195,24 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     //     createOffer(offer, seller1);
 
     //     approvesellerFinancing(offer);
-    //     tryToExecuteLoanByBorrower(offer, "should work");
+    //     tryTobuyWithFinancing(offer, "should work");
 
-    //     tryToExecuteLoanByBorrower(offer, "00006");
+    //     tryTobuyWithFinancing(offer, "00006");
     // }
 
-    // function test_fuzz_executeLoanByBorrower_if_loan_active(
+    // function test_fuzz_buyWithFinancing_if_loan_active(
     //     FuzzedOfferFields memory fuzzed
     // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_executeLoanByBorrower_if_loan_active(fuzzed);
+    //     _test_cannot_buyWithFinancing_if_loan_active(fuzzed);
     // }
 
-    // function test_unit_executeLoanByBorrower_if_loan_active() public {
-    //     _test_cannot_executeLoanByBorrower_if_loan_active(
+    // function test_unit_buyWithFinancing_if_loan_active() public {
+    //     _test_cannot_buyWithFinancing_if_loan_active(
     //         defaultFixedFuzzedFieldsForFastUnitTesting
     //     );
     // }
 
-    // function _test_cannot_executeLoanByBorrower_sanctioned_address_borrower(
+    // function _test_cannot_buyWithFinancing_sanctioned_address_borrower(
     //     FuzzedOfferFields memory fuzzed
     // ) private {
     //     defaultFixedOfferFields.sellerOffer = true;
@@ -237,25 +231,25 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     //     boredApeYachtClub.approve(address(sellerFinancing), 3);
 
     //     vm.expectRevert("00017");
-    //     sellerFinancing.executeLoanByBorrower(offer.nftId, offerHash);
+    //     sellerFinancing.buyWithFinancing(offer.nftId, offerHash);
     //     vm.stopPrank();
     // }
 
-    // function test_fuzz_executeLoanByBorrower_sanctioned_address_borrower(
+    // function test_fuzz_buyWithFinancing_sanctioned_address_borrower(
     //     FuzzedOfferFields memory fuzzed
     // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_executeLoanByBorrower_sanctioned_address_borrower(fuzzed);
+    //     _test_cannot_buyWithFinancing_sanctioned_address_borrower(fuzzed);
     // }
 
-    // function test_unit_executeLoanByBorrower_sanctioned_address_borrower()
+    // function test_unit_buyWithFinancing_sanctioned_address_borrower()
     //     public
     // {
-    //     _test_cannot_executeLoanByBorrower_sanctioned_address_borrower(
+    //     _test_cannot_buyWithFinancing_sanctioned_address_borrower(
     //         defaultFixedFuzzedFieldsForFastUnitTesting
     //     );
     // }
 
-    // function _test_cannot_executeLoanByBorrower_sanctioned_address_seller(
+    // function _test_cannot_buyWithFinancing_sanctioned_address_seller(
     //     FuzzedOfferFields memory fuzzed
     // ) private {
     //     vm.startPrank(owner);
@@ -305,20 +299,20 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     //     boredApeYachtClub.approve(address(sellerFinancing), 1);
 
     //     vm.expectRevert("00017");
-    //     sellerFinancing.executeLoanByBorrower(offer.nftId, offerHash);
+    //     sellerFinancing.buyWithFinancing(offer.nftId, offerHash);
     //     vm.stopPrank();
     // }
 
-    // function test_fuzz_executeLoanByBorrower_sanctioned_address_seller(
+    // function test_fuzz_buyWithFinancing_sanctioned_address_seller(
     //     FuzzedOfferFields memory fuzzed
     // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_executeLoanByBorrower_sanctioned_address_seller(fuzzed);
+    //     _test_cannot_buyWithFinancing_sanctioned_address_seller(fuzzed);
     // }
 
-    // function test_unit_executeLoanByBorrower_sanctioned_address_seller()
+    // function test_unit_buyWithFinancing_sanctioned_address_seller()
     //     public
     // {
-    //     _test_cannot_executeLoanByBorrower_sanctioned_address_seller(
+    //     _test_cannot_buyWithFinancing_sanctioned_address_seller(
     //         defaultFixedFuzzedFieldsForFastUnitTesting
     //     );
     // }

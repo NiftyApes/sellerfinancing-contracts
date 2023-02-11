@@ -62,17 +62,16 @@ contract OffersLoansFixtures is
     }
 
     modifier validateFuzzedOfferFields(FuzzedOfferFields memory fuzzed) {
-        // -10 ether to give refinancing seller some wiggle room for fees
-
         vm.assume(fuzzed.price > ~uint32(0));
-        vm.assume(fuzzed.price < (defaultInitialEthBalance * 50) / 100);
+        // vm.assume(fuzzed.downPaymentAmount > ~uint32(0));
+        // vm.assume(fuzzed.minimumPrincipalPerPeriod > ~uint32(0));
+        vm.assume(fuzzed.price < uint128(defaultInitialEthBalance));
 
-        vm.assume(fuzzed.downPaymentAmount < fuzzed.price);
-        vm.assume(fuzzed.minimumPrincipalPerPeriod < fuzzed.downPaymentAmount);
-        vm.assume(fuzzed.periodInterestRateBps < 99999);
+        vm.assume(fuzzed.price > fuzzed.downPaymentAmount);
+        vm.assume(fuzzed.downPaymentAmount >= fuzzed.minimumPrincipalPerPeriod);
         vm.assume(fuzzed.periodDuration >= 1 days);
+        vm.assume(fuzzed.periodDuration <= ~uint32(0) - block.timestamp);
         vm.assume(fuzzed.expiration > block.timestamp);
-
         _;
     }
 
@@ -113,5 +112,16 @@ contract OffersLoansFixtures is
         vm.stopPrank();
 
         return signOffer(seller1_private_key, offer);
+    }
+
+    function createOfferAndBuyWithFinancing(Offer memory offer) internal {
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature
+        );
+        vm.stopPrank();
     }
 }
