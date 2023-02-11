@@ -186,8 +186,6 @@ contract NiftyApesSellerFinancing is
             payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
         }
 
-        Console.log("1");
-
         // query royalty recipients and amounts
         (
             address payable[] memory recipients,
@@ -207,27 +205,18 @@ contract NiftyApesSellerFinancing is
             totalRoyaltiesPaid += amounts[i];
         }
 
-        Console.log("2");
-
         // payout seller
         payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
 
-        Console.log("3");
-
         // mint buyer nft
         uint256 buyerNftId = loanNftNonce;
-        Console.log("4");
         loanNftNonce++;
-        Console.log("5");
         _safeMint(msg.sender, buyerNftId);
 
         // mint seller nft
         uint256 sellerNftId = loanNftNonce;
-        Console.log("6");
         loanNftNonce++;
-        Console.log("7");
         _safeMint(seller, sellerNftId);
-        Console.log("9");
 
         // create loan
         _createLoan(
@@ -237,7 +226,6 @@ contract NiftyApesSellerFinancing is
             buyerNftId,
             (offer.price - offer.downPaymentAmount)
         );
-        Console.log("10");
 
         // Transfer nft from seller to this contract, revert on failure
         _transferNft(
@@ -247,15 +235,11 @@ contract NiftyApesSellerFinancing is
             address(this)
         );
 
-        Console.log("11");
-
         _addLoanToOwnerEnumeration(
             msg.sender,
             offer.nftContractAddress,
             offer.nftId
         );
-
-        Console.log("12");
 
         emit LoanExecuted(
             offer.nftContractAddress,
@@ -484,7 +468,6 @@ contract NiftyApesSellerFinancing is
         uint256 buyerNftId,
         uint256 amount
     ) internal {
-        Console.log("13");
         loan.sellerNftId = sellerNftId;
         loan.buyerNftId = buyerNftId;
         loan.remainingPrincipal = uint128(amount);
@@ -493,7 +476,6 @@ contract NiftyApesSellerFinancing is
         loan.minimumPrincipalPerPeriod = offer.minimumPrincipalPerPeriod;
         loan.periodInterestRateBps = offer.periodInterestRateBps;
         loan.periodDuration = offer.periodDuration;
-        Console.log("14");
     }
 
     function _transferNft(
