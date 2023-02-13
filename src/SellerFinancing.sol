@@ -198,24 +198,11 @@ contract NiftyApesSellerFinancing is
             payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
         }
 
-        // query royalty recipients and amounts
-        (
-            address payable[] memory recipients,
-            uint256[] memory amounts
-        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyaltyView(
-                    offer.nftContractAddress,
-                    offer.nftId,
-                    offer.downPaymentAmount
-                );
-
-        uint256 totalRoyaltiesPaid;
-
-        // payout royalties
-        for (uint256 i = 0; i < recipients.length; i++) {
-            payable(recipients[i]).sendValue(amounts[i]);
-            totalRoyaltiesPaid += amounts[i];
-        }
+        uint256 totalRoyaltiesPaid = _payRoyalties(
+            offer.nftContractAddress,
+            offer.nftId,
+            offer.downPaymentAmount
+        );
 
         // payout seller
         payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
@@ -294,20 +281,11 @@ contract NiftyApesSellerFinancing is
             msgValue = totalPossiblePayment;
         }
 
-        // query royalty recipients and amounts
-        (
-            address payable[] memory recipients,
-            uint256[] memory amounts
-        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyalty(nftContractAddress, nftId, msgValue);
-
-        uint256 totalRoyaltiesPaid;
-
-        // payout royalties
-        for (uint256 i = 0; i < recipients.length; i++) {
-            payable(recipients[i]).sendValue(amounts[i]);
-            totalRoyaltiesPaid += amounts[i];
-        }
+        uint256 totalRoyaltiesPaid = _payRoyalties(
+            nftContractAddress,
+            nftId,
+            msgValue
+        );
 
         // payout seller
         payable(sellerAddress).sendValue(msgValue - totalRoyaltiesPaid);
@@ -457,6 +435,25 @@ contract NiftyApesSellerFinancing is
         }
 
         minimumPayment = minimumPrincipalPayment + periodInterest;
+    }
+
+    function _payRoyalties(
+        address nftContractAddress,
+        uint256 nftId,
+        uint256 amount
+    ) private returns (uint256 totalRoyaltiesPaid) {
+        // query royalty recipients and amounts
+        (
+            address payable[] memory recipients,
+            uint256[] memory amounts
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyaltyView(nftContractAddress, nftId, amount);
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients.length; i++) {
+            payable(recipients[i]).sendValue(amounts[i]);
+            totalRoyaltiesPaid += amounts[i];
+        }
     }
 
     function getLoan(address nftContractAddress, uint256 nftId)
