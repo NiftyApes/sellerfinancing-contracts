@@ -245,8 +245,8 @@ contract NiftyApesSellerFinancing is
             offer.nftContractAddress,
             offer.nftId,
             seller,
-            loan,
-            offer
+            signature,
+            loan
         );
     }
 

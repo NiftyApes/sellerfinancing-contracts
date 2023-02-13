@@ -26,8 +26,8 @@ interface ISellerFinancingEvents {
         address indexed nftContractAddress,
         uint256 indexed nftId,
         address receiver,
-        ISellerFinancingStructs.Loan loan,
-        ISellerFinancingStructs.Offer offer
+        bytes offerSignature,
+        ISellerFinancingStructs.Loan loan
     );
 
     /// @notice Emitted when a payment is made toward the loan
