@@ -50,10 +50,14 @@ interface ISellerFinancing is
     /// @notice make a partial payment or full repayment of a loan.
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
-
     function makePayment(address nftContractAddress, uint256 nftId)
         external
         payable;
+
+    /// @notice seize an asset from a defaulted loan.
+    /// @param nftContractAddress The address of the NFT collection
+    /// @param nftId The id of a specified NFT
+    function seizeAsset(address nftContractAddress, uint256 nftId) external;
 
     /// @notice Returns a loan identified by a given nft.
     /// @param nftContractAddress The address of the NFT collection

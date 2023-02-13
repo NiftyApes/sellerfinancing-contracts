@@ -369,16 +369,6 @@ contract NiftyApesSellerFinancing is
             _currentTimestamp32() > loan.periodEndTimestamp,
             "Asset not seizable"
         );
-        // require that nft is still owned by protocol, could have been sold but sale not validated.
-        require(
-            IERC721Upgradeable(nftContractAddress).ownerOf(nftId) ==
-                address(this),
-            "NFT sold, validate sale and withdraw"
-        );
-
-        emit AssetSeized(nftContractAddress, nftId, loan);
-
-        delete _loans[nftContractAddress][nftId];
 
         _transferNft(nftContractAddress, nftId, address(this), sellerAddress);
 
@@ -393,6 +383,10 @@ contract NiftyApesSellerFinancing is
 
         // burn seller nft
         _burn(loan.sellerNftId);
+
+        emit AssetSeized(nftContractAddress, nftId, loan);
+
+        delete _loans[nftContractAddress][nftId];
     }
 
     function flashClaim(
