@@ -267,17 +267,10 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(msg.sender);
         _requireOpenLoan(loan);
 
-        uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod;
-
-        // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
-        if (loan.remainingPrincipal < minimumPrincipalPayment) {
-            minimumPrincipalPayment = loan.remainingPrincipal;
-        }
-        // calculate % interest to be paid to seller
-        uint256 periodInterest = ((loan.remainingPrincipal * MAX_BPS) /
-            loan.periodInterestRateBps);
-
-        uint256 totalMinimumPayment = minimumPrincipalPayment + periodInterest;
+        (
+            uint256 totalMinimumPayment,
+            uint256 periodInterest
+        ) = calculateMinimumPayment(loan);
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
         // set msgValue value
@@ -292,6 +285,7 @@ contract NiftyApesSellerFinancing is
             msgValue = totalPossiblePayment;
         }
 
+        // can this call fail or revert? do we need to have a success require statement?
         // query royalty recipients and amounts
         (
             address payable[] memory recipients,
@@ -446,6 +440,24 @@ contract NiftyApesSellerFinancing is
     ) public view returns (uint256) {
         require(index < balanceOf(owner, nftContractAddress), "00069");
         return _ownedTokens[owner][nftContractAddress][index];
+    }
+
+    function calculateMinimumPayment(Loan memory loan)
+        public
+        pure
+        returns (uint256 minimumPayment, uint256 periodInterest)
+    {
+        uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod;
+
+        // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
+        if (loan.remainingPrincipal < minimumPrincipalPayment) {
+            minimumPrincipalPayment = loan.remainingPrincipal;
+        }
+        // calculate % interest to be paid to seller
+        periodInterest = ((loan.remainingPrincipal * MAX_BPS) /
+            loan.periodInterestRateBps);
+
+        minimumPayment = minimumPrincipalPayment + periodInterest;
     }
 
     function getLoan(address nftContractAddress, uint256 nftId)

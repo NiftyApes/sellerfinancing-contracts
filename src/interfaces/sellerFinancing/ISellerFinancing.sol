@@ -47,6 +47,14 @@ interface ISellerFinancing is
         external
         payable;
 
+    /// @notice make a partial payment or full repayment of a loan.
+    /// @param nftContractAddress The address of the NFT collection
+    /// @param nftId The id of a specified NFT
+
+    function makePayment(address nftContractAddress, uint256 nftId)
+        external
+        payable;
+
     /// @notice Returns a loan identified by a given nft.
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
@@ -71,6 +79,11 @@ interface ISellerFinancing is
         address nftContractAddress,
         uint256 index
     ) external returns (uint256);
+
+    function calculateMinimumPayment(Loan memory loan)
+        external
+        pure
+        returns (uint256 minimumPayment, uint256 periodInterest);
 
     function initialize() external;
 }
