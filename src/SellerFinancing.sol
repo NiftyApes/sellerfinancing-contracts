@@ -181,6 +181,9 @@ contract NiftyApesSellerFinancing is
         // ensure msg.value is sufficient for downPayment
         require(msg.value >= offer.downPaymentAmount, "00047");
 
+        // mark signature as used
+        _markSignatureUsed(offer, signature);
+
         // if msg.value is too high, return excess value
         if (msg.value > offer.downPaymentAmount) {
             payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
