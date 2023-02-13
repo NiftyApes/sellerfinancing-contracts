@@ -127,9 +127,25 @@ contract TestMakePayment is Test, OffersLoansFixtures {
             defaultFixedOfferFields
         );
 
-        uint256 sellerBalanceBefore = address(seller1).balance;
+        (
+            address payable[] memory recipients1,
+            uint256[] memory amounts1
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyalty(
+                    offer.nftContractAddress,
+                    offer.nftId,
+                    offer.downPaymentAmount
+                );
 
-        Console.log(sellerBalanceBefore);
+        uint256 totalRoyaltiesPaid;
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients1.length; i++) {
+            totalRoyaltiesPaid += amounts1[i];
+        }
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+        uint256 royaltiesBalanceBefore = address(recipients1[0]).balance;
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
@@ -143,6 +159,20 @@ contract TestMakePayment is Test, OffersLoansFixtures {
             loan
         );
 
+        (
+            address payable[] memory recipients2,
+            uint256[] memory amounts2
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyalty(
+                    offer.nftContractAddress,
+                    offer.nftId,
+                    (loan.remainingPrincipal + periodInterest)
+                );
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients2.length; i++) {
+            totalRoyaltiesPaid += amounts2[i];
+        }
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
             value: (loan.remainingPrincipal + periodInterest)
@@ -152,11 +182,20 @@ contract TestMakePayment is Test, OffersLoansFixtures {
         assertionsForClosedLoan(offer, buyer1);
 
         uint256 sellerBalanceAfter = address(seller1).balance;
+        uint256 royaltiesBalanceAfter = address(recipients1[0]).balance;
 
-        // assertEq(
-        //     sellerBalanceAfter,
-        //     (sellerBalanceBefore + offer.price + periodInterest)
-        // );
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore +
+                offer.price +
+                periodInterest -
+                totalRoyaltiesPaid)
+        );
+
+        assertEq(
+            royaltiesBalanceAfter,
+            (royaltiesBalanceBefore + totalRoyaltiesPaid)
+        );
     }
 
     function test_fuzz_makePayment_fullRepayment_simplest_case(

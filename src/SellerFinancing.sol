@@ -285,7 +285,6 @@ contract NiftyApesSellerFinancing is
             msgValue = totalPossiblePayment;
         }
 
-        // can this call fail or revert? do we need to have a success require statement?
         // query royalty recipients and amounts
         (
             address payable[] memory recipients,
