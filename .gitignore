@@ -1,2 +1,7 @@
-cache/
 out/
+broadcast/
+cache/
+node_modules/
+package-lock.json
+.env
+.idea

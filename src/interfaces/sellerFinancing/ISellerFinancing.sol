@@ -89,5 +89,9 @@ interface ISellerFinancing is
         pure
         returns (uint256 minimumPayment, uint256 periodInterest);
 
+    function pauseSanctions() external;
+
+    function unpauseSanctions() external;
+
     function initialize(address newRoyaltiesEngineAddress) external;
 }

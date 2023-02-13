@@ -56,6 +56,9 @@ contract NiftyApesSellerFinancing is
     /// @dev The stored address for the royalties engine
     address private royaltiesEngineAddress;
 
+    /// @dev The status of sanctions checks
+    bool internal _sanctionsPause;
+
     // instead of address to nftId to struct, could create a loanHash from the address ID and loan ID/Nonce,
     // and use that as the pointer to the loan Struct. - ks
 
@@ -67,9 +70,6 @@ contract NiftyApesSellerFinancing is
     /// @dev A mapping to mark a signature as used.
     ///      The mapping allows users to withdraw offers that they made by signature.
     mapping(bytes => bool) private _cancelledOrFinalized;
-
-    /// @dev The status of sanctions checks. Can be set to false if oracle becomes malicious.
-    bool internal _sanctionsPause;
 
     // could mint an NFT and have these in an inherited contract - ks
 
@@ -111,6 +111,14 @@ contract NiftyApesSellerFinancing is
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    function pauseSanctions() external onlyOwner {
+        _sanctionsPause = true;
+    }
+
+    function unpauseSanctions() external onlyOwner {
+        _sanctionsPause = false;
     }
 
     function getOfferHash(Offer memory offer) public view returns (bytes32) {
