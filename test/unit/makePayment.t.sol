@@ -210,6 +210,95 @@ contract TestMakePayment is Test, OffersLoansFixtures {
         _test_makePayment_fullRepayment_simplest_case(fixedForSpeed);
     }
 
+    function _test_makePayment_partialRepayment_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (uint256 totalMinimumPayment, uint256 periodInterest) = sellerFinancing
+            .calculateMinimumPayment(loan);
+
+        (
+            address payable[] memory recipients,
+            uint256[] memory amounts
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyalty(
+                    offer.nftContractAddress,
+                    offer.nftId,
+                    totalMinimumPayment
+                );
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+        uint256 royaltiesBalanceBefore = address(recipients[0]).balance;
+        uint256 totalRoyaltiesPaid;
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients.length; i++) {
+            totalRoyaltiesPaid += amounts[i];
+        }
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{value: totalMinimumPayment}(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        Loan memory loanAfter = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+        uint256 royaltiesBalanceAfter = address(recipients[0]).balance;
+
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + totalMinimumPayment - totalRoyaltiesPaid)
+        );
+
+        assertEq(
+            royaltiesBalanceAfter,
+            (royaltiesBalanceBefore + totalRoyaltiesPaid)
+        );
+
+        assertEq(
+            loanAfter.remainingPrincipal,
+            loan.remainingPrincipal - (totalMinimumPayment - periodInterest)
+        );
+
+        assertEq(
+            loanAfter.periodEndTimestamp,
+            loan.periodEndTimestamp + loan.periodDuration
+        );
+        assertEq(
+            loanAfter.periodBeginTimestamp,
+            loan.periodBeginTimestamp + loan.periodDuration
+        );
+    }
+
+    function test_fuzz_makePayment_partialRepayment_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_partialRepayment_simplest_case(fuzzed);
+    }
+
+    function test_unit_makePayment_partialRepayment_simplest_case() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_partialRepayment_simplest_case(fixedForSpeed);
+    }
+
     // function _test_makePayment_events(FuzzedOfferFields memory fuzzed)
     //     private
     // {

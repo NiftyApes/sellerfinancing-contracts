@@ -180,6 +180,15 @@ contract NiftyApesSellerFinancing is
         require(offer.periodDuration >= 1 days, "00006");
         // ensure msg.value is sufficient for downPayment
         require(msg.value >= offer.downPaymentAmount, "00047");
+        require(
+            offer.price > offer.downPaymentAmount,
+            "price must be greater than down payment"
+        );
+        require(
+            (offer.price - offer.downPaymentAmount) >
+                offer.minimumPrincipalPerPeriod,
+            "Issue: principal per period"
+        );
 
         // mark signature as used
         _markSignatureUsed(offer, signature);
@@ -315,24 +324,19 @@ contract NiftyApesSellerFinancing is
                 address(this),
                 buyerAddress
             );
-
             _removeLoanFromOwnerEnumeration(
                 buyerAddress,
                 nftContractAddress,
                 nftId
             );
-
             // burn buyer nft
             _burn(loan.buyerNftId);
-
             // burn seller nft
             _burn(loan.sellerNftId);
-
             //emit paymentMade event
             emit PaymentMade(nftContractAddress, nftId, msgValue, loan);
             // emit loan repaid event
             emit LoanRepaid(nftContractAddress, nftId, loan);
-
             // delete loan
             delete _loans[nftContractAddress][nftId];
         }
