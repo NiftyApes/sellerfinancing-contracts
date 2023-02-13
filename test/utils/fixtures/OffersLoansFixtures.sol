@@ -62,9 +62,11 @@ contract OffersLoansFixtures is
     }
 
     modifier validateFuzzedOfferFields(FuzzedOfferFields memory fuzzed) {
+        vm.assume(fuzzed.price < ~uint64(0));
         vm.assume(fuzzed.price > 0);
         vm.assume(fuzzed.downPaymentAmount > 0);
         vm.assume(fuzzed.minimumPrincipalPerPeriod > 0);
+        vm.assume(fuzzed.periodInterestRateBps < 100000);
 
         vm.assume(fuzzed.price > fuzzed.downPaymentAmount);
         vm.assume(fuzzed.downPaymentAmount >= fuzzed.minimumPrincipalPerPeriod);

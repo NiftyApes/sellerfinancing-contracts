@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
+import "../common/Console.sol";
+
 contract TestMakePayment is Test, OffersLoansFixtures {
     function setUp() public override {
         super.setUp();
@@ -124,6 +126,11 @@ contract TestMakePayment is Test, OffersLoansFixtures {
             fuzzed,
             defaultFixedOfferFields
         );
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+
+        Console.log(sellerBalanceBefore);
+
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
@@ -136,18 +143,27 @@ contract TestMakePayment is Test, OffersLoansFixtures {
             loan
         );
 
+        vm.startPrank(buyer1);
         sellerFinancing.makePayment{
             value: (loan.remainingPrincipal + periodInterest)
         }(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
 
         assertionsForClosedLoan(offer, buyer1);
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+
+        // assertEq(
+        //     sellerBalanceAfter,
+        //     (sellerBalanceBefore + offer.price + periodInterest)
+        // );
     }
 
-    // function test_fuzz_makePayment_fullRepayment_simplest_case(
-    //     FuzzedOfferFields memory fuzzed
-    // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_makePayment_fullRepayment_simplest_case(fuzzed);
-    // }
+    function test_fuzz_makePayment_fullRepayment_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_fullRepayment_simplest_case(fuzzed);
+    }
 
     function test_unit_makePayment_fullRepayment_simplest_case() public {
         FuzzedOfferFields

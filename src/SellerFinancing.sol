@@ -291,7 +291,7 @@ contract NiftyApesSellerFinancing is
             address payable[] memory recipients,
             uint256[] memory amounts
         ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyaltyView(nftContractAddress, nftId, msgValue);
+                .getRoyalty(nftContractAddress, nftId, msgValue);
 
         uint256 totalRoyaltiesPaid;
 
@@ -454,8 +454,10 @@ contract NiftyApesSellerFinancing is
             minimumPrincipalPayment = loan.remainingPrincipal;
         }
         // calculate % interest to be paid to seller
-        periodInterest = ((loan.remainingPrincipal * MAX_BPS) /
-            loan.periodInterestRateBps);
+        if (loan.periodInterestRateBps != 0) {
+            periodInterest = ((loan.remainingPrincipal * MAX_BPS) /
+                loan.periodInterestRateBps);
+        }
 
         minimumPayment = minimumPrincipalPayment + periodInterest;
     }
