@@ -19,12 +19,14 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     ISellerFinancing sellerFinancing;
 
     function setUp() public virtual override {
+        address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
+
         super.setUp();
 
         vm.startPrank(owner);
 
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize();
+        sellerFinancingImplementation.initialize(address(0));
 
         // deploy proxy admins
         sellerFinancingProxyAdmin = new ProxyAdmin();
@@ -40,7 +42,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
 
         // initialize proxies
-        sellerFinancing.initialize();
+        sellerFinancing.initialize(mainnetRoyaltiesEngineAddress);
 
         vm.stopPrank();
 

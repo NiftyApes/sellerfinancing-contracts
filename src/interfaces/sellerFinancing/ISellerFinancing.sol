@@ -89,5 +89,5 @@ interface ISellerFinancing is
         pure
         returns (uint256 minimumPayment, uint256 periodInterest);
 
-    function initialize() external;
+    function initialize(address newRoyaltiesEngineAddress) external;
 }

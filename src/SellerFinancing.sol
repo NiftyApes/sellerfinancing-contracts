@@ -51,8 +51,10 @@ contract NiftyApesSellerFinancing is
         );
 
     // increaments by two for each loan, once for buyerNftId, once for sellerNftId
-    // use this rather than totalSupply because we burn NFTs and would have duplicate ids
     uint256 private loanNftNonce;
+
+    /// @dev The stored address for the royalties engine
+    address private royaltiesEngineAddress;
 
     // instead of address to nftId to struct, could create a loanHash from the address ID and loan ID/Nonce,
     // and use that as the pointer to the loan Struct. - ks
@@ -88,7 +90,7 @@ contract NiftyApesSellerFinancing is
     /// @notice The initializer for the NiftyApes protocol.
     ///         NiftyApes is intended to be deployed behind a proxy and thus needs to initialize
     ///         its state outside of a constructor.
-    function initialize() public initializer {
+    function initialize(address newRoyaltiesEngineAddress) public initializer {
         EIP712Upgradeable.__EIP712_init("NiftyApes_SellerFinancing", "0.0.1");
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
@@ -100,6 +102,7 @@ contract NiftyApesSellerFinancing is
         );
 
         loanNftNonce = 0;
+        royaltiesEngineAddress = newRoyaltiesEngineAddress;
     }
 
     function pause() external onlyOwner {
