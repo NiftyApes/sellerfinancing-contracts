@@ -59,6 +59,19 @@ interface ISellerFinancing is
     /// @param nftId The id of a specified NFT
     function seizeAsset(address nftContractAddress, uint256 nftId) external;
 
+    /// @notice Allows an nftOwner to claim their nft and perform arbtrary actions (claim airdrops, vote in goverance, etc)
+    ///         while maintaining their loan
+    /// @param receiver The address of the external contract that will receive and return the nft
+    /// @param nftContractAddress The address of the nft collection
+    /// @param nftId The id of the specified nft
+    /// @param data Arbitrary data structure, intended to contain user-defined parameters
+    function flashClaim(
+        address receiver,
+        address nftContractAddress,
+        uint256 nftId,
+        bytes calldata data
+    ) external;
+
     /// @notice Returns a loan identified by a given nft.
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT

@@ -1,3 +1,0 @@
-[profile.default]
-[fuzz]
-max_test_rejects = 1000000

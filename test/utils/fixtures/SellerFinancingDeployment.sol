@@ -5,7 +5,9 @@ import "@openzeppelin-norm/contracts/proxy/transparent/TransparentUpgradeablePro
 import "@openzeppelin-norm/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../../../src/interfaces/sellerFinancing/ISellerFinancing.sol";
-
+import "./FlashClaimReceivers/FlashClaimReceiverTestHappy.sol";
+import "./FlashClaimReceivers/FlashClaimReceiverTestNoReturn.sol";
+import "./FlashClaimReceivers/FlashClaimReceiverTestReturnsFalse.sol";
 import "../../../src/SellerFinancing.sol";
 import "./NFTFixtures.sol";
 
@@ -18,12 +20,20 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
 
+    FlashClaimReceiverBaseHappy flashClaimReceiverHappy;
+    FlashClaimReceiverBaseNoReturn flashClaimReceiverNoReturn;
+    FlashClaimReceiverBaseReturnsFalse flashClaimReceiverReturnsFalse;
+
     function setUp() public virtual override {
         address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
 
         super.setUp();
 
         vm.startPrank(owner);
+
+        flashClaimReceiverHappy = new FlashClaimReceiverBaseHappy();
+        flashClaimReceiverNoReturn = new FlashClaimReceiverBaseNoReturn();
+        flashClaimReceiverReturnsFalse = new FlashClaimReceiverBaseReturnsFalse();
 
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
         sellerFinancingImplementation.initialize(address(0));
@@ -43,6 +53,10 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
 
         // initialize proxies
         sellerFinancing.initialize(mainnetRoyaltiesEngineAddress);
+
+        flashClaimReceiverHappy.updateFlashClaimContractAddress(
+            address(sellerFinancing)
+        );
 
         vm.stopPrank();
 
