@@ -299,7 +299,12 @@ contract NiftyApesSellerFinancing is
         );
 
         // payout seller
-        payable(sellerAddress).sendValue(msgValue - totalRoyaltiesPaid);
+        // if the seller is a contract that doesnt except ETH, send value back to buyer and continue
+        try
+            payable(sellerAddress).sendValue(msgValue - totalRoyaltiesPaid)
+        {} catch {
+            payable(buyerAddress).sendValue(msgValue - totalRoyaltiesPaid);
+        }
 
         // update loan struct
         loan.remainingPrincipal -= uint128(msgValue - periodInterest);
