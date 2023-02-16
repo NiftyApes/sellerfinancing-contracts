@@ -47,7 +47,7 @@ contract NiftyApesSellerFinancing is
     ///      If the Offer struct shape changes, this will need to change as well.
     bytes32 private constant _OFFER_TYPEHASH =
         keccak256(
-            "Offer(uint128 price,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,)"
+            "Offer(uint128 price,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration)"
         );
 
     // increaments by two for each loan, once for buyerNftId, once for sellerNftId
@@ -457,8 +457,11 @@ contract NiftyApesSellerFinancing is
         (
             address payable[] memory recipients,
             uint256[] memory amounts
-        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyaltyView(nftContractAddress, nftId, amount);
+        ) = IRoyaltyEngineV1(royaltiesEngineAddress).getRoyaltyView(
+                nftContractAddress,
+                nftId,
+                amount
+            );
 
         // payout royalties
         for (uint256 i = 0; i < recipients.length; i++) {
