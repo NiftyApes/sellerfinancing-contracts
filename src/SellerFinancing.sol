@@ -441,8 +441,8 @@ contract NiftyApesSellerFinancing is
         }
         // calculate % interest to be paid to seller
         if (loan.periodInterestRateBps != 0) {
-            periodInterest = ((loan.remainingPrincipal * MAX_BPS) /
-                loan.periodInterestRateBps);
+            periodInterest = ((loan.remainingPrincipal *
+                loan.periodInterestRateBps) / MAX_BPS);
         }
 
         minimumPayment = minimumPrincipalPayment + periodInterest;
