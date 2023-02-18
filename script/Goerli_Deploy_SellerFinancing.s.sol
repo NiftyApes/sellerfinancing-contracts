@@ -9,12 +9,14 @@ import "../src/interfaces/sellerFinancing/ISellerFinancing.sol";
 import "../src/interfaces/Ownership.sol";
 
 import "../src/SellerFinancing.sol";
+import "../src/utils/SendValue.sol";
 
 contract DeploySellerFinancingScript is Script {
     NiftyApesSellerFinancing sellerFinancingImplementation;
     ProxyAdmin sellerFinancingProxyAdmin;
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
+    SendValue sendValue;
 
     function run() external {
         address goerliRoyaltiesEngineAddress = 0xe7c9Cb6D966f76f3B5142167088927Bf34966a1f;
@@ -22,9 +24,12 @@ contract DeploySellerFinancingScript is Script {
 
         vm.startBroadcast();
 
+        // deploy sendValue contract
+        sendValue = new SendValue();
+
         // deploy and initialize implementation contracts
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(address(0));
+        sellerFinancingImplementation.initialize(address(0), address(0));
 
         // deploy proxy admins
         sellerFinancingProxyAdmin = new ProxyAdmin();
@@ -40,7 +45,10 @@ contract DeploySellerFinancingScript is Script {
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
 
         // initialize proxies
-        sellerFinancing.initialize(goerliRoyaltiesEngineAddress);
+        sellerFinancing.initialize(
+            goerliRoyaltiesEngineAddress,
+            address(sendValue)
+        );
 
         // pauseSanctions for Goerli as Chainalysis contact doesnt exists there
         sellerFinancing.pauseSanctions();

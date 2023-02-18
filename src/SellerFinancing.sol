@@ -17,6 +17,7 @@ import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "./lib/ECDSABridge.sol";
+import "./utils/SendValue.sol";
 
 import "../test/common/Console.sol";
 
@@ -56,6 +57,10 @@ contract NiftyApesSellerFinancing is
     /// @dev The stored address for the royalties engine
     address private royaltiesEngineAddress;
 
+    /// @dev The stored address for the sendValue library.
+    /// This is needed because try/catch needs an external contract call.
+    address private sendValueContractAddress;
+
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
 
@@ -90,7 +95,10 @@ contract NiftyApesSellerFinancing is
     /// @notice The initializer for the NiftyApes protocol.
     ///         NiftyApes is intended to be deployed behind a proxy and thus needs to initialize
     ///         its state outside of a constructor.
-    function initialize(address newRoyaltiesEngineAddress) public initializer {
+    function initialize(
+        address newRoyaltiesEngineAddress,
+        address newSendValueContractAddress
+    ) public initializer {
         EIP712Upgradeable.__EIP712_init("NiftyApes_SellerFinancing", "0.0.1");
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
@@ -103,6 +111,7 @@ contract NiftyApesSellerFinancing is
 
         loanNftNonce = 0;
         royaltiesEngineAddress = newRoyaltiesEngineAddress;
+        sendValueContractAddress = newSendValueContractAddress;
     }
 
     function pause() external onlyOwner {
@@ -301,7 +310,10 @@ contract NiftyApesSellerFinancing is
         // payout seller
         // if the seller is a contract that doesnt except ETH, send value back to buyer and continue
         try
-            payable(sellerAddress).sendValue(msgValue - totalRoyaltiesPaid)
+            // call sendValue deployed as external contract
+            ISendValue(sendValueContractAddress).sendValue{
+                value: msgValue - totalRoyaltiesPaid
+            }(payable(sellerAddress), msgValue - totalRoyaltiesPaid)
         {} catch {
             payable(buyerAddress).sendValue(msgValue - totalRoyaltiesPaid);
         }
