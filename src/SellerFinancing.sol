@@ -309,6 +309,7 @@ contract NiftyApesSellerFinancing is
 
         // payout seller
         // if the seller is a contract that doesnt except ETH, send value back to buyer and continue
+        // otherwise seller could force a default by sending bearer nft to contract that does not accept ETH
         try
             // call sendValue deployed as external contract
             ISendValue(sendValueContractAddress).sendValue{
@@ -482,8 +483,10 @@ contract NiftyApesSellerFinancing is
 
         // payout royalties
         for (uint256 i = 0; i < recipients.length; i++) {
-            payable(recipients[i]).sendValue(amounts[i]);
-            totalRoyaltiesPaid += amounts[i];
+            if (amounts[i] > 0) {
+                payable(recipients[i]).sendValue(amounts[i]);
+                totalRoyaltiesPaid += amounts[i];
+            }
         }
     }
 
