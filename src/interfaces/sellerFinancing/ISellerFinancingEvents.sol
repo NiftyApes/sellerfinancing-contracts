@@ -33,12 +33,14 @@ interface ISellerFinancingEvents {
     /// @notice Emitted when a payment is made toward the loan
     /// @param nftContractAddress The nft contract address
     /// @param nftId The nft id
-    /// @param amount The amount paid twoard the loamn
+    /// @param amount The amount paid towards the loan
+    /// @param totalRoyaltiesPaid The amount paid in royalties
     /// @param loan The loan details
     event PaymentMade(
         address indexed nftContractAddress,
         uint256 indexed nftId,
         uint256 amount,
+        uint256 totalRoyaltiesPaid,
         ISellerFinancingStructs.Loan loan
     );
 
