@@ -341,7 +341,13 @@ contract NiftyApesSellerFinancing is
             // burn seller nft
             _burn(loan.sellerNftId);
             //emit paymentMade event
-            emit PaymentMade(nftContractAddress, nftId, msgValue, loan);
+            emit PaymentMade(
+                nftContractAddress,
+                nftId,
+                msgValue,
+                totalRoyaltiesPaid,
+                loan
+            );
             // emit loan repaid event
             emit LoanRepaid(nftContractAddress, nftId, loan);
             // delete loan
@@ -354,7 +360,13 @@ contract NiftyApesSellerFinancing is
             loan.periodEndTimestamp += loan.periodDuration;
 
             //emit paymentMade event
-            emit PaymentMade(nftContractAddress, nftId, msgValue, loan);
+            emit PaymentMade(
+                nftContractAddress,
+                nftId,
+                msgValue,
+                totalRoyaltiesPaid,
+                loan
+            );
         }
     }
 
