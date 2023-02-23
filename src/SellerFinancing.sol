@@ -358,6 +358,7 @@ contract NiftyApesSellerFinancing is
                 nftId,
                 msgValue,
                 totalRoyaltiesPaid,
+                periodInterest,
                 loan
             );
             // emit loan repaid event
@@ -380,6 +381,7 @@ contract NiftyApesSellerFinancing is
                 nftId,
                 msgValue,
                 totalRoyaltiesPaid,
+                periodInterest,
                 loan
             );
         }
