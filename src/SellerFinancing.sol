@@ -282,6 +282,10 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(buyerAddress);
         _requireIsNotSanctioned(msg.sender);
         _requireOpenLoan(loan);
+        require(
+            _currentTimestamp() < loan.periodEndTimestamp + loan.periodDuration,
+            "beyond soft grace period"
+        );
 
         (
             uint256 totalMinimumPayment,
