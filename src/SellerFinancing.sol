@@ -283,14 +283,22 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(msg.sender);
         _requireOpenLoan(loan);
         require(
-            _currentTimestamp() < loan.periodEndTimestamp + loan.periodDuration,
-            "beyond soft grace period"
+            _currentTimestamp32() <
+                loan.periodEndTimestamp + loan.periodDuration,
+            "cannot make payment, past soft grace period"
         );
 
-        (
-            uint256 totalMinimumPayment,
-            uint256 periodInterest
-        ) = calculateMinimumPayment(loan);
+        uint256 totalMinimumPayment;
+        uint256 periodInterest;
+
+        // if in the current period, else prior to period minimumPayment and interest should remain 0
+        if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
+            (totalMinimumPayment, periodInterest) = calculateMinimumPayment(
+                loan
+            );
+        }
+
+        // caculate the total possible payment
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
         // set msgValue value
@@ -353,9 +361,12 @@ contract NiftyApesSellerFinancing is
         }
         //else emit paymentMade event and update loan
         else {
-            // increment the currentperiodBegin and End Timestamps equal to the periodDuration
-            loan.periodBeginTimestamp += loan.periodDuration;
-            loan.periodEndTimestamp += loan.periodDuration;
+            // if in the current period, else prior to period begin and end should remain the same
+            if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
+                // increment the currentperiodBegin and End Timestamps equal to the periodDuration
+                loan.periodBeginTimestamp += loan.periodDuration;
+                loan.periodEndTimestamp += loan.periodDuration;
+            }
 
             //emit paymentMade event
             emit PaymentMade(nftContractAddress, nftId, msgValue, loan);
