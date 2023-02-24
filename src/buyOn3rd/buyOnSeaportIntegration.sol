@@ -107,6 +107,12 @@ contract BuyOnSeaportIntegration is
             payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
         }
 
+        // this call will fail as this contract should not have a sufficient current balance
+        // options:
+        // 1. deposit funds into this contract directly
+        // 2. have a management contract that has approved WETH, transfer in, execute, or swap to ETH in this function and execute
+        // 3. we'll also need a management contract to seizeAssets in default and list NFTs for sale and list with financing
+
         require(
             ISeaport(seaportContractAddress).fulfillOrder{
                 value: considerationAmount
