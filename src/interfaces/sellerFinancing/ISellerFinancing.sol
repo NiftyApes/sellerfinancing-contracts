@@ -106,8 +106,5 @@ interface ISellerFinancing is
 
     function unpauseSanctions() external;
 
-    function initialize(
-        address newRoyaltiesEngineAddress,
-        address newSendValueContractAddress
-    ) external;
+    function initialize(address newRoyaltiesEngineAddress) external;
 }

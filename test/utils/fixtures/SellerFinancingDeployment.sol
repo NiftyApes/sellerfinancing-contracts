@@ -19,7 +19,6 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     ProxyAdmin sellerFinancingProxyAdmin;
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
-    SendValue sendValue;
 
     FlashClaimReceiverBaseHappy flashClaimReceiverHappy;
     FlashClaimReceiverBaseNoReturn flashClaimReceiverNoReturn;
@@ -36,11 +35,8 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         flashClaimReceiverNoReturn = new FlashClaimReceiverBaseNoReturn();
         flashClaimReceiverReturnsFalse = new FlashClaimReceiverBaseReturnsFalse();
 
-        // deploy sendValue contract
-        sendValue = new SendValue();
-
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(address(0), address(0));
+        sellerFinancingImplementation.initialize(address(0));
 
         // deploy proxy admins
         sellerFinancingProxyAdmin = new ProxyAdmin();
@@ -56,10 +52,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
 
         // initialize proxies
-        sellerFinancing.initialize(
-            mainnetRoyaltiesEngineAddress,
-            address(sendValue)
-        );
+        sellerFinancing.initialize(mainnetRoyaltiesEngineAddress);
 
         flashClaimReceiverHappy.updateFlashClaimContractAddress(
             address(sellerFinancing)
