@@ -124,7 +124,8 @@ contract OffersLoansFixtures is
         vm.startPrank(buyer1);
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
-            offerSignature
+            offerSignature,
+            buyer1
         );
         vm.stopPrank();
     }

@@ -14,8 +14,7 @@ import "./interfaces/sellerFinancing/ISellerFinancing.sol";
 import "./interfaces/sanctions/SanctionsList.sol";
 import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
+
 import "./lib/ECDSABridge.sol";
 
 import "../test/common/Console.sol";
@@ -34,7 +33,6 @@ contract NiftyApesSellerFinancing is
     ISellerFinancing
 {
     using AddressUpgradeable for address payable;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
     address private constant SANCTIONS_CONTRACT =
@@ -169,18 +167,17 @@ contract NiftyApesSellerFinancing is
         _markSignatureUsed(offer, signature);
     }
 
-    function buyWithFinancing(Offer memory offer, bytes memory signature)
-        external
-        payable
-        whenNotPaused
-        nonReentrant
-    {
+    function buyWithFinancing(
+        Offer memory offer,
+        bytes memory signature,
+        address buyer
+    ) external payable whenNotPaused nonReentrant {
         address seller = getOfferSigner(offer, signature);
         _require721Owner(offer.nftContractAddress, offer.nftId, seller);
         _requireAvailableSignature(signature);
         _requireSignature65(signature);
         _requireIsNotSanctioned(seller);
-        _requireIsNotSanctioned(msg.sender);
+        _requireIsNotSanctioned(buyer);
         // requireOfferisValid
         require(offer.nftContractAddress != address(0), "00004");
         _requireOfferNotExpired(offer);
@@ -206,13 +203,13 @@ contract NiftyApesSellerFinancing is
 
         // if msg.value is too high, return excess value
         if (msg.value > offer.downPaymentAmount) {
-            payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
+            payable(buyer).sendValue(msg.value - offer.downPaymentAmount);
         }
 
         uint256 totalRoyaltiesPaid = _payRoyalties(
             offer.nftContractAddress,
             offer.nftId,
-            msg.sender,
+            buyer,
             offer.downPaymentAmount
         );
 
@@ -222,7 +219,7 @@ contract NiftyApesSellerFinancing is
         // mint buyer nft
         uint256 buyerNftId = loanNftNonce;
         loanNftNonce++;
-        _safeMint(msg.sender, buyerNftId);
+        _safeMint(buyer, buyerNftId);
 
         // mint seller nft
         uint256 sellerNftId = loanNftNonce;
@@ -247,7 +244,7 @@ contract NiftyApesSellerFinancing is
         );
 
         _addLoanToOwnerEnumeration(
-            msg.sender,
+            buyer,
             offer.nftContractAddress,
             offer.nftId
         );

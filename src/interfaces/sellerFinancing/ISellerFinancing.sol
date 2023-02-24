@@ -43,9 +43,13 @@ interface ISellerFinancing is
     /// @notice Start a loan as buyer using a signed offer.
     /// @param offer The details of the financing offer
     /// @param signature A signed offerHash
-    function buyWithFinancing(Offer calldata offer, bytes memory signature)
-        external
-        payable;
+    /// @param buyer The address of the buyer
+    ///        buyer provided as param to allow for 3rd party marketplace integrations
+    function buyWithFinancing(
+        Offer calldata offer,
+        bytes memory signature,
+        address buyer
+    ) external payable;
 
     /// @notice make a partial payment or full repayment of a loan.
     /// @param nftContractAddress The address of the NFT collection
