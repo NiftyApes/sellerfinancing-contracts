@@ -221,6 +221,7 @@ contract NiftyApesSellerFinancing is
         uint256 totalRoyaltiesPaid = _payRoyalties(
             offer.nftContractAddress,
             offer.nftId,
+            msg.sender,
             offer.downPaymentAmount
         );
 
@@ -316,20 +317,16 @@ contract NiftyApesSellerFinancing is
         uint256 totalRoyaltiesPaid = _payRoyalties(
             nftContractAddress,
             nftId,
+            buyerAddress,
             msgValue
         );
 
         // payout seller
-        // if the seller is a contract that doesnt except ETH, send value back to buyer and continue
-        // otherwise seller could force a default by sending bearer nft to contract that does not accept ETH
-        try
-            // call sendValue deployed as external contract
-            ISendValue(sendValueContractAddress).sendValue{
-                value: msgValue - totalRoyaltiesPaid
-            }(payable(sellerAddress), msgValue - totalRoyaltiesPaid)
-        {} catch {
-            payable(buyerAddress).sendValue(msgValue - totalRoyaltiesPaid);
-        }
+        _conditionalSendValue(
+            sellerAddress,
+            buyerAddress,
+            msgValue - totalRoyaltiesPaid
+        );
 
         // update loan struct
         loan.remainingPrincipal -= uint128(msgValue - periodInterest);
@@ -498,6 +495,7 @@ contract NiftyApesSellerFinancing is
     function _payRoyalties(
         address nftContractAddress,
         uint256 nftId,
+        address from,
         uint256 amount
     ) private returns (uint256 totalRoyaltiesPaid) {
         // query royalty recipients and amounts
@@ -513,9 +511,28 @@ contract NiftyApesSellerFinancing is
         // payout royalties
         for (uint256 i = 0; i < recipients.length; i++) {
             if (amounts[i] > 0) {
-                payable(recipients[i]).sendValue(amounts[i]);
+                _conditionalSendValue(recipients[i], from, amounts[i]);
                 totalRoyaltiesPaid += amounts[i];
             }
+        }
+    }
+
+    /// @dev If "to" is a contract that doesnt except ETH, send value back to "from" and continue
+    /// otherwise "to" could force a default by sending bearer nft to contract that does not accept ETH
+    function _conditionalSendValue(
+        address to,
+        address from,
+        uint256 amount
+    ) internal {
+        require(
+            address(this).balance >= amount,
+            "Address: insufficient balance"
+        );
+
+        (bool success, ) = to.call{value: amount}("");
+
+        if (!success) {
+            (bool success, ) = from.call{value: amount}("");
         }
     }
 
