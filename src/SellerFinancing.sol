@@ -14,6 +14,7 @@ import "./interfaces/sellerFinancing/ISellerFinancing.sol";
 import "./interfaces/sanctions/SanctionsList.sol";
 import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
+import "./interfaces/eip1271/IERC1271.sol";
 
 import "./lib/ECDSABridge.sol";
 
@@ -169,10 +170,13 @@ contract NiftyApesSellerFinancing is
 
     function buyWithFinancing(
         Offer memory offer,
-        bytes memory signature,
+        bytes calldata signature,
         address buyer
     ) external payable whenNotPaused nonReentrant {
         address seller = getOfferSigner(offer, signature);
+        if (_callERC1271isValidSignature(offer.creator, getOfferHash(offer), signature)) {
+            seller = offer.creator;
+        }
         _require721Owner(offer.nftContractAddress, offer.nftId, seller);
         _requireAvailableSignature(signature);
         _requireSignature65(signature);
@@ -479,6 +483,15 @@ contract NiftyApesSellerFinancing is
 
         minimumPayment = minimumPrincipalPayment + periodInterest;
     }
+
+    function _callERC1271isValidSignature(
+    address _addr,
+    bytes32 _hash,
+    bytes calldata _signature
+  ) private view returns (bool) {
+    return IERC1271(_addr).isValidSignature(_hash, _signature) == 0x1626ba7e;
+  }
+
 
     function _payRoyalties(
         address nftContractAddress,

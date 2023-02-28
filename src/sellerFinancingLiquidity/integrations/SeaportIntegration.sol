@@ -6,17 +6,15 @@ import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
-
-import "../interfaces/sellerFinancing/ISellerFinancing.sol";
-import "../interfaces/seaport/ISeaport.sol";
-import "../interfaces/sanctions/SanctionsList.sol";
+import "../../interfaces/seaport/ISeaport.sol";
+import "../../interfaces/sanctions/SanctionsList.sol";
 
 /// @notice Integration of Seaport to seller financing to allow purchase of NFT with financing
-/// @title buyOnSeaportIntegration
+/// @title SeaportIntegration
 /// @custom:version 1.0
 /// @author captnseagraves (captnseagraves.eth)
 /// @custom:contributor zishansami102 (zishansami.eth)
-contract BuyOnSeaportIntegration is
+contract SeaportIntegration is
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
     ERC721HolderUpgradeable,
@@ -27,10 +25,6 @@ contract BuyOnSeaportIntegration is
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
     address private constant SANCTIONS_CONTRACT =
         0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
-
-    address public offersContractAddress;
-
-    address public sellerFinancingContractAddress;
 
     address public seaportContractAddress;
 
@@ -43,10 +37,8 @@ contract BuyOnSeaportIntegration is
 
     /// @notice The initializer for the marketplace integration contract.
     function initialize(
-        address newSellerFinancingContractAddress,
         address newSeaportContractAddress
     ) public initializer {
-        sellerFinancingContractAddress = newSellerFinancingContractAddress;
         seaportContractAddress = newSeaportContractAddress;
 
         OwnableUpgradeable.__Ownable_init();
@@ -55,15 +47,6 @@ contract BuyOnSeaportIntegration is
         ERC721HolderUpgradeable.__ERC721Holder_init();
     }
 
-    function updateSellerFinancingContractAddress(
-        address newSellerFinancingContractAddress
-    ) external onlyOwner {
-        require(
-            address(newSellerFinancingContractAddress) != address(0),
-            "00055"
-        );
-        sellerFinancingContractAddress = newSellerFinancingContractAddress;
-    }
 
     function updateSeaportContractAddress(address newSeaportContractAddress)
         external
@@ -88,57 +71,41 @@ contract BuyOnSeaportIntegration is
         _sanctionsPause = false;
     }
 
-    function buyOnSeaportWithFinancing(
-        ISellerFinancing.Offer calldata offer,
-        bytes memory signature,
-        ISeaport.Order calldata order,
-        bytes32 fulfillerConduitKey
-    ) external payable nonReentrant {
-        _requireIsNotSanctioned(offer.creator);
+    function purchase(
+        address nftContractAddress,
+        uint256 nftId,
+        bytes calldata data
+    ) external payable nonReentrant returns (bool) {
         _requireIsNotSanctioned(msg.sender);
-
-        _validateOrder(order, offer);
+        // decode data
+        (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(data, (ISeaport.Order, bytes32));
+        _validateOrder(order);
 
         uint256 considerationAmount = _calculateConsiderationAmount(order);
 
         // arrange asset amount from borrower side for the purchase
-        require(msg.value >= offer.downPaymentAmount, "00047");
-        if (msg.value > offer.downPaymentAmount) {
-            payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
+        require(msg.value >= considerationAmount, "Insufficient funds for purchase");
+        if (msg.value > considerationAmount) {
+            payable(msg.sender).sendValue(msg.value - considerationAmount);
         }
-
-        // this call will fail as this contract should not have a sufficient current balance
-        // options:
-        // 1. deposit funds into this contract directly
-        // 2. have a management contract that has approved WETH, transfer in, execute, or swap to ETH in this function and execute
-        // 3. we'll also need a management contract to seizeAssets in default and list NFTs for sale and list with financing
-
         require(
             ISeaport(seaportContractAddress).fulfillOrder{
                 value: considerationAmount
             }(order, fulfillerConduitKey),
-            "00048"
+            "Seaport fulfill order request failed"
         );
 
         // approve the sellerFinancing contract for the purchased nft
         // validates that order and offer are for same NFT
-        IERC721Upgradeable(offer.nftContractAddress).approve(
-            sellerFinancingContractAddress,
-            offer.nftId
+        IERC721Upgradeable(nftContractAddress).approve(
+            msg.sender,
+            nftId
         );
-
-        ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing(
-            offer,
-            signature,
-            msg.sender
-        );
-
-        // emit BoughtOnSeaportWithFinancing event
+        return true;
     }
 
     function _validateOrder(
-        ISeaport.Order memory order,
-        ISellerFinancing.Offer memory offer
+        ISeaport.Order memory order
     ) internal pure {
         // requireOrderTokenERC721
         require(
@@ -184,7 +151,4 @@ contract BuyOnSeaportIntegration is
             require(!isToSanctioned, "00017");
         }
     }
-
-    /// @notice This contract needs to accept ETH to acquire enough funds to purchase NFTs
-    receive() external payable {}
 }
