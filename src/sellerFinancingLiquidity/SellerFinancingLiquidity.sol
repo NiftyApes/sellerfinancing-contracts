@@ -13,7 +13,7 @@ import "./interfaces/IPurchaser.sol";
 import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 
 
-contract NiftyApesLiquidity is 
+contract SellerFinancingLiquidity is 
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
     ERC721HolderUpgradeable,
