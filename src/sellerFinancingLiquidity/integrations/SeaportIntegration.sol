@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "../../interfaces/seaport/ISeaport.sol";
 import "../../interfaces/sanctions/SanctionsList.sol";
+import "../interfaces/IPurchaser.sol";
 
 /// @notice Integration of Seaport to seller financing to allow purchase of NFT with financing
 /// @title SeaportIntegration
@@ -18,7 +19,8 @@ contract SeaportIntegration is
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
     ERC721HolderUpgradeable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    IPurchaser
 {
     using AddressUpgradeable for address payable;
 
@@ -75,7 +77,7 @@ contract SeaportIntegration is
         address nftContractAddress,
         uint256 nftId,
         bytes calldata data
-    ) external payable nonReentrant returns (bool) {
+    ) external payable override nonReentrant returns (bool) {
         _requireIsNotSanctioned(msg.sender);
         // decode data
         (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(data, (ISeaport.Order, bytes32));
