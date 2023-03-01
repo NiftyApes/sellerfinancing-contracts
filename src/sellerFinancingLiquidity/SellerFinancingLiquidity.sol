@@ -9,7 +9,8 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "../interfaces/sanctions/SanctionsList.sol";
 import "../interfaces/eip1271/IERC1271.sol";
-import "./interfaces/IPurchaser.sol";
+import "./interfaces/IPurchaseExecuter.sol";
+import "./interfaces/ISaleExecuter.sol";
 import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 
 
@@ -99,7 +100,7 @@ contract SellerFinancingLiquidity is
         }
 
         // execute opreation on receiver contract and send funds for purchase
-        require(IPurchaser(purchaser).purchase{value: offer.price}(
+        require(IPurchaseExecuter(purchaser).executePurchase{value: offer.price}(
             offer.nftContractAddress,
             offer.nftId,
             data
@@ -126,6 +127,60 @@ contract SellerFinancingLiquidity is
             msg.sender
         );
 
+    }
+
+    function seizeAndSellAsset(
+        address nftContractAddress,
+        uint256 nftId,
+        address saleExecuter,
+        uint256 minSaleAmount, // for slippage control
+        bytes calldata data
+    ) external whenNotPaused nonReentrant returns (uint256 saleAmountReceived)
+    {
+        ISellerFinancing(sellerFinancingContractAddress).seizeAsset(nftContractAddress, nftId);
+        saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, minSaleAmount, data);
+    }
+
+    function sellAsset(
+        address nftContractAddress,
+        uint256 nftId,
+        address saleExecuter,
+        uint256 minSaleAmount,
+        bytes calldata data
+    ) external whenNotPaused nonReentrant returns (uint256 saleAmountReceived)
+    {
+        saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, minSaleAmount, data);
+    }
+
+    function _sellAsset(
+        address nftContractAddress,
+        uint256 nftId,
+        address saleExecuter,
+        uint256 minSaleAmount,
+        bytes calldata data
+    ) private returns (uint256 saleAmountReceived)
+    {
+        require(msg.sender == offerSigner, "Unauthorised");
+        
+        // transfer NFT to sale executor
+        IERC721Upgradeable(nftContractAddress).safeTransferFrom(address(this), saleExecuter, nftId);
+
+        uint256 contractBalanceBefore = address(this).balance;
+        
+        // function must send min sale amount enforced by the call
+        require(
+            ISaleExecuter(saleExecuter).executeSale(
+                nftContractAddress,
+                nftId,
+                data
+            ),
+            "Sale execution failed"
+        );
+        uint256 contractBalanceAfter = address(this).balance;
+
+        saleAmountReceived = contractBalanceAfter - contractBalanceBefore;
+        // Check amount recieved is more than minSaleAmount
+        require(saleAmountReceived >= minSaleAmount, "Amount recieved is less than minimum enforced");
     }
 
     function _transferNft(
