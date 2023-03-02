@@ -17,8 +17,8 @@ contract DeploySellerFinancingScript is Script {
     ISellerFinancing sellerFinancing;
 
     function run() external {
-        address goerliRoyaltiesEngineAddress = 0xe7c9Cb6D966f76f3B5142167088927Bf34966a1f;
-        address goerliMultisigAddress = 0x213dE8CcA7C414C0DE08F456F9c4a2Abc4104028;
+        address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
+        address mainnetMultisigAddress = 0xbe9B799D066A51F77d353Fc72e832f3803789362;
 
         vm.startBroadcast();
 
@@ -40,21 +40,18 @@ contract DeploySellerFinancingScript is Script {
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
 
         // initialize proxies
-        sellerFinancing.initialize(goerliRoyaltiesEngineAddress);
-
-        // pauseSanctions for Goerli as Chainalysis contact doesnt exists there
-        sellerFinancing.pauseSanctions();
+        sellerFinancing.initialize(mainnetRoyaltiesEngineAddress);
 
         // change ownership of implementation contracts
-        sellerFinancingImplementation.transferOwnership(goerliMultisigAddress);
+        sellerFinancingImplementation.transferOwnership(mainnetMultisigAddress);
 
         // change ownership of proxies
         IOwnership(address(sellerFinancing)).transferOwnership(
-            goerliMultisigAddress
+            mainnetMultisigAddress
         );
 
         // change ownership of proxyAdmin
-        sellerFinancingProxyAdmin.transferOwnership(goerliMultisigAddress);
+        sellerFinancingProxyAdmin.transferOwnership(mainnetMultisigAddress);
 
         vm.stopBroadcast();
     }
