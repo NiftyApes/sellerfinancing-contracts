@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
 import "./interfaces/sellerFinancing/ISellerFinancing.sol";
 import "./interfaces/sanctions/SanctionsList.sol";
 import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
+import "./interfaces/seaport/ISeaport.sol";
 import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
 import "./lib/ECDSABridge.sol";
 
@@ -52,6 +53,10 @@ contract NiftyApesSellerFinancing is
 
     /// @dev The stored address for the royalties engine
     address private royaltiesEngineAddress;
+
+    address public wethContractAddress;
+
+    address public seaportContractAddress;
 
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
@@ -408,6 +413,142 @@ contract NiftyApesSellerFinancing is
         emit AssetSeized(nftContractAddress, nftId, loan);
 
         delete _loans[nftContractAddress][nftId];
+    }
+
+    function instantSell(
+        address nftContractAddress,
+        uint256 nftId,
+        bytes calldata data
+    ) external whenNotPaused nonReentrant {
+        // require statements
+        // get loan
+
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+        address buyerAddress = ownerOf(loan.buyerNftId);
+        address sellerAddress = ownerOf(loan.sellerNftId);
+
+        _requireNftOwner(loan);
+        _requireIsNotSanctioned(msg.sender);
+        _requireIsNotSanctioned(buyerAddress);
+        require(
+            _currentTimestamp32() <
+                loan.periodEndTimestamp + loan.periodDuration,
+            "cannot make payment, past soft grace period"
+        );
+
+        uint256 periodInterest;
+
+        // if in the current period, else prior to period minimumPayment and interest should remain 0
+        if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
+            (, periodInterest) = calculateMinimumPayment(loan);
+        }
+
+        // caculate the total possible payment
+        uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
+
+        uint256 assetBalanceBefore = address(this).balance();
+
+        // approve the NFT for Seaport conduit
+        IERC721Upgradeable(nftContractAddress).approve(
+            seaportContractAddress,
+            nftId
+        );
+
+        // verify marketplace order
+
+        (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(
+            data,
+            (ISeaport.Order, bytes32)
+        );
+        _requireValidOrderAssets(
+            order,
+            nftContractAddress,
+            nftId,
+            wethContractAddress
+        );
+
+        // execute sale
+        require(
+            ISeaport(seaportContractAddress).fulfillOrder(
+                order,
+                fulfillerConduitKey
+            ),
+            "00048"
+        );
+
+        uint256 assetBalanceAfter = address(this).balance();
+
+        // require assets received are enough to settle the loan
+        require(
+            (assetBalanceAfter - assetBalanceBefore) >= totalPossiblePayment,
+            "00057"
+        );
+
+        // payout seller
+        payable(sellerAddress).sendValue(totalPossiblePayment);
+
+        // if there is a profit, payout buyer
+        if ((assetBalanceAfter - assetBalanceBefore) > totalPossiblePayment) {
+            // payout buyer
+            payable(buyerAddress).sendValue(
+                (assetBalanceAfter - assetBalanceBefore) - totalPossiblePayment
+            );
+        }
+
+        // emit sell event
+        emit InstantSell(nftContractAddress, nftId, loan);
+
+        _removeLoanFromOwnerEnumeration(
+            buyerAddress,
+            nftContractAddress,
+            nftId
+        );
+
+        // burn buyer nft
+        _burn(loan.buyerNftId);
+
+        // burn seller nft
+        _burn(loan.sellerNftId);
+
+        // delete loan
+        delete _loans[nftContractAddress][nftId];
+    }
+
+    function _requireValidOrderAssets(
+        ISeaport.Order memory order,
+        address nftContractAddress,
+        uint256 nftId
+    ) external view {
+        require(
+            order.parameters.consideration[0].itemType ==
+                ISeaport.ItemType.ERC721,
+            "00067"
+        );
+        require(
+            order.parameters.consideration[0].token == nftContractAddress,
+            "00067"
+        );
+        require(
+            order.parameters.consideration[0].identifierOrCriteria == nftId,
+            "00067"
+        );
+        require(
+            order.parameters.offer[0].itemType == ISeaport.ItemType.ERC20,
+            "00067"
+        );
+        require(
+            order.parameters.consideration[1].itemType ==
+                ISeaport.ItemType.ERC20,
+            "00067"
+        );
+        require(
+            order.parameters.offer[0].token == wethContractAddress,
+            "00067"
+        );
+        require(
+            order.parameters.consideration[1].token == wethContractAddress,
+            "00067"
+        );
     }
 
     function flashClaim(
