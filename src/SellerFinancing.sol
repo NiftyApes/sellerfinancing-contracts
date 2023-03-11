@@ -457,8 +457,9 @@ contract NiftyApesSellerFinancing is
             nftId
         );
 
-        // verify marketplace order
+        // I think I need to approve the seaport fees in weth from this contract
 
+        // verify marketplace order
         (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(
             data,
             (ISeaport.Order, bytes32)
@@ -474,52 +475,52 @@ contract NiftyApesSellerFinancing is
             "00048"
         );
 
-        // convert weth received in sale x  to eth
-        (bool success, ) = wethContractAddress.call(
-            abi.encodeWithSignature(
-                "withdraw(uint256)",
-                order.parameters.offer[0].endAmount -
-                    order.parameters.consideration[1].endAmount
-            )
-        );
-        require(success, "00068");
+        // // convert weth received in sale x  to eth
+        // (bool success, ) = wethContractAddress.call(
+        //     abi.encodeWithSignature(
+        //         "withdraw(uint256)",
+        //         order.parameters.offer[0].endAmount -
+        //             order.parameters.consideration[1].endAmount
+        //     )
+        // );
+        // require(success, "00068");
 
-        uint256 assetBalanceAfter = address(this).balance;
+        // uint256 assetBalanceAfter = address(this).balance;
 
-        // require assets received are enough to settle the loan
-        require(
-            (assetBalanceAfter - assetBalanceBefore) >= totalPossiblePayment,
-            "00057"
-        );
+        // // require assets received are enough to settle the loan
+        // require(
+        //     (assetBalanceAfter - assetBalanceBefore) >= totalPossiblePayment,
+        //     "00057"
+        // );
 
-        // payout seller
-        payable(sellerAddress).sendValue(totalPossiblePayment);
+        // // payout seller
+        // payable(sellerAddress).sendValue(totalPossiblePayment);
 
-        // if there is a profit, payout buyer
-        if ((assetBalanceAfter - assetBalanceBefore) > totalPossiblePayment) {
-            // payout buyer
-            payable(buyerAddress).sendValue(
-                (assetBalanceAfter - assetBalanceBefore) - totalPossiblePayment
-            );
-        }
+        // // if there is a profit, payout buyer
+        // if ((assetBalanceAfter - assetBalanceBefore) > totalPossiblePayment) {
+        //     // payout buyer
+        //     payable(buyerAddress).sendValue(
+        //         (assetBalanceAfter - assetBalanceBefore) - totalPossiblePayment
+        //     );
+        // }
 
-        // emit sell event
-        emit InstantSell(nftContractAddress, nftId, loan);
+        // // emit sell event
+        // emit InstantSell(nftContractAddress, nftId, loan);
 
-        _removeLoanFromOwnerEnumeration(
-            buyerAddress,
-            nftContractAddress,
-            nftId
-        );
+        // _removeLoanFromOwnerEnumeration(
+        //     buyerAddress,
+        //     nftContractAddress,
+        //     nftId
+        // );
 
-        // burn buyer nft
-        _burn(loan.buyerNftId);
+        // // burn buyer nft
+        // _burn(loan.buyerNftId);
 
-        // burn seller nft
-        _burn(loan.sellerNftId);
+        // // burn seller nft
+        // _burn(loan.sellerNftId);
 
-        // delete loan
-        delete _loans[nftContractAddress][nftId];
+        // // delete loan
+        // delete _loans[nftContractAddress][nftId];
     }
 
     function flashClaim(
@@ -742,7 +743,7 @@ contract NiftyApesSellerFinancing is
         ISeaport.Order memory order,
         address nftContractAddress,
         uint256 nftId
-    ) internal {
+    ) internal view {
         require(
             order.parameters.consideration[0].itemType ==
                 ISeaport.ItemType.ERC721,

@@ -16,6 +16,9 @@ contract DeploySellerFinancingScript is Script {
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
 
+    address SEAPORT_ADDRESS = 0x00000000006c3852cbEf3e08E8dF289169EdE581;
+    address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
     function run() external {
         address goerliRoyaltiesEngineAddress = 0xe7c9Cb6D966f76f3B5142167088927Bf34966a1f;
         address goerliMultisigAddress = 0x213dE8CcA7C414C0DE08F456F9c4a2Abc4104028;
@@ -24,7 +27,11 @@ contract DeploySellerFinancingScript is Script {
 
         // deploy and initialize implementation contracts
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(address(0));
+        sellerFinancingImplementation.initialize(
+            address(0),
+            address(0),
+            address(0)
+        );
 
         // deploy proxy admins
         sellerFinancingProxyAdmin = new ProxyAdmin();
@@ -40,7 +47,11 @@ contract DeploySellerFinancingScript is Script {
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
 
         // initialize proxies
-        sellerFinancing.initialize(goerliRoyaltiesEngineAddress);
+        sellerFinancing.initialize(
+            goerliRoyaltiesEngineAddress,
+            SEAPORT_ADDRESS,
+            WETH_ADDRESS
+        );
 
         // pauseSanctions for Goerli as Chainalysis contact doesnt exists there
         sellerFinancing.pauseSanctions();

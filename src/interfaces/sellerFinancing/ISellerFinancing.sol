@@ -59,6 +59,12 @@ interface ISellerFinancing is
     /// @param nftId The id of a specified NFT
     function seizeAsset(address nftContractAddress, uint256 nftId) external;
 
+    function instantSell(
+        address nftContractAddress,
+        uint256 nftId,
+        bytes calldata data
+    ) external;
+
     /// @notice Allows an nftOwner to claim their nft and perform arbtrary actions (claim airdrops, vote in goverance, etc)
     ///         while maintaining their loan
     /// @param receiver The address of the external contract that will receive and return the nft
@@ -106,5 +112,9 @@ interface ISellerFinancing is
 
     function unpauseSanctions() external;
 
-    function initialize(address newRoyaltiesEngineAddress) external;
+    function initialize(
+        address newRoyaltiesEngineAddress,
+        address newSeaportContractAddress,
+        address newWethContractAddress
+    ) external;
 }
