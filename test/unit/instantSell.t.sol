@@ -4,12 +4,14 @@ pragma solidity 0.8.13;
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
 contract TestInstantSell is Test, ISellerFinancingStructs, OffersLoansFixtures {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressUpgradeable for address payable;
 
     function setUp() public override {
@@ -100,6 +102,13 @@ contract TestInstantSell is Test, ISellerFinancingStructs, OffersLoansFixtures {
             loan
         );
 
+        uint256 profitForTheBorrower = 1 ether; // assume any profit the borrower wants
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = (((loan.remainingPrincipal + periodInterest) +
+            profitForTheBorrower) *
+            40 +
+            38) / 39;
+
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
             offer.nftId,
@@ -108,9 +117,12 @@ contract TestInstantSell is Test, ISellerFinancingStructs, OffersLoansFixtures {
             users[0]
         );
 
-        mintWeth(users[0], bidPrice);
-
+        // transfer weth from a weth whale
+        vm.startPrank(0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E);
+        IERC20Upgradeable(WETH_ADDRESS).transfer(users[0], bidPrice);
+        vm.stopPrank();
         vm.startPrank(users[0]);
+
         IERC20Upgradeable(order[0].parameters.offer[0].token).approve(
             0x1E0049783F008A0085193E00003D00cd54003c71,
             bidPrice
@@ -219,6 +231,29 @@ contract TestInstantSell is Test, ISellerFinancingStructs, OffersLoansFixtures {
             endAmount: seaportFeeAmount,
             recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
         });
+    }
+
+    function _getOrderHash(ISeaport.Order memory order)
+        internal
+        view
+        returns (bytes32 orderHash)
+    {
+        // Derive order hash by supplying order parameters along with counter.
+        orderHash = ISeaport(SEAPORT_ADDRESS).getOrderHash(
+            ISeaport.OrderComponents(
+                order.parameters.offerer,
+                order.parameters.zone,
+                order.parameters.offer,
+                order.parameters.consideration,
+                order.parameters.orderType,
+                order.parameters.startTime,
+                order.parameters.endTime,
+                order.parameters.zoneHash,
+                order.parameters.salt,
+                order.parameters.conduitKey,
+                ISeaport(SEAPORT_ADDRESS).getCounter(order.parameters.offerer)
+            )
+        );
     }
 
     // function _test_unit_cannot_SeaportFlashSellIntegration_invalidOrderToken(
