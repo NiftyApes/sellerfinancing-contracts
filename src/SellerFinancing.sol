@@ -420,9 +420,6 @@ contract NiftyApesSellerFinancing is
         uint256 nftId,
         bytes calldata data
     ) external whenNotPaused nonReentrant {
-        // require statements
-        // get loan
-
         Loan storage loan = _getLoan(nftContractAddress, nftId);
         address buyerAddress = ownerOf(loan.buyerNftId);
         address sellerAddress = ownerOf(loan.sellerNftId);
@@ -446,7 +443,7 @@ contract NiftyApesSellerFinancing is
         // caculate the total possible payment
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
-        uint256 assetBalanceBefore = address(this).balance();
+        uint256 assetBalanceBefore = address(this).balance;
 
         // approve the NFT for Seaport conduit
         IERC721Upgradeable(nftContractAddress).approve(
@@ -460,12 +457,7 @@ contract NiftyApesSellerFinancing is
             data,
             (ISeaport.Order, bytes32)
         );
-        _requireValidOrderAssets(
-            order,
-            nftContractAddress,
-            nftId,
-            wethContractAddress
-        );
+        _requireValidOrderAssets(order, nftContractAddress, nftId);
 
         // execute sale
         require(
@@ -476,7 +468,17 @@ contract NiftyApesSellerFinancing is
             "00048"
         );
 
-        uint256 assetBalanceAfter = address(this).balance();
+        // convert weth received in sale x  to eth
+        (bool success, ) = wethContractAddress.call(
+            abi.encodeWithSignature(
+                "withdraw(uint256)",
+                order.parameters.offer[0].endAmount -
+                    order.parameters.consideration[1].endAmount
+            )
+        );
+        require(success, "00068");
+
+        uint256 assetBalanceAfter = address(this).balance;
 
         // require assets received are enough to settle the loan
         require(
@@ -512,43 +514,6 @@ contract NiftyApesSellerFinancing is
 
         // delete loan
         delete _loans[nftContractAddress][nftId];
-    }
-
-    function _requireValidOrderAssets(
-        ISeaport.Order memory order,
-        address nftContractAddress,
-        uint256 nftId
-    ) external view {
-        require(
-            order.parameters.consideration[0].itemType ==
-                ISeaport.ItemType.ERC721,
-            "00067"
-        );
-        require(
-            order.parameters.consideration[0].token == nftContractAddress,
-            "00067"
-        );
-        require(
-            order.parameters.consideration[0].identifierOrCriteria == nftId,
-            "00067"
-        );
-        require(
-            order.parameters.offer[0].itemType == ISeaport.ItemType.ERC20,
-            "00067"
-        );
-        require(
-            order.parameters.consideration[1].itemType ==
-                ISeaport.ItemType.ERC20,
-            "00067"
-        );
-        require(
-            order.parameters.offer[0].token == wethContractAddress,
-            "00067"
-        );
-        require(
-            order.parameters.consideration[1].token == wethContractAddress,
-            "00067"
-        );
     }
 
     function flashClaim(
@@ -765,6 +730,43 @@ contract NiftyApesSellerFinancing is
 
         // decrease the owner's collection balance by one
         _balances[owner][nftContractAddress] -= 1;
+    }
+
+    function _requireValidOrderAssets(
+        ISeaport.Order memory order,
+        address nftContractAddress,
+        uint256 nftId
+    ) internal {
+        require(
+            order.parameters.consideration[0].itemType ==
+                ISeaport.ItemType.ERC721,
+            "00067"
+        );
+        require(
+            order.parameters.consideration[0].token == nftContractAddress,
+            "00067"
+        );
+        require(
+            order.parameters.consideration[0].identifierOrCriteria == nftId,
+            "00067"
+        );
+        require(
+            order.parameters.offer[0].itemType == ISeaport.ItemType.ERC20,
+            "00067"
+        );
+        require(
+            order.parameters.consideration[1].itemType ==
+                ISeaport.ItemType.ERC20,
+            "00067"
+        );
+        require(
+            order.parameters.offer[0].token == wethContractAddress,
+            "00067"
+        );
+        require(
+            order.parameters.consideration[1].token == wethContractAddress,
+            "00067"
+        );
     }
 
     function _currentTimestamp32() internal view returns (uint32) {
