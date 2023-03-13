@@ -7,19 +7,18 @@ import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271Upgradeable.sol";
 import "../interfaces/sanctions/SanctionsList.sol";
-import "../interfaces/eip1271/IERC1271.sol";
-import "./interfaces/IPurchaseExecuter.sol";
-import "./interfaces/ISaleExecuter.sol";
+import "../externalExecuters/interfaces/IPurchaseExecuter.sol";
+import "../externalExecuters/interfaces/ISaleExecuter.sol";
 import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 
-
-contract SellerFinancingLiquidity is 
+contract SellerFinancingMaker is 
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
     ERC721HolderUpgradeable,
     PausableUpgradeable,
-    IERC1271
+    IERC1271Upgradeable
 {
     using AddressUpgradeable for address payable;
 
@@ -29,7 +28,7 @@ contract SellerFinancingLiquidity is
 
     address public sellerFinancingContractAddress;
 
-    address public offerSigner;
+    address public allowedOfferSigner;
 
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
@@ -44,9 +43,11 @@ contract SellerFinancingLiquidity is
 
     /// @notice The initializer for the marketplace integration contract.
     function initialize(
-        address newSellerFinancingContractAddress
+        address newSellerFinancingContractAddress,
+        address newAllowedOfferSigner
     ) public initializer {
         sellerFinancingContractAddress = newSellerFinancingContractAddress;
+        allowedOfferSigner = newAllowedOfferSigner;
 
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
@@ -64,6 +65,12 @@ contract SellerFinancingLiquidity is
         sellerFinancingContractAddress = newSellerFinancingContractAddress;
     }
 
+    function updateAllowedOfferSigner(
+        address newAllowedOfferSigner
+    ) external onlyOwner {
+        allowedOfferSigner = newAllowedOfferSigner;
+    }
+
     /** @dev    See {IERC1271-isValidSignature}.
      *           returns empty bytes if `hash` provided is not equal to the hash of expected
      *           current valid offer struct.
@@ -73,7 +80,7 @@ contract SellerFinancingLiquidity is
         bytes memory signature
     ) public view override returns (bytes4 magicValue) {
         if (
-            ECDSAUpgradeable.recover(hash, signature) == offerSigner
+            ECDSAUpgradeable.recover(hash, signature) == allowedOfferSigner
         ) {
             magicValue = this.isValidSignature.selector;
         }
@@ -86,31 +93,33 @@ contract SellerFinancingLiquidity is
     function buyWithFinancing(
         ISellerFinancing.Offer calldata offer,
         bytes memory signature,
-        address purchaser,
+        address buyer,
+        address purchaseExecuter,
         bytes calldata data
     ) external payable whenNotPaused nonReentrant {
         _requireIsNotSanctioned(offer.creator);
         _requireIsNotSanctioned(msg.sender);
+        _requireIsNotSanctioned(buyer);
         _requireValidSigner(ISellerFinancing(sellerFinancingContractAddress).getOfferSigner(offer, signature));
-        
-        // arrange asset amount from borrower side for the purchase
+
+        // arrange asset amount from the buyer side for the purchase
         require(msg.value >= offer.downPaymentAmount, "Insufficient funds received for downPaymentAmount");
         if (msg.value > offer.downPaymentAmount) {
-            payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
+            payable(buyer).sendValue(msg.value - offer.downPaymentAmount);
         }
 
         // execute opreation on receiver contract and send funds for purchase
-        require(IPurchaseExecuter(purchaser).executePurchase{value: offer.price}(
+        require(IPurchaseExecuter(purchaseExecuter).executePurchase{value: offer.price}(
             offer.nftContractAddress,
             offer.nftId,
             data
         ), "Purchase was unsuccessful!");
-        
-        // Transfer nft from receiver contract to lending contract as collateral, revert on failure
+
+        // Transfer nft from purchaseExecuter contract to this, revert on failure
         _transferNft(
             offer.nftContractAddress,
             offer.nftId,
-            purchaser,
+            purchaseExecuter,
             address(this)
         );
 
@@ -124,63 +133,8 @@ contract SellerFinancingLiquidity is
         ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
             signature,
-            msg.sender
+            buyer
         );
-
-    }
-
-    function seizeAndSellAsset(
-        address nftContractAddress,
-        uint256 nftId,
-        address saleExecuter,
-        uint256 minSaleAmount, // for slippage control
-        bytes calldata data
-    ) external whenNotPaused nonReentrant returns (uint256 saleAmountReceived)
-    {
-        ISellerFinancing(sellerFinancingContractAddress).seizeAsset(nftContractAddress, nftId);
-        saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, minSaleAmount, data);
-    }
-
-    function sellAsset(
-        address nftContractAddress,
-        uint256 nftId,
-        address saleExecuter,
-        uint256 minSaleAmount,
-        bytes calldata data
-    ) external whenNotPaused nonReentrant returns (uint256 saleAmountReceived)
-    {
-        saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, minSaleAmount, data);
-    }
-
-    function _sellAsset(
-        address nftContractAddress,
-        uint256 nftId,
-        address saleExecuter,
-        uint256 minSaleAmount,
-        bytes calldata data
-    ) private returns (uint256 saleAmountReceived)
-    {
-        require(msg.sender == offerSigner, "Unauthorised");
-        
-        // transfer NFT to sale executor
-        IERC721Upgradeable(nftContractAddress).safeTransferFrom(address(this), saleExecuter, nftId);
-
-        uint256 contractBalanceBefore = address(this).balance;
-        
-        // function must send min sale amount enforced by the call
-        require(
-            ISaleExecuter(saleExecuter).executeSale(
-                nftContractAddress,
-                nftId,
-                data
-            ),
-            "Sale execution failed"
-        );
-        uint256 contractBalanceAfter = address(this).balance;
-
-        saleAmountReceived = contractBalanceAfter - contractBalanceBefore;
-        // Check amount recieved is more than minSaleAmount
-        require(saleAmountReceived >= minSaleAmount, "Amount recieved is less than minimum enforced");
     }
 
     function _transferNft(
@@ -201,11 +155,13 @@ contract SellerFinancingLiquidity is
     }
 
     function _requireValidSigner(address _offerSigner) internal view {
-        if (_offerSigner != offerSigner) {
+        if (_offerSigner != allowedOfferSigner) {
             revert InvalidOfferSigner();
         }
     }
 
-    /// @notice This contract needs to accept ETH to acquire enough funds to purchase NFTs
-    receive() external payable {}
+    /// @notice This contract needs to accept ETH to acquire funds to purchase NFTs
+    receive() external payable {
+        _checkOwner();
+    }
 }

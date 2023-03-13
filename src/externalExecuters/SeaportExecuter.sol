@@ -1,33 +1,33 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "../../interfaces/seaport/ISeaport.sol";
-import "../../interfaces/sanctions/SanctionsList.sol";
-import "../interfaces/IPurchaseExecuter.sol";
-import "../interfaces/ISaleExecuter.sol";
+import "@openzeppelin-norm/contracts/access/Ownable.sol";
+import "@openzeppelin-norm/contracts/security/Pausable.sol";
+import "@openzeppelin-norm/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin-norm/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin-norm/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin-norm/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin-norm/contracts/token/ERC20/IERC20.sol";
+import "../interfaces/seaport/ISeaport.sol";
+import "../interfaces/sanctions/SanctionsList.sol";
+import "./interfaces/IPurchaseExecuter.sol";
+import "./interfaces/ISaleExecuter.sol";
 
 /// @notice Integration of Seaport to seller financing to allow purchase and sale of NFTs with financing
-/// @title SeaportIntegration
+/// @title SeaportExecuter
 /// @custom:version 1.0
-/// @author captnseagraves (captnseagraves.eth)
-/// @custom:contributor zishansami102 (zishansami.eth)
-contract SeaportIntegration is
-    OwnableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    ERC721HolderUpgradeable,
-    PausableUpgradeable,
+/// @author zishansami102 (zishansami.eth)
+/// @custom:contributor captnseagraves (captnseagraves.eth)
+contract SeaportExecuter is
+    Ownable,
+    ReentrancyGuard,
+    ERC721Holder,
+    Pausable,
     IPurchaseExecuter,
     ISaleExecuter
 {
-    using AddressUpgradeable for address payable;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using Address for address payable;
+    using SafeERC20 for IERC20;
 
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
     address private constant SANCTIONS_CONTRACT =
@@ -40,22 +40,12 @@ contract SeaportIntegration is
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
 
-    /// @dev This empty reserved space is put in place to allow future versions to add new
-    /// variables without shifting storage.
-    uint256[500] private __gap;
-
-    /// @notice The initializer for the marketplace integration contract.
-    function initialize(
-        address newSeaportContractAddress
-    ) public initializer {
-        seaportContractAddress = newSeaportContractAddress;
-
-        OwnableUpgradeable.__Ownable_init();
-        PausableUpgradeable.__Pausable_init();
-        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
-        ERC721HolderUpgradeable.__ERC721Holder_init();
+    constructor (
+        address newSeaportContractAddress,
+        address newWethContractAddress
+    ) public {
+        
     }
-
 
     function updateSeaportContractAddress(address newSeaportContractAddress)
         external
@@ -92,7 +82,7 @@ contract SeaportIntegration is
         address nftContractAddress,
         uint256 nftId,
         bytes calldata data
-    ) external payable override nonReentrant returns (bool) {
+    ) external payable override nonReentrant whenNotPaused returns (bool) {
         _requireIsNotSanctioned(msg.sender);
         // decode data
         (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(data, (ISeaport.Order, bytes32));
@@ -114,7 +104,7 @@ contract SeaportIntegration is
 
         // approve the sellerFinancing contract for the purchased nft
         // validates that order and offer are for same NFT
-        IERC721Upgradeable(nftContractAddress).approve(
+        IERC721(nftContractAddress).approve(
             msg.sender,
             nftId
         );
@@ -125,15 +115,15 @@ contract SeaportIntegration is
         address nftContractAddress,
         uint256 nftId,
         bytes calldata data
-    ) external returns (bool) {
+    ) external override nonReentrant whenNotPaused returns (bool) {
         // approve the NFT for Seaport conduit
-        IERC721Upgradeable(nftContractAddress).approve(seaportContractAddress, nftId);
+        IERC721(nftContractAddress).approve(seaportContractAddress, nftId);
 
         // decode data
         (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(data, (ISeaport.Order, bytes32));
         _validateSaleOrder(order, nftContractAddress, nftId);
 
-        IERC20Upgradeable asset = IERC20Upgradeable(wethContractAddress);
+        IERC20 asset = IERC20(wethContractAddress);
 
         uint256 allowance = asset.allowance(address(this), seaportContractAddress);
         if (allowance > 0) {

@@ -10,11 +10,12 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271Upgradeable.sol";
 import "./interfaces/sellerFinancing/ISellerFinancing.sol";
 import "./interfaces/sanctions/SanctionsList.sol";
 import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
-import "./interfaces/eip1271/IERC1271.sol";
+import "./externalExecuters/interfaces/ISaleExecuter.sol";
 
 import "./lib/ECDSABridge.sol";
 
@@ -268,6 +269,20 @@ contract NiftyApesSellerFinancing is
         whenNotPaused
         nonReentrant
     {
+        // make payment
+        address buyer = _makePayment(nftContractAddress, nftId, msg.value);
+        // transfer nft to buyer if loan closed
+        if (buyer != address(0)) {
+            _transferNft(nftContractAddress, nftId, address(this), buyer);
+        }
+    }
+
+    function _makePayment(address nftContractAddress, uint256 nftId, uint256 amountReceived)
+        internal
+        whenNotPaused
+        nonReentrant
+        returns (address buyer)
+    {
         Loan storage loan = _getLoan(nftContractAddress, nftId);
         address buyerAddress = ownerOf(loan.buyerNftId);
         address sellerAddress = ownerOf(loan.sellerNftId);
@@ -281,57 +296,44 @@ contract NiftyApesSellerFinancing is
             "cannot make payment, past soft grace period"
         );
 
-        uint256 totalMinimumPayment;
-        uint256 periodInterest;
-
-        // if in the current period, else prior to period minimumPayment and interest should remain 0
-        if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
-            (totalMinimumPayment, periodInterest) = calculateMinimumPayment(
-                loan
-            );
-        }
+        (uint256 totalMinimumPayment, uint256 periodInterest) = calculateMinimumPayment(loan);
 
         // caculate the total possible payment
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
-        // set msgValue value
-        uint256 msgValue = msg.value;
-        //require msgValue to be larger than the total minimum payment
-        require(msgValue >= totalMinimumPayment, "00047");
-        // if msgValue is greater than the totalPossiblePayment send back the difference
-        if (msgValue > totalPossiblePayment) {
+        // // set amountReceived value
+        // uint256 amountReceived = msg.value;
+        //require amountReceived to be larger than the total minimum payment
+        require(amountReceived >= totalMinimumPayment, "00047");
+        // if amountReceived is greater than the totalPossiblePayment send back the difference
+        if (amountReceived > totalPossiblePayment) {
             //send back value
-            payable(buyerAddress).sendValue(msgValue - totalPossiblePayment);
-            // adjust msgValue value
-            msgValue = totalPossiblePayment;
+            payable(buyerAddress).sendValue(amountReceived - totalPossiblePayment);
+            // adjust amountReceived value
+            amountReceived = totalPossiblePayment;
         }
 
         uint256 totalRoyaltiesPaid = _payRoyalties(
             nftContractAddress,
             nftId,
             buyerAddress,
-            msgValue
+            amountReceived
         );
 
         // payout seller
         _conditionalSendValue(
             sellerAddress,
             buyerAddress,
-            msgValue - totalRoyaltiesPaid
+            amountReceived - totalRoyaltiesPaid
         );
 
         // update loan struct
-        loan.remainingPrincipal -= uint128(msgValue - periodInterest);
+        loan.remainingPrincipal -= uint128(amountReceived - periodInterest);
 
         // check if remianingPrincipal is 0
         if (loan.remainingPrincipal == 0) {
-            // if principal == 0 transfer nft and end loan
-            _transferNft(
-                nftContractAddress,
-                nftId,
-                address(this),
-                buyerAddress
-            );
+            // if principal == 0 set nft transfer address to the buyer
+            buyer = buyerAddress;
             _removeLoanFromOwnerEnumeration(
                 buyerAddress,
                 nftContractAddress,
@@ -345,7 +347,7 @@ contract NiftyApesSellerFinancing is
             emit PaymentMade(
                 nftContractAddress,
                 nftId,
-                msgValue,
+                amountReceived,
                 totalRoyaltiesPaid,
                 periodInterest,
                 loan
@@ -368,7 +370,7 @@ contract NiftyApesSellerFinancing is
             emit PaymentMade(
                 nftContractAddress,
                 nftId,
-                msgValue,
+                amountReceived,
                 totalRoyaltiesPaid,
                 periodInterest,
                 loan
@@ -378,7 +380,7 @@ contract NiftyApesSellerFinancing is
 
     // currently callable by anyone, should it only be callable by the seller?
     function seizeAsset(address nftContractAddress, uint256 nftId)
-        external
+        public
         whenNotPaused
         nonReentrant
     {
@@ -446,6 +448,71 @@ contract NiftyApesSellerFinancing is
         emit FlashClaim(nftContractAddress, nftId, receiverAddress);
     }
 
+    function instantSell(
+        address nftContractAddress,
+        uint256 nftId,
+        address saleExecuter,
+        uint256 minProfitAmount, // for slippage control
+        bytes calldata data
+    ) external whenNotPaused nonReentrant {
+        // calculate total payment required to close the loan
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+        (,uint256 periodInterest) = calculateMinimumPayment(loan);
+        uint256 totalPaymentRequired = loan.remainingPrincipal + periodInterest;
+        
+        // sell the asset to get minimum totalPaymentRequired + minProfit
+        uint256 saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, totalPaymentRequired + minProfitAmount, data);
+        
+        // make payment to close the loan and transfer rest to the buyer
+        _makePayment(nftContractAddress, nftId, saleAmountReceived);
+
+        // emit sell event
+        emit InstantSell(nftContractAddress, nftId, saleAmountReceived);
+    }
+
+    function seizeAndSellAsset(
+        address nftContractAddress,
+        uint256 nftId,
+        address saleExecuter,
+        uint256 minSaleAmount, // for slippage control
+        bytes calldata data
+    ) external whenNotPaused nonReentrant returns (uint256 saleAmountReceived)
+    {
+        // seize the asset and close the loan
+        seizeAsset(nftContractAddress, nftId);
+
+        // sell the asset to get minimum sale amount
+        saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, minSaleAmount, data);
+    }
+
+    function _sellAsset(
+        address nftContractAddress,
+        uint256 nftId,
+        address saleExecuter,
+        uint256 minSaleAmount,
+        bytes calldata data
+    ) private returns (uint256 saleAmountReceived)
+    {   
+        // transfer NFT to sale executor
+        IERC721Upgradeable(nftContractAddress).safeTransferFrom(address(this), saleExecuter, nftId);
+
+        uint256 contractBalanceBefore = address(this).balance;
+        // function must send min sale amount enforced by the call
+        require(
+            ISaleExecuter(saleExecuter).executeSale(
+                nftContractAddress,
+                nftId,
+                data
+            ),
+            "Sale execution failed"
+        );
+        uint256 contractBalanceAfter = address(this).balance;
+
+        saleAmountReceived = contractBalanceAfter - contractBalanceBefore;
+        // Check amount recieved is more than minSaleAmount
+        require(saleAmountReceived >= minSaleAmount, "Amount recieved is less than minimum enforced");
+    }
+
     function balanceOf(address owner, address nftContractAddress)
         public
         view
@@ -466,22 +533,25 @@ contract NiftyApesSellerFinancing is
 
     function calculateMinimumPayment(Loan memory loan)
         public
-        pure
+        view
         returns (uint256 minimumPayment, uint256 periodInterest)
     {
-        uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod;
+        // if in the current period, else prior to period minimumPayment and interest should remain 0
+        if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
+            uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod;
 
-        // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
-        if (loan.remainingPrincipal < minimumPrincipalPayment) {
-            minimumPrincipalPayment = loan.remainingPrincipal;
-        }
-        // calculate % interest to be paid to seller
-        if (loan.periodInterestRateBps != 0) {
-            periodInterest = ((loan.remainingPrincipal *
-                loan.periodInterestRateBps) / MAX_BPS);
-        }
+            // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
+            if (loan.remainingPrincipal < minimumPrincipalPayment) {
+                minimumPrincipalPayment = loan.remainingPrincipal;
+            }
+            // calculate % interest to be paid to seller
+            if (loan.periodInterestRateBps != 0) {
+                periodInterest = ((loan.remainingPrincipal *
+                    loan.periodInterestRateBps) / MAX_BPS);
+            }
 
-        minimumPayment = minimumPrincipalPayment + periodInterest;
+            minimumPayment = minimumPrincipalPayment + periodInterest;
+        }
     }
 
     function _callERC1271isValidSignature(
@@ -489,7 +559,7 @@ contract NiftyApesSellerFinancing is
     bytes32 _hash,
     bytes calldata _signature
   ) private view returns (bool) {
-    return IERC1271(_addr).isValidSignature(_hash, _signature) == 0x1626ba7e;
+    return IERC1271Upgradeable(_addr).isValidSignature(_hash, _signature) == 0x1626ba7e;
   }
 
 
