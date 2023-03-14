@@ -44,7 +44,8 @@ contract SeaportExecuter is
         address newSeaportContractAddress,
         address newWethContractAddress
     ) public {
-        
+        seaportContractAddress = newSeaportContractAddress;
+        wethContractAddress = newWethContractAddress;
     }
 
     function updateSeaportContractAddress(address newSeaportContractAddress)

@@ -162,6 +162,6 @@ contract SellerFinancingMaker is
 
     /// @notice This contract needs to accept ETH to acquire funds to purchase NFTs
     receive() external payable {
-        _checkOwner();
+        // _checkOwner();
     }
 }

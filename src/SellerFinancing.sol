@@ -279,8 +279,6 @@ contract NiftyApesSellerFinancing is
 
     function _makePayment(address nftContractAddress, uint256 nftId, uint256 amountReceived)
         internal
-        whenNotPaused
-        nonReentrant
         returns (address buyer)
     {
         Loan storage loan = _getLoan(nftContractAddress, nftId);
@@ -558,8 +556,9 @@ contract NiftyApesSellerFinancing is
     address _addr,
     bytes32 _hash,
     bytes calldata _signature
-  ) private view returns (bool) {
-    return IERC1271Upgradeable(_addr).isValidSignature(_hash, _signature) == 0x1626ba7e;
+  ) private returns (bool) {
+    (, bytes memory data) = _addr.call(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature));
+    return bytes4(data) == 0x1626ba7e;
   }
 
 

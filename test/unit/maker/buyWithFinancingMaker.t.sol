@@ -49,7 +49,7 @@ contract TestBuyWithFinancingMaker is Test, OffersLoansFixtures {
         // seller NFT minted to maker
         assertEq(
             IERC721Upgradeable(address(sellerFinancing)).ownerOf(1),
-            seller1
+            address(maker)
         );
 
         Loan memory loan = sellerFinancing.getLoan(
@@ -79,13 +79,13 @@ contract TestBuyWithFinancingMaker is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         ISeaport.Order memory order = createAndValidatePurchaseOrderFromSeller2();
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
+        Offer memory offer = offerStructFromSeaportOrder(
+            order,
+            fuzzed
         );
-        offer.creator = address(maker);
-        bytes memory offerSignature = seller1CreateOffer(offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
+        vm.deal(address(maker), defaultInitialEthBalance);
         vm.startPrank(buyer1);
         maker.buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
@@ -144,8 +144,8 @@ contract TestBuyWithFinancingMaker is Test, OffersLoansFixtures {
             address(0xA858DDc0445d8131daC4d1DE01f834ffcbA52Ef1)
         );
         order.parameters.orderType = ISeaport.OrderType.FULL_RESTRICTED;
-        order.parameters.startTime = 1662306983;
-        order.parameters.endTime = 1664820334;
+        order.parameters.startTime = block.timestamp;
+        order.parameters.endTime = block.timestamp + 24 hours;
         order.parameters.zoneHash = bytes32(
             0x0000000000000000000000000000000000000000000000000000000000000000
         );
@@ -157,10 +157,34 @@ contract TestBuyWithFinancingMaker is Test, OffersLoansFixtures {
         order.signature = bytes("");
 
         ISeaport.Order[] memory orders = new ISeaport.Order[](1);
-        orders[1] = order;
-        vm.prank(seller2);
+        orders[0] = order;
+        vm.startPrank(seller2);
         ISeaport(SEAPORT_ADDRESS).validate(orders);
+        boredApeYachtClub.approve(SEAPORT_CONDUIT, order.parameters.offer[0].identifierOrCriteria);
+        vm.stopPrank();
         return order;
+    }
+
+    function offerStructFromSeaportOrder(
+        ISeaport.Order memory order,
+        FuzzedOfferFields memory fuzzed
+    ) internal view returns (Offer memory) {
+        uint128 considerationAmount;
+        for (uint256 i = 0; i < order.parameters.totalOriginalConsiderationItems; i++) {
+            considerationAmount += uint128(order.parameters.consideration[i].endAmount);
+        }
+        return
+            Offer({
+                creator: address(maker),
+                nftId: order.parameters.offer[0].identifierOrCriteria,
+                nftContractAddress: order.parameters.offer[0].token,
+                price: considerationAmount,
+                downPaymentAmount: considerationAmount / 5,
+                minimumPrincipalPerPeriod: considerationAmount / 5,
+                periodInterestRateBps: fuzzed.periodInterestRateBps,
+                periodDuration: fuzzed.periodDuration,
+                expiration: fuzzed.expiration
+            });
     }
 
 

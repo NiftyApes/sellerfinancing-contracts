@@ -35,6 +35,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     SeaportExecuter seaportExecuter;
 
     address SEAPORT_ADDRESS = 0x00000000006c3852cbEf3e08E8dF289169EdE581;
+    address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
     address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     function setUp() public virtual override {
