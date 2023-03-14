@@ -146,20 +146,20 @@ contract TestInstantSell is Test, ISellerFinancingStructs, OffersLoansFixtures {
         );
         vm.stopPrank();
 
-        // Loan memory loanAfter = sellerFinancing.getLoan(
-        //     offer.nftContractAddress,
-        //     offer.nftId
-        // );
-        // address nftOwnerAfter = IERC721Upgradeable(offer.nftContractAddress)
-        //     .ownerOf(offer.nftId);
-        // uint256 buyer1AssetBalanceAfter = address(buyer1).balance;
-        // assertEq(address(sellerFinancing), nftOwnerBefore);
-        // assertEq(address(users[0]), nftOwnerAfter);
-        // // assertEq(
-        // //     buyer1AssetBalanceAfter - buyer1BalanceBefore,
-        // //     profitForTheBorrower
-        // // );
-        // assertEq(loanAfter.periodBeginTimestamp, 0);
+        Loan memory loanAfter = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        address nftOwnerAfter = IERC721Upgradeable(offer.nftContractAddress)
+            .ownerOf(offer.nftId);
+        uint256 buyer1AssetBalanceAfter = address(buyer1).balance;
+        assertEq(address(sellerFinancing), nftOwnerBefore);
+        assertEq(address(users[0]), nftOwnerAfter);
+        assertEq(
+            buyer1AssetBalanceAfter - buyer1BalanceBefore,
+            profitForTheBorrower
+        );
+        assertEq(loanAfter.periodBeginTimestamp, 0);
     }
 
     function test_unit_SeaportFlashSellIntegration_simplest_case_ETH() public {
