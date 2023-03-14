@@ -3,6 +3,7 @@ pragma solidity 0.8.13;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 
 import "../../utils/fixtures/SellerFinancingDeployment.sol";
 import "../../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
@@ -62,7 +63,7 @@ contract OffersLoansFixtures is
     }
 
     modifier validateFuzzedOfferFields(FuzzedOfferFields memory fuzzed) {
-        vm.assume(fuzzed.price < ~uint96(0));
+        vm.assume(fuzzed.price < ~uint64(0));
         vm.assume(fuzzed.price > ~uint8(0));
         vm.assume(fuzzed.downPaymentAmount > ~uint8(0));
         vm.assume(fuzzed.minimumPrincipalPerPeriod > ~uint8(0));
@@ -127,6 +128,14 @@ contract OffersLoansFixtures is
             offerSignature,
             buyer1
         );
+        vm.stopPrank();
+    }
+
+    function mintWeth(address user, uint256 amount) internal {
+        IERC20Upgradeable wethToken = IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        address wethWhale = 0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E;
+        vm.startPrank(wethWhale);
+        wethToken.transfer(user, amount);
         vm.stopPrank();
     }
 }

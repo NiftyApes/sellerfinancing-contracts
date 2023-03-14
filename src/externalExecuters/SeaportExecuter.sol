@@ -213,4 +213,7 @@ contract SeaportExecuter is
             require(!isToSanctioned, "00017");
         }
     }
+    
+    /// @notice This contract needs to accept ETH from Seaport
+    receive() external payable {}
 }

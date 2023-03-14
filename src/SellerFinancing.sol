@@ -791,4 +791,7 @@ contract NiftyApesSellerFinancing is
     }
 
     function renounceOwnership() public override onlyOwner {}
+
+    /// @notice This contract needs to accept ETH from External Executer
+    receive() external payable {}
 }
