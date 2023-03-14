@@ -97,8 +97,8 @@ contract NiftyApesSellerFinancing is
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init(
-            "NiftyApes_SellerFinancingReceipts",
-            "NANERS"
+            "NiftyApes Seller Financing Tickets",
+            "BANANAS"
         );
 
         loanNftNonce = 0;
@@ -457,10 +457,10 @@ contract NiftyApesSellerFinancing is
         Loan storage loan = _getLoan(nftContractAddress, nftId);
         (,uint256 periodInterest) = calculateMinimumPayment(loan);
         uint256 totalPaymentRequired = loan.remainingPrincipal + periodInterest;
-        
+
         // sell the asset to get minimum totalPaymentRequired + minProfit
         uint256 saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, totalPaymentRequired + minProfitAmount, data);
-        
+
         // make payment to close the loan and transfer rest to the buyer
         _makePayment(nftContractAddress, nftId, saleAmountReceived);
 
@@ -490,7 +490,7 @@ contract NiftyApesSellerFinancing is
         uint256 minSaleAmount,
         bytes calldata data
     ) private returns (uint256 saleAmountReceived)
-    {   
+    {
         // transfer NFT to sale executor
         IERC721Upgradeable(nftContractAddress).safeTransferFrom(address(this), saleExecuter, nftId);
 
