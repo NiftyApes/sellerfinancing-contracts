@@ -68,30 +68,14 @@ interface ISellerFinancing is
     ///         Transfer remaining funds to the buyer
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
-    /// @param saleExecuter The contract address which excutes nft sale
     /// @param minProfitAmount Minimum amount to accept for buyer's profit
     /// @param data Data in bytes to be passed to sale executer
     function instantSell(
         address nftContractAddress,
         uint256 nftId,
-        address saleExecuter,
         uint256 minProfitAmount,
         bytes calldata data
     ) external;
-
-    /// @notice Seize the nft from the defaulted loan and sell instantly to external market
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param nftId The id of a specified NFT
-    /// @param saleExecuter The contract address which excutes nft sale
-    /// @param minSaleAmount Minimum amount to accept from sale
-    /// @param data Data in bytes to be passed to sale executer
-    function seizeAndSellAsset(
-        address nftContractAddress,
-        uint256 nftId,
-        address saleExecuter,
-        uint256 minSaleAmount,
-        bytes calldata data
-    ) external returns (uint256 saleAmountReceived);
 
     /// @notice Allows an nftOwner to claim their nft and perform arbtrary actions (claim airdrops, vote in goverance, etc)
     ///         while maintaining their loan
@@ -140,5 +124,9 @@ interface ISellerFinancing is
 
     function unpauseSanctions() external;
 
-    function initialize(address newRoyaltiesEngineAddress) external;
+    function initialize(
+        address newRoyaltiesEngineAddress,
+        address newSeaportContractAddress,
+        address newWethContractAddress
+    ) external;
 }

@@ -9,4 +9,8 @@ interface ISellerFinancingAdmin {
 
     /// @notice Unpauses all interactions with the contract.
     function unpause() external;
+
+    function updateSeaportContractAddress(address newSeaportContractAddress) external;
+
+    function updateWethContractAddress(address newWethContractAddress)  external;
 }

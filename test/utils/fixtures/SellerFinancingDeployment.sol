@@ -5,13 +5,10 @@ import "@openzeppelin-norm/contracts/proxy/transparent/TransparentUpgradeablePro
 import "@openzeppelin-norm/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../../../src/interfaces/sellerFinancing/ISellerFinancing.sol";
-import "../../../src/interfaces/maker/ISellerFinancingMaker.sol";
 import "./FlashClaimReceivers/FlashClaimReceiverTestHappy.sol";
 import "./FlashClaimReceivers/FlashClaimReceiverTestNoReturn.sol";
 import "./FlashClaimReceivers/FlashClaimReceiverTestReturnsFalse.sol";
 import "../../../src/SellerFinancing.sol";
-import "../../../src/maker/SellerFinancingMaker.sol";
-import "../../../src/externalExecuters/SeaportExecuter.sol";
 import "./NFTFixtures.sol";
 
 import "forge-std/Test.sol";
@@ -24,15 +21,9 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
 
-    SellerFinancingMaker makerImplementation;
-    TransparentUpgradeableProxy makerProxy;
-    ISellerFinancingMaker maker;
-
     FlashClaimReceiverBaseHappy flashClaimReceiverHappy;
     FlashClaimReceiverBaseNoReturn flashClaimReceiverNoReturn;
     FlashClaimReceiverBaseReturnsFalse flashClaimReceiverReturnsFalse;
-
-    SeaportExecuter seaportExecuter;
 
     address SEAPORT_ADDRESS = 0x00000000006c3852cbEf3e08E8dF289169EdE581;
     address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
@@ -50,10 +41,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         flashClaimReceiverReturnsFalse = new FlashClaimReceiverBaseReturnsFalse();
 
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(address(0));
-
-        makerImplementation = new SellerFinancingMaker();
-        makerImplementation.initialize(address(0), address(0));
+        sellerFinancingImplementation.initialize(address(0), address(0), address(0));
 
         // deploy proxy admin
         sellerFinancingProxyAdmin = new ProxyAdmin();
@@ -64,25 +52,16 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
             address(sellerFinancingProxyAdmin),
             bytes("")
         );
-        makerProxy = new TransparentUpgradeableProxy(
-            address(makerImplementation),
-            address(sellerFinancingProxyAdmin),
-            bytes("")
-        );
 
         // declare interfaces
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
-        maker = ISellerFinancingMaker(address(makerProxy));
 
         // initialize proxies
-        sellerFinancing.initialize(mainnetRoyaltiesEngineAddress);
-        maker.initialize(address(sellerFinancing), address(seller1));
+        sellerFinancing.initialize(mainnetRoyaltiesEngineAddress, SEAPORT_ADDRESS, WETH_ADDRESS);
 
         flashClaimReceiverHappy.updateFlashClaimContractAddress(
             address(sellerFinancing)
         );
-
-        seaportExecuter = new SeaportExecuter(SEAPORT_ADDRESS, WETH_ADDRESS);
 
         vm.stopPrank();
 

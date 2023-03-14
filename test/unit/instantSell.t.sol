@@ -214,7 +214,6 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         sellerFinancing.instantSell(
             offer.nftContractAddress,
             offer.nftId,
-            address(seaportExecuter),
             minProfitAmount,
             abi.encode(order[0], bytes32(0))
         );

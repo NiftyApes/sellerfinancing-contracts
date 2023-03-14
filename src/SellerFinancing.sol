@@ -11,11 +11,13 @@ import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./interfaces/sellerFinancing/ISellerFinancing.sol";
 import "./interfaces/sanctions/SanctionsList.sol";
 import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
-import "./externalExecuters/interfaces/ISaleExecuter.sol";
+import "./interfaces/seaport/ISeaport.sol";
 
 import "./lib/ECDSABridge.sol";
 
@@ -35,6 +37,7 @@ contract NiftyApesSellerFinancing is
     ISellerFinancing
 {
     using AddressUpgradeable for address payable;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
     address private constant SANCTIONS_CONTRACT =
@@ -83,14 +86,24 @@ contract NiftyApesSellerFinancing is
     // Mapping from nftContractAddress to token ID to index of the owner tokens list
     mapping(address => mapping(uint256 => uint256)) private _ownedTokensIndex;
 
+    // Address of the seaport contract
+    address public seaportContractAddress;
+
+    // Address of the weth contract
+    address public wethContractAddress;
+
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting storage.
-    uint256[500] private __gap;
+    uint256[498] private __gap;
 
     /// @notice The initializer for the NiftyApes protocol.
     ///         NiftyApes is intended to be deployed behind a proxy and thus needs to initialize
     ///         its state outside of a constructor.
-    function initialize(address newRoyaltiesEngineAddress) public initializer {
+    function initialize(
+            address newRoyaltiesEngineAddress,
+            address newSeaportContractAddress,
+            address newWethContractAddress
+        ) public initializer {
         EIP712Upgradeable.__EIP712_init("NiftyApes_SellerFinancing", "0.0.1");
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
@@ -103,6 +116,23 @@ contract NiftyApesSellerFinancing is
 
         loanNftNonce = 0;
         royaltiesEngineAddress = newRoyaltiesEngineAddress;
+        seaportContractAddress = newSeaportContractAddress;
+        wethContractAddress = newWethContractAddress;
+    }
+
+    function updateSeaportContractAddress(address newSeaportContractAddress)
+        external
+        onlyOwner
+    {
+        require(address(newSeaportContractAddress) != address(0), "00035");
+        seaportContractAddress = newSeaportContractAddress;
+    }
+    
+    function updateWethContractAddress(address newWethContractAddress)
+        external onlyOwner
+    {
+        require(address(newWethContractAddress) != address(0), "00035");
+        wethContractAddress = newWethContractAddress;
     }
 
     function pause() external onlyOwner {
@@ -175,9 +205,6 @@ contract NiftyApesSellerFinancing is
         address buyer
     ) external payable whenNotPaused nonReentrant {
         address seller = getOfferSigner(offer, signature);
-        if (_callERC1271isValidSignature(offer.creator, getOfferHash(offer), signature)) {
-            seller = offer.creator;
-        }
         _require721Owner(offer.nftContractAddress, offer.nftId, seller);
         _requireAvailableSignature(signature);
         _requireSignature65(signature);
@@ -449,7 +476,6 @@ contract NiftyApesSellerFinancing is
     function instantSell(
         address nftContractAddress,
         uint256 nftId,
-        address saleExecuter,
         uint256 minProfitAmount, // for slippage control
         bytes calldata data
     ) external whenNotPaused nonReentrant {
@@ -459,7 +485,7 @@ contract NiftyApesSellerFinancing is
         uint256 totalPaymentRequired = loan.remainingPrincipal + periodInterest;
 
         // sell the asset to get minimum totalPaymentRequired + minProfit
-        uint256 saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, totalPaymentRequired + minProfitAmount, data);
+        uint256 saleAmountReceived = _sellAsset(nftContractAddress, nftId, totalPaymentRequired + minProfitAmount, data);
 
         // make payment to close the loan and transfer rest to the buyer
         _makePayment(nftContractAddress, nftId, saleAmountReceived);
@@ -468,45 +494,42 @@ contract NiftyApesSellerFinancing is
         emit InstantSell(nftContractAddress, nftId, saleAmountReceived);
     }
 
-    function seizeAndSellAsset(
-        address nftContractAddress,
-        uint256 nftId,
-        address saleExecuter,
-        uint256 minSaleAmount, // for slippage control
-        bytes calldata data
-    ) external whenNotPaused nonReentrant returns (uint256 saleAmountReceived)
-    {
-        // seize the asset and close the loan
-        seizeAsset(nftContractAddress, nftId);
-
-        // sell the asset to get minimum sale amount
-        saleAmountReceived = _sellAsset(nftContractAddress, nftId, saleExecuter, minSaleAmount, data);
-    }
-
     function _sellAsset(
         address nftContractAddress,
         uint256 nftId,
-        address saleExecuter,
         uint256 minSaleAmount,
         bytes calldata data
     ) private returns (uint256 saleAmountReceived)
     {
-        // transfer NFT to sale executor
-        IERC721Upgradeable(nftContractAddress).safeTransferFrom(address(this), saleExecuter, nftId);
+        
+        // approve the NFT for Seaport conduit
+        IERC721Upgradeable(nftContractAddress).approve(seaportContractAddress, nftId);
+
+        // decode data
+        (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(data, (ISeaport.Order, bytes32));
+        _validateSaleOrder(order, nftContractAddress, nftId);
+
+        IERC20Upgradeable asset = IERC20Upgradeable(wethContractAddress);
+
+        uint256 allowance = asset.allowance(address(this), seaportContractAddress);
+        if (allowance > 0) {
+            asset.safeDecreaseAllowance(seaportContractAddress, allowance);
+        }
+        asset.safeIncreaseAllowance(seaportContractAddress, order.parameters.consideration[1].endAmount);
 
         uint256 contractBalanceBefore = address(this).balance;
-        // function must send min sale amount enforced by the call
-        require(
-            ISaleExecuter(saleExecuter).executeSale(
-                nftContractAddress,
-                nftId,
-                data
-            ),
-            "Sale execution failed"
-        );
-        uint256 contractBalanceAfter = address(this).balance;
 
-        saleAmountReceived = contractBalanceAfter - contractBalanceBefore;
+        require(
+            ISeaport(seaportContractAddress).fulfillOrder(order, fulfillerConduitKey),
+            "Seaport fullfillOrder failed"
+        );
+        
+        // convert weth to eth
+        (bool success,) = wethContractAddress.call(abi.encodeWithSignature("withdraw(uint256)", order.parameters.offer[0].endAmount - order.parameters.consideration[1].endAmount));
+        require(success, "Weth to Eth conversion failed");
+
+        saleAmountReceived = address(this).balance - contractBalanceBefore;
+
         // Check amount recieved is more than minSaleAmount
         require(saleAmountReceived >= minSaleAmount, "Amount recieved is less than minimum enforced");
     }
@@ -552,14 +575,19 @@ contract NiftyApesSellerFinancing is
         }
     }
 
-    function _callERC1271isValidSignature(
-    address _addr,
-    bytes32 _hash,
-    bytes calldata _signature
-  ) private returns (bool) {
-    (, bytes memory data) = _addr.call(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature));
-    return bytes4(data) == 0x1626ba7e;
-  }
+    function _validateSaleOrder(
+        ISeaport.Order memory order,
+        address nftContractAddress,
+        uint256 nftId
+    ) internal view {
+        require(order.parameters.consideration[0].itemType == ISeaport.ItemType.ERC721, "00067");
+        require(order.parameters.consideration[0].token == nftContractAddress, "00067");
+        require(order.parameters.consideration[0].identifierOrCriteria == nftId, "00067");
+        require(order.parameters.offer[0].itemType == ISeaport.ItemType.ERC20, "00067");
+        require(order.parameters.consideration[1].itemType == ISeaport.ItemType.ERC20, "00067");
+        require(order.parameters.offer[0].token == wethContractAddress,  "00067");
+        require(order.parameters.consideration[1].token == wethContractAddress,  "00067");
+    }
 
 
     function _payRoyalties(
