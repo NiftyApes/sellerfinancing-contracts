@@ -227,7 +227,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         assertionsForClosedLoan(offer, buyer1);
 
         vm.startPrank(seller1);
-        vm.expectRevert("loan repaid");
+        vm.expectRevert("ERC721: invalid token ID");
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
     }
