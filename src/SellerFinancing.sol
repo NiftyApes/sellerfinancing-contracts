@@ -114,7 +114,6 @@ contract NiftyApesSellerFinancing is
             "BANANAS"
         );
 
-        loanNftNonce = 0;
         royaltiesEngineAddress = newRoyaltiesEngineAddress;
         seaportContractAddress = newSeaportContractAddress;
         wethContractAddress = newWethContractAddress;
@@ -386,9 +385,10 @@ contract NiftyApesSellerFinancing is
         else {
             // if in the current period, else prior to period begin and end should remain the same
             if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
-                // increment the currentperiodBegin and End Timestamps equal to the periodDuration
-                loan.periodBeginTimestamp += loan.periodDuration;
-                loan.periodEndTimestamp += loan.periodDuration;
+                uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) / loan.periodDuration) + 1;
+                // increment the currentperiodBegin and End Timestamps equal to the periodDuration times numPeriodsPassed
+                loan.periodBeginTimestamp += loan.periodDuration * uint32(numPeriodsPassed);
+                loan.periodEndTimestamp += loan.periodDuration * uint32(numPeriodsPassed);
             }
 
             //emit paymentMade event
@@ -559,7 +559,9 @@ contract NiftyApesSellerFinancing is
     {
         // if in the current period, else prior to period minimumPayment and interest should remain 0
         if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
-            uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod;
+            uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) / loan.periodDuration) + 1;
+
+            uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod * numPeriodsPassed;
 
             // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
             if (loan.remainingPrincipal < minimumPrincipalPayment) {
@@ -568,7 +570,7 @@ contract NiftyApesSellerFinancing is
             // calculate % interest to be paid to seller
             if (loan.periodInterestRateBps != 0) {
                 periodInterest = ((loan.remainingPrincipal *
-                    loan.periodInterestRateBps) / MAX_BPS);
+                    loan.periodInterestRateBps) / MAX_BPS) * numPeriodsPassed;
             }
 
             minimumPayment = minimumPrincipalPayment + periodInterest;

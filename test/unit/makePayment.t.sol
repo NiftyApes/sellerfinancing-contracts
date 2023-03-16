@@ -311,6 +311,198 @@ contract TestMakePayment is Test, OffersLoansFixtures {
         _test_makePayment_partialRepayment_simplest_case(fixedForSpeed);
     }
 
+    function _test_makePayment_fullRepayment_in_gracePeriod(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        skip(loan.periodDuration);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        assertEq(totalInterest, 2 * periodInterest);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + totalInterest)
+        }(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer1);
+    }
+
+    function test_fuzz_makePayment_fullRepayment_in_gracePeriod(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_fullRepayment_in_gracePeriod(fuzzed);
+    }
+
+    function test_unit_makePayment_fullRepayment_in_gracePeriod() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_fullRepayment_in_gracePeriod(fixedForSpeed);
+    }
+
+    function _test_makePayment_reverts_if_post_grace_period(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        skip(loan.periodDuration * 2);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        assertEq(totalInterest, 3 * periodInterest);
+        
+        vm.startPrank(buyer1);
+        vm.expectRevert("cannot make payment, past soft grace period");
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + totalInterest)
+        }(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+    }
+
+    function test_fuzz_makePayment_reverts_if_post_grace_period(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_reverts_if_post_grace_period(fuzzed);
+    }
+
+    function test_unit_makePayment_reverts_if_post_grace_period() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_reverts_if_post_grace_period(fixedForSpeed);
+    }
+
+    function _test_makePayment_partialRepayment_in_grace_period(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing
+            .calculateMinimumPayment(loan);
+
+        skip(loan.periodDuration);
+
+        (uint256 totalMinimumPayment, uint256 totalInterest) = sellerFinancing
+            .calculateMinimumPayment(loan);
+
+        vm.assume(loan.remainingPrincipal > 2 * loan.minimumPrincipalPerPeriod);
+
+        assertEq(totalInterest, 2 * periodInterest);
+        assertEq(totalMinimumPayment, 2 * loan.minimumPrincipalPerPeriod + totalInterest);
+
+        (
+            address payable[] memory recipients,
+            uint256[] memory amounts
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyalty(
+                    offer.nftContractAddress,
+                    offer.nftId,
+                    totalMinimumPayment
+                );
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+        uint256 royaltiesBalanceBefore = address(recipients[0]).balance;
+        uint256 totalRoyaltiesPaid = amounts[0];
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{value: totalMinimumPayment}(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        Loan memory loanAfter = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+        uint256 royaltiesBalanceAfter = address(recipients[0]).balance;
+
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + totalMinimumPayment - totalRoyaltiesPaid)
+        );
+
+        assertEq(
+            royaltiesBalanceAfter,
+            (royaltiesBalanceBefore + totalRoyaltiesPaid)
+        );
+
+        assertEq(
+            loanAfter.remainingPrincipal,
+            loan.remainingPrincipal - (totalMinimumPayment - totalInterest)
+        );
+
+        assertEq(
+            loanAfter.periodEndTimestamp,
+            loan.periodEndTimestamp + 2 * loan.periodDuration
+        );
+        assertEq(
+            loanAfter.periodBeginTimestamp,
+            loan.periodBeginTimestamp + 2 * loan.periodDuration
+        );
+    }
+
+    function test_fuzz_makePayment_partialRepayment_in_grace_period(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_partialRepayment_in_grace_period(fuzzed);
+    }
+
+    function test_unit_makePayment_partialRepayment_in_grace_period() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_partialRepayment_in_grace_period(fixedForSpeed);
+    }
+
     // function _test_makePayment_events(FuzzedOfferFields memory fuzzed)
     //     private
     // {
