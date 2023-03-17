@@ -1,29 +1,27 @@
-name: CI
-on:
-  push:
-    branches:
-      - master
-  pull_request:
+name: Tests
 
-env:
-  FOUNDRY_PROFILE: ci
+on: [push, pull_request]
 
 jobs:
-  run-ci:
+  tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [8.x]
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+
+      - name: Install dev dependencies
+        run: npm install
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: onbjerg/foundry-toolchain@v1
         with:
           version: nightly
 
-      - name: Install deps
+      - name: Install dependencies
         run: forge install
 
-      - name: Check gas snapshots
-        run: forge snapshot --check
-
       - name: Run tests
-        run: forge test
+        run: forge test --optimize --fork-url https://eth-mainnet.g.alchemy.com/v2/jxUUn2DsYODlc68SEU_7eNGCn2hQ7b63

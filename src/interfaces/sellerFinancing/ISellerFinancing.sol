@@ -43,9 +43,13 @@ interface ISellerFinancing is
     /// @notice Start a loan as buyer using a signed offer.
     /// @param offer The details of the financing offer
     /// @param signature A signed offerHash
-    function buyWithFinancing(Offer calldata offer, bytes memory signature)
-        external
-        payable;
+    /// @param buyer The address of the buyer
+    ///        buyer provided as param to allow for 3rd party marketplace integrations
+    function buyWithFinancing(
+        Offer calldata offer,
+        bytes memory signature,
+        address buyer
+    ) external payable;
 
     /// @notice make a partial payment or full repayment of a loan.
     /// @param nftContractAddress The address of the NFT collection
@@ -58,6 +62,20 @@ interface ISellerFinancing is
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
     function seizeAsset(address nftContractAddress, uint256 nftId) external;
+
+
+    /// @notice Sell the nft and close the loan from the sale funds.
+    ///         Transfer remaining funds to the buyer
+    /// @param nftContractAddress The address of the NFT collection
+    /// @param nftId The id of a specified NFT
+    /// @param minProfitAmount Minimum amount to accept for buyer's profit. Provides slippage control.
+    /// @param data Data in bytes to be passed to sale executer
+    function instantSell(
+        address nftContractAddress,
+        uint256 nftId,
+        uint256 minProfitAmount,
+        bytes calldata data
+    ) external;
 
     /// @notice Allows an nftOwner to claim their nft and perform arbtrary actions (claim airdrops, vote in goverance, etc)
     ///         while maintaining their loan
@@ -97,14 +115,18 @@ interface ISellerFinancing is
         uint256 index
     ) external returns (uint256);
 
+    /// @notice Returns minimum payment required for the current period
+    /// @param loan Loan struct details
+    /// @return minimumPayment Minimum payment required for the current period
+    /// @return periodInterest Unpaid interest amount for the current period
     function calculateMinimumPayment(Loan memory loan)
         external
-        pure
+        view
         returns (uint256 minimumPayment, uint256 periodInterest);
 
-    function pauseSanctions() external;
-
-    function unpauseSanctions() external;
-
-    function initialize(address newRoyaltiesEngineAddress) external;
+    function initialize(
+        address newRoyaltiesEngineAddress,
+        address newSeaportContractAddress,
+        address newWethContractAddress
+    ) external;
 }

@@ -15,14 +15,19 @@ import "forge-std/Test.sol";
 
 // deploy & initializes SellerFinancing contracts
 contract SellerFinancingDeployment is Test, NFTFixtures {
-    NiftyApesSellerFinancing sellerFinancingImplementation;
     ProxyAdmin sellerFinancingProxyAdmin;
+
+    NiftyApesSellerFinancing sellerFinancingImplementation;
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
 
     FlashClaimReceiverBaseHappy flashClaimReceiverHappy;
     FlashClaimReceiverBaseNoReturn flashClaimReceiverNoReturn;
     FlashClaimReceiverBaseReturnsFalse flashClaimReceiverReturnsFalse;
+
+    address SEAPORT_ADDRESS = 0x00000000006c3852cbEf3e08E8dF289169EdE581;
+    address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
+    address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     function setUp() public virtual override {
         address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
@@ -36,9 +41,9 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         flashClaimReceiverReturnsFalse = new FlashClaimReceiverBaseReturnsFalse();
 
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(address(0));
+        sellerFinancingImplementation.initialize(address(0), address(0), address(0));
 
-        // deploy proxy admins
+        // deploy proxy admin
         sellerFinancingProxyAdmin = new ProxyAdmin();
 
         // deploy proxies
@@ -52,7 +57,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
 
         // initialize proxies
-        sellerFinancing.initialize(mainnetRoyaltiesEngineAddress);
+        sellerFinancing.initialize(mainnetRoyaltiesEngineAddress, SEAPORT_ADDRESS, WETH_ADDRESS);
 
         flashClaimReceiverHappy.updateFlashClaimContractAddress(
             address(sellerFinancing)

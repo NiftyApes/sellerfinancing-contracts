@@ -9,7 +9,7 @@ interface ISellerFinancingStructs {
         // Down payment for NFT financing
         uint128 downPaymentAmount;
         // SLOT 1 - 128 remaining
-        // Minimum percentage of total principal to be paid each period
+        // Minimum amount of total principal to be paid each period
         uint128 minimumPrincipalPerPeriod;
         // SLOT 2
         // Offer NFT ID
@@ -37,7 +37,7 @@ interface ISellerFinancingStructs {
         // SLOT 2
         // Remaining principal on loan
         uint128 remainingPrincipal;
-        // Minimum percentage of total principal to be paid each period
+        // Minimum amount of total principal to be paid each period
         uint128 minimumPrincipalPerPeriod;
         // SLOT 3 - 128 remaining
         // Interest rate basis points to be paid against remainingPrincipal per period
