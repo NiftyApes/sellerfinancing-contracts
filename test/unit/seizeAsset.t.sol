@@ -170,6 +170,81 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         _test_seizeAsset_simplest_case(fixedForSpeed);
     }
 
+    function _test_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed)
+        private
+    {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        vm.startPrank(seller1);
+        vm.expectRevert("Asset not seizable");
+        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+    }
+
+    function test_fuzz_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed)
+        public
+        validateFuzzedOfferFields(fuzzed)
+    {
+        _test_seizeAsset_reverts_if_not_expired(fuzzed);
+    }
+
+    function test_unit_seizeAsset_reverts_if_not_expired() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_seizeAsset_reverts_if_not_expired(fixedForSpeed);
+    }
+
+    function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed)
+        private
+    {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+         Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + periodInterest)
+        }(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer1);
+
+        vm.startPrank(seller1);
+        vm.expectRevert("ERC721: invalid token ID");
+        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+    }
+
+    function test_fuzz_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed)
+        public
+        validateFuzzedOfferFields(fuzzed)
+    {
+        _test_seizeAsset_reverts_if_loanClosed(fuzzed);
+    }
+
+    function test_unit_seizeAsset_reverts_if_loanClosed() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_seizeAsset_reverts_if_loanClosed(fixedForSpeed);
+    }
+
     // function _test_seizeAsset_events(FuzzedOfferFields memory fuzzed)
     //     private
     // {

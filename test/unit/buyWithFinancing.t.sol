@@ -97,6 +97,252 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         _test_buyWithFinancing_simplest_case(fixedForSpeed);
     }
 
+    function _test_buyWithFinancing_reverts_if_offerSignerNotOwner(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.prank(seller1);
+        IERC721Upgradeable(offer.nftContractAddress).safeTransferFrom(seller1, seller2, offer.nftId);
+        
+        vm.startPrank(buyer1);
+        vm.expectRevert("00021");
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_reverts_if_offerSignerNotOwner(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_offerSignerNotOwner(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_reverts_if_offerSignerNotOwner() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_offerSignerNotOwner(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancing_reverts_if_signatureAlreadyUsed(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        vm.warp(loan.periodEndTimestamp + 1);
+
+        vm.startPrank(seller1);
+        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+
+
+        vm.expectRevert("00032");
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_reverts_if_signatureAlreadyUsed(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_signatureAlreadyUsed(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_reverts_if_signatureAlreadyUsed() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_signatureAlreadyUsed(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancing_reverts_if_offerExpired(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        bytes memory offerSignature = seller1CreateOffer(offer);
+        vm.assume(fuzzed.expiration < type(uint32).max - 1);
+        vm.warp(uint256(offer.expiration) + 1);
+
+        vm.startPrank(buyer1);
+        vm.expectRevert("00010");
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_reverts_if_offerExpired(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_offerExpired(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_reverts_if_offerExpired() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_offerExpired(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancing_reverts_if_invalidPeriodDuration(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        offer.periodDuration = 1 days - 1;
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        vm.expectRevert("00006");
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_reverts_if_invalidPeriodDuration(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_invalidPeriodDuration(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_reverts_if_invalidPeriodDuration() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_invalidPeriodDuration(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        vm.expectRevert("00047");
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount - 1}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_reverts_if_invalidDownpaymentValue(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_reverts_if_invalidDownpaymentValue() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        offer.price = offer.downPaymentAmount - 1;
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        vm.expectRevert("price must be greater than down payment");
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+        offer.minimumPrincipalPerPeriod = (offer.price - offer.downPaymentAmount) + 1;
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        vm.expectRevert("Issue: principal per period");
+        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(fixedForSpeed);
+    }
+
+
     // function _test_buyWithFinancing_events(FuzzedOfferFields memory fuzzed)
     //     private
     // {

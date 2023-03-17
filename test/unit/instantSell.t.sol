@@ -239,6 +239,71 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         _test_instantSell_loanClosed_simplest_case(fixedForSpeed);
     }
 
+    function _test_instantSell_reverts_post_grace_period(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        skip(loan.periodDuration * 2);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        // set any minimum profit value
+        uint256 minProfitAmount = 1 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) + minProfitAmount) * 40 + 38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2
+        );
+        mintWeth(buyer2, bidPrice);
+
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(WETH_ADDRESS).approve(SEAPORT_CONDUIT, bidPrice);
+        ISeaport(SEAPORT_ADDRESS).validate(order);
+        vm.stopPrank();
+
+        vm.startPrank(buyer1);
+        vm.expectRevert("cannot make payment, past soft grace period");
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            minProfitAmount,
+            abi.encode(order[0], bytes32(0))
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_instantSell_reverts_post_grace_period(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_reverts_post_grace_period(fuzzed);
+    }
+
+    function test_unit_instantSell_reverts_post_grace_period() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_reverts_post_grace_period(fixedForSpeed);
+    }
+
     function _createOrder(
         address nftContractAddress,
         uint256 nftId,
