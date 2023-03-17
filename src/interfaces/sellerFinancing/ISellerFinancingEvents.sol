@@ -70,7 +70,6 @@ interface ISellerFinancingEvents {
     /// @param nftContractAddress The nft contract address
     /// @param nftId The tokenId of the NFT which was put as collateral
     /// @param saleAmount The sale value
-
     event InstantSell(
         address indexed nftContractAddress,
         uint256 indexed nftId,

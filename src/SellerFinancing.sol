@@ -18,10 +18,7 @@ import "./interfaces/sanctions/SanctionsList.sol";
 import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
 import "./interfaces/seaport/ISeaport.sol";
-
 import "./lib/ECDSABridge.sol";
-
-import "../test/common/Console.sol";
 
 /// @title NiftyApes Seller Financing
 /// @custom:version 1.0
@@ -119,6 +116,7 @@ contract NiftyApesSellerFinancing is
         wethContractAddress = newWethContractAddress;
     }
 
+    /// @inheritdoc ISellerFinancingAdmin
     function updateSeaportContractAddress(address newSeaportContractAddress)
         external
         onlyOwner
@@ -127,6 +125,7 @@ contract NiftyApesSellerFinancing is
         seaportContractAddress = newSeaportContractAddress;
     }
     
+    /// @inheritdoc ISellerFinancingAdmin
     function updateWethContractAddress(address newWethContractAddress)
         external onlyOwner
     {
@@ -150,6 +149,7 @@ contract NiftyApesSellerFinancing is
         _sanctionsPause = false;
     }
 
+    /// @inheritdoc ISellerFinancing
     function getOfferHash(Offer memory offer) public view returns (bytes32) {
         return
             _hashTypedDataV4(
@@ -170,6 +170,7 @@ contract NiftyApesSellerFinancing is
             );
     }
 
+    /// @inheritdoc ISellerFinancing
     function getOfferSigner(Offer memory offer, bytes memory signature)
         public
         view
@@ -179,6 +180,7 @@ contract NiftyApesSellerFinancing is
         return ECDSABridge.recover(getOfferHash(offer), signature);
     }
 
+    /// @inheritdoc ISellerFinancing
     function getOfferSignatureStatus(bytes memory signature)
         external
         view
@@ -187,6 +189,7 @@ contract NiftyApesSellerFinancing is
         return _cancelledOrFinalized[signature];
     }
 
+    /// @inheritdoc ISellerFinancing
     function withdrawOfferSignature(Offer memory offer, bytes memory signature)
         external
         whenNotPaused
@@ -198,6 +201,7 @@ contract NiftyApesSellerFinancing is
         _markSignatureUsed(offer, signature);
     }
 
+    /// @inheritdoc ISellerFinancing
     function buyWithFinancing(
         Offer memory offer,
         bytes calldata signature,
@@ -224,7 +228,7 @@ contract NiftyApesSellerFinancing is
             "price must be greater than down payment"
         );
         require(
-            (offer.price - offer.downPaymentAmount) >
+            (offer.price - offer.downPaymentAmount) >=
                 offer.minimumPrincipalPerPeriod,
             "Issue: principal per period"
         );
@@ -289,6 +293,7 @@ contract NiftyApesSellerFinancing is
         );
     }
 
+    /// @inheritdoc ISellerFinancing
     function makePayment(address nftContractAddress, uint256 nftId)
         external
         payable
@@ -403,7 +408,7 @@ contract NiftyApesSellerFinancing is
         }
     }
 
-    // currently callable by anyone, should it only be callable by the seller?
+    /// @inheritdoc ISellerFinancing
     function seizeAsset(address nftContractAddress, uint256 nftId)
         public
         whenNotPaused
@@ -441,6 +446,7 @@ contract NiftyApesSellerFinancing is
         delete _loans[nftContractAddress][nftId];
     }
 
+    /// @inheritdoc ISellerFinancing
     function flashClaim(
         address receiverAddress,
         address nftContractAddress,
@@ -473,10 +479,11 @@ contract NiftyApesSellerFinancing is
         emit FlashClaim(nftContractAddress, nftId, receiverAddress);
     }
 
+    /// @inheritdoc ISellerFinancing
     function instantSell(
         address nftContractAddress,
         uint256 nftId,
-        uint256 minProfitAmount, // for slippage control
+        uint256 minProfitAmount,
         bytes calldata data
     ) external whenNotPaused nonReentrant {
         // calculate total payment required to close the loan
@@ -534,6 +541,7 @@ contract NiftyApesSellerFinancing is
         require(saleAmountReceived >= minSaleAmount, "Amount recieved is less than minimum enforced");
     }
 
+    /// @inheritdoc ISellerFinancing
     function balanceOf(address owner, address nftContractAddress)
         public
         view
@@ -543,6 +551,7 @@ contract NiftyApesSellerFinancing is
         return _balances[owner][nftContractAddress];
     }
 
+    /// @inheritdoc ISellerFinancing
     function tokenOfOwnerByIndex(
         address owner,
         address nftContractAddress,
@@ -552,6 +561,7 @@ contract NiftyApesSellerFinancing is
         return _ownedTokens[owner][nftContractAddress][index];
     }
 
+    /// @inheritdoc ISellerFinancing
     function calculateMinimumPayment(Loan memory loan)
         public
         view
@@ -642,6 +652,7 @@ contract NiftyApesSellerFinancing is
         }
     }
 
+    /// @inheritdoc ISellerFinancing
     function getLoan(address nftContractAddress, uint256 nftId)
         external
         view
@@ -822,6 +833,6 @@ contract NiftyApesSellerFinancing is
 
     function renounceOwnership() public override onlyOwner {}
 
-    /// @notice This contract needs to accept ETH from External Executer
+    /// @notice This contract needs to accept ETH from NFT Sale
     receive() external payable {}
 }

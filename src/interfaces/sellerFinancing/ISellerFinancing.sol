@@ -68,7 +68,7 @@ interface ISellerFinancing is
     ///         Transfer remaining funds to the buyer
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
-    /// @param minProfitAmount Minimum amount to accept for buyer's profit
+    /// @param minProfitAmount Minimum amount to accept for buyer's profit. Provides slippage control.
     /// @param data Data in bytes to be passed to sale executer
     function instantSell(
         address nftContractAddress,
@@ -115,14 +115,14 @@ interface ISellerFinancing is
         uint256 index
     ) external returns (uint256);
 
+    /// @notice Returns minimum payment required for the current period
+    /// @param loan Loan struct details
+    /// @return minimumPayment Minimum payment required for the current period
+    /// @return periodInterest Unpaid interest amount for the current period
     function calculateMinimumPayment(Loan memory loan)
         external
         view
         returns (uint256 minimumPayment, uint256 periodInterest);
-
-    function pauseSanctions() external;
-
-    function unpauseSanctions() external;
 
     function initialize(
         address newRoyaltiesEngineAddress,

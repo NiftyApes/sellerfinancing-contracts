@@ -10,7 +10,17 @@ interface ISellerFinancingAdmin {
     /// @notice Unpauses all interactions with the contract.
     function unpause() external;
 
+    /// @notice Pauses sanctions checks
+    function pauseSanctions() external;
+
+    /// @notice Unpauses sanctions checks
+    function unpauseSanctions() external;
+
+    /// @notice Updates seaport contract address to new address
+    /// @param newSeaportContractAddress New seaport address
     function updateSeaportContractAddress(address newSeaportContractAddress) external;
 
+    /// @notice Updates Weth contract address to new address
+    /// @param newWethContractAddress New Weth contract address
     function updateWethContractAddress(address newWethContractAddress)  external;
 }
