@@ -95,7 +95,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
             0
         );
         // nftId does not exist at index 0
-        vm.expectRevert("00069");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
         assertEq(
             sellerFinancing.tokenOfOwnerByIndex(
                 buyer1,
@@ -106,7 +106,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         );
 
         // nftId does not exist at index 0
-        vm.expectRevert("00069");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 1, 0));
         assertEq(
             sellerFinancing.tokenOfOwnerByIndex(
                 buyer1,
@@ -282,7 +282,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        vm.expectRevert("cannot make payment, past soft grace period");
+        vm.expectRevert(ISellerFinancingErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.instantSell(
             offer.nftContractAddress,
             offer.nftId,

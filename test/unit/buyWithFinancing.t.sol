@@ -4,9 +4,11 @@ pragma solidity 0.8.13;
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
 
 contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     function setUp() public override {
@@ -55,6 +57,12 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
             offer.nftContractAddress,
             offer.nftId
         );
+        //buyer nftId has tokenURI same as original nft
+        assertEq(
+            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId),
+            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(offer.nftId)
+        );
+        Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
         assertEq(loan.buyerNftId, 0);
         assertEq(loan.sellerNftId, 1);
         assertEq(
@@ -110,7 +118,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         IERC721Upgradeable(offer.nftContractAddress).safeTransferFrom(seller1, seller2, offer.nftId);
         
         vm.startPrank(buyer1);
-        vm.expectRevert("00021");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.NotNftOwner.selector, offer.nftContractAddress, offer.nftId, seller1));
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
             offerSignature,
@@ -160,8 +168,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
 
-
-        vm.expectRevert("00032");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.SignatureNotAvailable.selector, offerSignature));
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
             offerSignature,
@@ -194,7 +201,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         vm.warp(uint256(offer.expiration) + 1);
 
         vm.startPrank(buyer1);
-        vm.expectRevert("00010");
+        vm.expectRevert(ISellerFinancingErrors.OfferExpired.selector);
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
             offerSignature,
@@ -226,7 +233,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert("00006");
+        vm.expectRevert(ISellerFinancingErrors.InvalidPeriodDuration.selector);
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
             offerSignature,
@@ -257,7 +264,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert("00047");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidMsgValue.selector, offer.downPaymentAmount - 1, offer.downPaymentAmount));
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount - 1}(
             offer,
             offerSignature,
@@ -289,7 +296,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert("price must be greater than down payment");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.OfferPriceNotMoreThanDownPayment.selector, offer.price, offer.downPaymentAmount));
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
             offerSignature,
@@ -321,7 +328,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert("Issue: principal per period");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidMinimumPrincipalPerPeriod.selector, offer.minimumPrincipalPerPeriod, offer.price - offer.downPaymentAmount));
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
             offer,
             offerSignature,

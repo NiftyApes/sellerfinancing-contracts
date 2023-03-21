@@ -1,0 +1,68 @@
+//SPDX-License-Identifier: MIT
+pragma solidity 0.8.13;
+
+import "../seaport/ISeaport.sol";
+
+/// @title The SellerFinancing interface defining custom errors
+interface ISellerFinancingErrors
+{
+    error ZeroAddress();
+
+    error SignatureNotAvailable(bytes signature);
+
+    error NotSignature65(bytes signature);
+
+    error OfferExpired();
+
+    error SanctionedAddress(address account);
+
+    error NotNftOwner(address nftContractAddress, uint256 nftId, address account);
+
+    error InvalidSigner(address signer, address expected);
+
+    error LoanAlreadyOpen();
+
+    error LoanAlreadyClosed();
+
+    error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
+
+    error InvalidOffer0Token(address given, address expected);
+
+    error InvalidConsideration0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
+    
+    error InvalidConsideration0Token(address given, address expected);
+    
+    error InvalidConsideration0Identifier(uint256 given, uint256 expected);
+    
+    error InvalidConsideration1ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
+    
+    error InvalidConsideration1Token(address given, address expected);
+
+    error InvalidPeriodDuration();
+    
+    error InvalidMsgValue(uint256 msgValueSent, uint256 minMsgValueExpected);
+    
+    error OfferPriceNotMoreThanDownPayment(uint256 offerPrice, uint256 downPaymentAmount);
+    
+    error InvalidMinimumPrincipalPerPeriod(uint256 givenMinPrincipalPerPeriod, uint256 maxMinPrincipalPerPeriod);
+
+    error SoftGracePeriodEnded();
+
+    error InsufficientAmountReceivedToCloseLoan(uint256 amountReceived, uint256 minExpectedAmount);
+
+    error LoanNotInDefault();
+
+    error ExecuteOperationFalied();
+
+    error SeaportOrderNotFulfilled();
+
+    error WethConversionFailed();
+
+    error InsufficientAmountReceivedFromSale(uint256 saleAmountReceived, uint256 minSaleAmountRequired);
+
+    error InvalidIndex(uint256 index, uint256 ownerTokenBalance);
+
+    error InsufficientBalance(uint256 amountRequested, uint256 contractBalance);
+
+    error ConditionSendValueFailed(address from, address to, uint256 amount);
+}

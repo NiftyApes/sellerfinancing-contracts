@@ -92,7 +92,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
             0
         );
         // nftId does not exist at index 0
-        vm.expectRevert("00069");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
         assertEq(
             sellerFinancing.tokenOfOwnerByIndex(
                 buyer1,
@@ -103,7 +103,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         );
 
         // nftId does not exist at index 0
-        vm.expectRevert("00069");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 1, 0));
         assertEq(
             sellerFinancing.tokenOfOwnerByIndex(
                 buyer1,
@@ -181,7 +181,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         assertionsForExecutedLoan(offer);
 
         vm.startPrank(seller1);
-        vm.expectRevert("Asset not seizable");
+        vm.expectRevert(ISellerFinancingErrors.LoanNotInDefault.selector);
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
     }

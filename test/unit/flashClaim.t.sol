@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
 import "../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
 
 contract TestFlashClaim is Test, ISellerFinancingEvents, OffersLoansFixtures {
     function setUp() public override {
@@ -53,8 +54,13 @@ contract TestFlashClaim is Test, ISellerFinancingEvents, OffersLoansFixtures {
         );
         createOfferAndBuyWithFinancing(offer);
 
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
         vm.startPrank(buyer2);
-        vm.expectRevert("00021");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.NotNftOwner.selector, address(sellerFinancing), loan.buyerNftId, buyer2));
 
         sellerFinancing.flashClaim(
             address(flashClaimReceiverNoReturn),
@@ -107,7 +113,7 @@ contract TestFlashClaim is Test, ISellerFinancingEvents, OffersLoansFixtures {
         createOfferAndBuyWithFinancing(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert("00058");
+        vm.expectRevert(ISellerFinancingErrors.ExecuteOperationFalied.selector);
         sellerFinancing.flashClaim(
             address(flashClaimReceiverReturnsFalse),
             offer.nftContractAddress,

@@ -4,13 +4,15 @@ pragma solidity 0.8.13;
 import "./ISellerFinancingAdmin.sol";
 import "./ISellerFinancingEvents.sol";
 import "./ISellerFinancingStructs.sol";
+import "./ISellerFinancingErrors.sol";
 
 /// @title The SellerFinancing interface for NiftyApes
 ///        This interface is intended to be used for interacting with SellerFinancing on the protocol
 interface ISellerFinancing is
     ISellerFinancingAdmin,
     ISellerFinancingEvents,
-    ISellerFinancingStructs
+    ISellerFinancingStructs,
+    ISellerFinancingErrors
 {
     /// @notice Returns an EIP712 standard compatible hash for a given offer
     ///         This hash can be signed to create a valid offer.

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
 
 import "../common/Console.sol";
 
@@ -94,7 +95,7 @@ contract TestMakePayment is Test, OffersLoansFixtures {
             0
         );
         // nftId does not exist at index 0
-        vm.expectRevert("00069");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
         assertEq(
             sellerFinancing.tokenOfOwnerByIndex(
                 buyer1,
@@ -105,7 +106,7 @@ contract TestMakePayment is Test, OffersLoansFixtures {
         );
 
         // nftId does not exist at index 0
-        vm.expectRevert("00069");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 1, 0));
         assertEq(
             sellerFinancing.tokenOfOwnerByIndex(
                 buyer1,
@@ -389,7 +390,7 @@ contract TestMakePayment is Test, OffersLoansFixtures {
         assertEq(totalInterest, 3 * periodInterest);
         
         vm.startPrank(buyer1);
-        vm.expectRevert("cannot make payment, past soft grace period");
+        vm.expectRevert(ISellerFinancingErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.makePayment{
             value: (loan.remainingPrincipal + totalInterest)
         }(offer.nftContractAddress, offer.nftId);
