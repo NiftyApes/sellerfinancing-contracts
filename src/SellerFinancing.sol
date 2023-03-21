@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeab
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts/interfaces/IERC1271Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./interfaces/sellerFinancing/ISellerFinancing.sol";
@@ -418,7 +417,7 @@ contract NiftyApesSellerFinancing is
 
     /// @inheritdoc ISellerFinancing
     function seizeAsset(address nftContractAddress, uint256 nftId)
-        public
+        external
         whenNotPaused
         nonReentrant
     {
