@@ -524,11 +524,16 @@ contract NiftyApesSellerFinancing is
 
         IERC20Upgradeable asset = IERC20Upgradeable(wethContractAddress);
 
+        uint256 considerationAmountToBePaidBySeller;
+        for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
+            considerationAmountToBePaidBySeller = order.parameters.consideration[i].endAmount;
+        }
+
         uint256 allowance = asset.allowance(address(this), seaportContractAddress);
         if (allowance > 0) {
             asset.safeDecreaseAllowance(seaportContractAddress, allowance);
         }
-        asset.safeIncreaseAllowance(seaportContractAddress, order.parameters.consideration[1].endAmount);
+        asset.safeIncreaseAllowance(seaportContractAddress, considerationAmountToBePaidBySeller);
 
         uint256 contractBalanceBefore = address(this).balance;
 
@@ -537,7 +542,7 @@ contract NiftyApesSellerFinancing is
         }
         
         // convert weth to eth
-        (bool success,) = wethContractAddress.call(abi.encodeWithSignature("withdraw(uint256)", order.parameters.offer[0].endAmount - order.parameters.consideration[1].endAmount));
+        (bool success,) = wethContractAddress.call(abi.encodeWithSignature("withdraw(uint256)", order.parameters.offer[0].endAmount - considerationAmountToBePaidBySeller));
         if (!success) {
             revert WethConversionFailed();
         }
@@ -607,10 +612,10 @@ contract NiftyApesSellerFinancing is
         uint256 nftId
     ) internal view {
         if (order.parameters.consideration[0].itemType != ISeaport.ItemType.ERC721) {
-            revert InvalidConsideration0ItemType(order.parameters.consideration[0].itemType, ISeaport.ItemType.ERC721);
+            revert InvalidConsiderationItemType(0, order.parameters.consideration[0].itemType, ISeaport.ItemType.ERC721);
         }
         if (order.parameters.consideration[0].token != nftContractAddress) {
-            revert InvalidConsideration0Token(order.parameters.consideration[0].token, nftContractAddress);
+            revert InvalidConsiderationToken(0, order.parameters.consideration[0].token, nftContractAddress);
         }
         if (order.parameters.consideration[0].identifierOrCriteria != nftId) {
             revert InvalidConsideration0Identifier(order.parameters.consideration[0].identifierOrCriteria, nftId);
@@ -618,14 +623,16 @@ contract NiftyApesSellerFinancing is
         if (order.parameters.offer[0].itemType != ISeaport.ItemType.ERC20) {
             revert InvalidOffer0ItemType(order.parameters.offer[0].itemType, ISeaport.ItemType.ERC20);
         }
-        if (order.parameters.consideration[1].itemType != ISeaport.ItemType.ERC20) {
-            revert InvalidConsideration1ItemType(order.parameters.consideration[1].itemType, ISeaport.ItemType.ERC20);
-        }
         if (order.parameters.offer[0].token != wethContractAddress) {
             revert InvalidOffer0Token(order.parameters.offer[0].token, wethContractAddress);
         }
-        if (order.parameters.consideration[1].token != wethContractAddress) {
-            revert InvalidConsideration1Token(order.parameters.consideration[1].token, wethContractAddress);
+        for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
+            if (order.parameters.consideration[i].itemType != ISeaport.ItemType.ERC20) {
+                revert InvalidConsiderationItemType(i, order.parameters.consideration[i].itemType, ISeaport.ItemType.ERC20);
+            }
+            if (order.parameters.consideration[i].token != wethContractAddress) {
+                revert InvalidConsiderationToken(i, order.parameters.consideration[i].token, wethContractAddress);
+            }
         }
     }
 

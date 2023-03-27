@@ -27,16 +27,12 @@ interface ISellerFinancingErrors
     error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
 
     error InvalidOffer0Token(address given, address expected);
-
-    error InvalidConsideration0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
-    
-    error InvalidConsideration0Token(address given, address expected);
     
     error InvalidConsideration0Identifier(uint256 given, uint256 expected);
     
-    error InvalidConsideration1ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
+    error InvalidConsiderationItemType(uint256 index, ISeaport.ItemType given, ISeaport.ItemType expected);
     
-    error InvalidConsideration1Token(address given, address expected);
+    error InvalidConsiderationToken(uint256 index, address given, address expected);
 
     error InvalidPeriodDuration();
     
