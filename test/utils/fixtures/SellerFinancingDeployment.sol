@@ -9,7 +9,7 @@ import "./FlashClaimReceivers/FlashClaimReceiverTestHappy.sol";
 import "./FlashClaimReceivers/FlashClaimReceiverTestNoReturn.sol";
 import "./FlashClaimReceivers/FlashClaimReceiverTestReturnsFalse.sol";
 import "../../../src/SellerFinancing.sol";
-import "../../../src/superrare/SuperRareIntegration.sol";
+import "../../../src/marketplaceIntegration/MarketplaceIntegration.sol";
 import "./NFTFixtures.sol";
 
 import "forge-std/Test.sol";
@@ -25,7 +25,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     FlashClaimReceiverBaseHappy flashClaimReceiverHappy;
     FlashClaimReceiverBaseNoReturn flashClaimReceiverNoReturn;
     FlashClaimReceiverBaseReturnsFalse flashClaimReceiverReturnsFalse;
-    SuperRareIntegration superRareIntegration;
+    MarketplaceIntegration marketplaceIntegration;
 
     address SEAPORT_ADDRESS = 0x00000000006c3852cbEf3e08E8dF289169EdE581;
     address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
@@ -68,7 +68,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
             address(sellerFinancing)
         );
 
-        superRareIntegration = new SuperRareIntegration(address(sellerFinancing), SUPERRARE_MARKETPLACE, SUPERRARE_MARKET_FEE_BPS);
+        marketplaceIntegration = new MarketplaceIntegration(address(sellerFinancing), SUPERRARE_MARKETPLACE, SUPERRARE_MARKET_FEE_BPS);
 
         vm.stopPrank();
 

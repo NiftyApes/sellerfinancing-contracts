@@ -3,15 +3,17 @@ pragma solidity 0.8.13;
 
 import "@openzeppelin-norm/contracts/access/Ownable.sol";
 import "@openzeppelin-norm/contracts/security/Pausable.sol";
+import "@openzeppelin-norm/contracts/utils/Address.sol";
 import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 import "../interfaces/sanctions/SanctionsList.sol";
 
-/// @title SuperRareIntegration
+/// @title MarketplaceIntegration
 /// @custom:version 1.0
 /// @author zishansami102 (zishansami.eth)
+/// @custom:contributor captnseagraves (captnseagraves.eth)
 
-contract SuperRareIntegration is Ownable, Pausable {
-    // using Address for address payable;
+contract MarketplaceIntegration is Ownable, Pausable {
+    using Address for address payable;
 
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
     address private constant SANCTIONS_CONTRACT =
@@ -25,15 +27,13 @@ contract SuperRareIntegration is Ownable, Pausable {
 
     uint256 public marketplaceFeeBps;
 
-    address public marketplaceFeeRecipient;
+    address payable public marketplaceFeeRecipient;
 
     address public sellerFinancingContractAddress;
 
     error ZeroAddress();
 
     error InsufficientMsgValue(uint256 given, uint256 expected);
-
-    error ConditionSendValueFailed(address from, address to, uint256 amount);
 
     error SanctionedAddress(address account);
 
@@ -46,7 +46,7 @@ contract SuperRareIntegration is Ownable, Pausable {
         _requireNonZeroAddress(_marketplaceFeeRecipient);
 
         sellerFinancingContractAddress = _sellerFinancingContractAddress;
-        marketplaceFeeRecipient = _marketplaceFeeRecipient;
+        marketplaceFeeRecipient = payable(_marketplaceFeeRecipient);
         marketplaceFeeBps = _marketplaceFeeBps;
     }
 
@@ -63,7 +63,7 @@ contract SuperRareIntegration is Ownable, Pausable {
         address newMarketplaceFeeRecipient
     ) external onlyOwner {
         _requireNonZeroAddress(newMarketplaceFeeRecipient);
-        marketplaceFeeRecipient = newMarketplaceFeeRecipient;
+        marketplaceFeeRecipient = payable(newMarketplaceFeeRecipient);
     }
 
     /// @param newMarketplaceFeeBps New value for marketplaceFeeBps
@@ -104,33 +104,11 @@ contract SuperRareIntegration is Ownable, Pausable {
                 offer.downPaymentAmount + marketplaceFeeAmount
             );
         }
-        _conditionalSendValue(
-            marketplaceFeeRecipient,
-            msg.sender,
-            marketplaceFeeAmount
-        );
+        marketplaceFeeRecipient.sendValue(marketplaceFeeAmount);
 
         ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
             value: msg.value - marketplaceFeeAmount
         }(offer, signature, buyer);
-    }
-
-    /// @dev If "to" is a contract that doesnt except ETH, send value back to "from" or revert
-    function _conditionalSendValue(
-        address to,
-        address from,
-        uint256 amount
-    ) internal {
-        (bool toSuccess, ) = to.call{value: amount}("");
-
-        if (!toSuccess) {
-            (bool fromSuccess, ) = from.call{value: amount}("");
-            // require ETH is sucessfully sent to either to or from
-            // we do not want ETH hanging in contract.
-            if (!fromSuccess) {
-                revert ConditionSendValueFailed(from, to, amount);
-            }
-        }
     }
 
     function _requireNonZeroAddress(address given) internal pure {

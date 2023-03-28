@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "../../utils/fixtures/OffersLoansFixtures.sol";
 import "../../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
-contract TestBuyWithFinancingSuperrare is Test, OffersLoansFixtures {
+contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
     function setUp() public override {
         super.setUp();
     }
@@ -74,7 +74,7 @@ contract TestBuyWithFinancingSuperrare is Test, OffersLoansFixtures {
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function _test_buyWithFinancingSuperrare_simplest_case(
+    function _test_buyWithFinancingMarketplace_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(
@@ -83,12 +83,12 @@ contract TestBuyWithFinancingSuperrare is Test, OffersLoansFixtures {
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 superrareMarketplaceFee = offer.price * SUPERRARE_MARKET_FEE_BPS / 10_000;
+        uint256 marketplaceFee = offer.price * SUPERRARE_MARKET_FEE_BPS / 10_000;
        
-        uint256 superrareBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
+        uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         
         vm.startPrank(buyer1);
-        superRareIntegration.buyWithFinancing{value: offer.downPaymentAmount + superrareMarketplaceFee}(
+        marketplaceIntegration.buyWithFinancing{value: offer.downPaymentAmount + marketplaceFee}(
             offer,
             offerSignature,
             buyer1
@@ -96,23 +96,23 @@ contract TestBuyWithFinancingSuperrare is Test, OffersLoansFixtures {
         vm.stopPrank();
         assertionsForExecutedLoan(offer);
 
-        uint256 superrareBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
+        uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
 
         assertEq(
-            superrareBalanceAfter,
-            (superrareBalanceBefore + superrareMarketplaceFee)
+            marketplaceBalanceAfter,
+            (marketplaceBalanceBefore + marketplaceFee)
         );
     }
 
-    function test_fuzz_buyWithFinancingSuperrare_simplest_case(
+    function test_fuzz_buyWithFinancingMarketplace_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancingSuperrare_simplest_case(fuzzed);
+        _test_buyWithFinancingMarketplace_simplest_case(fuzzed);
     }
 
-    function test_unit_buyWithFinancingSuperrare_simplest_case() public {
+    function test_unit_buyWithFinancingMarketplace_simplest_case() public {
         FuzzedOfferFields
             memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancingSuperrare_simplest_case(fixedForSpeed);
+        _test_buyWithFinancingMarketplace_simplest_case(fixedForSpeed);
     }
 }

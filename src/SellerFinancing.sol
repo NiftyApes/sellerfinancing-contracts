@@ -23,6 +23,7 @@ import "./lib/ECDSABridge.sol";
 /// @title NiftyApes Seller Financing
 /// @custom:version 1.0
 /// @author captnseagraves (captnseagraves.eth)
+/// @custom:contributor zishansami102 (zishansami.eth)
 
 contract NiftyApesSellerFinancing is
     OwnableUpgradeable,
