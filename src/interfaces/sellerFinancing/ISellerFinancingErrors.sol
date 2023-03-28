@@ -4,8 +4,7 @@ pragma solidity 0.8.13;
 import "../seaport/ISeaport.sol";
 
 /// @title The SellerFinancing interface defining custom errors
-interface ISellerFinancingErrors
-{
+interface ISellerFinancingErrors {
     error ZeroAddress();
 
     error SignatureNotAvailable(bytes signature);
@@ -27,34 +26,47 @@ interface ISellerFinancingErrors
     error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
 
     error InvalidOffer0Token(address given, address expected);
-    
+
     error InvalidConsideration0Identifier(uint256 given, uint256 expected);
-    
-    error InvalidConsiderationItemType(uint256 index, ISeaport.ItemType given, ISeaport.ItemType expected);
-    
+
+    error InvalidConsiderationItemType(
+        uint256 index,
+        ISeaport.ItemType given,
+        ISeaport.ItemType expected
+    );
+
     error InvalidConsiderationToken(uint256 index, address given, address expected);
 
     error InvalidPeriodDuration();
-    
-    error InvalidMsgValue(uint256 msgValueSent, uint256 minMsgValueExpected);
-    
+
+    error InsufficientMsgValue(uint256 msgValueSent, uint256 minMsgValueExpected);
+
     error OfferPriceNotMoreThanDownPayment(uint256 offerPrice, uint256 downPaymentAmount);
-    
-    error InvalidMinimumPrincipalPerPeriod(uint256 givenMinPrincipalPerPeriod, uint256 maxMinPrincipalPerPeriod);
+
+    error InvalidMinimumPrincipalPerPeriod(
+        uint256 givenMinPrincipalPerPeriod,
+        uint256 maxMinPrincipalPerPeriod
+    );
 
     error SoftGracePeriodEnded();
 
-    error InsufficientAmountReceivedToCloseLoan(uint256 amountReceived, uint256 minExpectedAmount);
+    error AmountReceivedLessThanRequiredMinimumPayment(
+        uint256 amountReceived,
+        uint256 minExpectedAmount
+    );
 
     error LoanNotInDefault();
 
-    error ExecuteOperationFalied();
+    error ExecuteOperationFailed();
 
     error SeaportOrderNotFulfilled();
 
     error WethConversionFailed();
 
-    error InsufficientAmountReceivedFromSale(uint256 saleAmountReceived, uint256 minSaleAmountRequired);
+    error InsufficientAmountReceivedFromSale(
+        uint256 saleAmountReceived,
+        uint256 minSaleAmountRequired
+    );
 
     error InvalidIndex(uint256 index, uint256 ownerTokenBalance);
 

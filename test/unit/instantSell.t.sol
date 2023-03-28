@@ -94,27 +94,22 @@ contract TestInstantSell is Test, OffersLoansFixtures {
             sellerFinancing.balanceOf(seller1, address(boredApeYachtClub)),
             0
         );
-        // nftId does not exist at index 0
+        // buyer nftId does not exist at index 0 of buyer1
         vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
-                address(boredApeYachtClub),
-                0
-            ),
+        sellerFinancing.tokenOfOwnerByIndex(
+            buyer1,
+            address(boredApeYachtClub),
             0
         );
 
-        // nftId does not exist at index 0
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 1, 0));
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
-                address(boredApeYachtClub),
-                1
-            ),
+        // seller nftId does not exist at index 0 of seller1
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
+        sellerFinancing.tokenOfOwnerByIndex(
+            seller1,
+            address(boredApeYachtClub),
             0
         );
+
         // loan doesn't exist anymore
         assertEq(
             sellerFinancing

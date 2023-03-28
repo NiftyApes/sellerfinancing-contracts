@@ -113,7 +113,7 @@ contract TestFlashClaim is Test, ISellerFinancingEvents, OffersLoansFixtures {
         createOfferAndBuyWithFinancing(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert(ISellerFinancingErrors.ExecuteOperationFalied.selector);
+        vm.expectRevert(ISellerFinancingErrors.ExecuteOperationFailed.selector);
         sellerFinancing.flashClaim(
             address(flashClaimReceiverReturnsFalse),
             offer.nftContractAddress,

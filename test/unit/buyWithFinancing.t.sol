@@ -264,7 +264,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidMsgValue.selector, offer.downPaymentAmount - 1, offer.downPaymentAmount));
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InsufficientMsgValue.selector, offer.downPaymentAmount - 1, offer.downPaymentAmount));
         sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount - 1}(
             offer,
             offerSignature,

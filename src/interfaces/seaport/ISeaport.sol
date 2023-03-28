@@ -66,10 +66,7 @@ interface ISeaport {
      *
      * @return counter The current counter.
      */
-    function getCounter(address offerer)
-        external
-        view
-        returns (uint256 counter);
+    function getCounter(address offerer) external view returns (uint256 counter);
 
     /**
      * @notice Retrieve the status of a given order by hash, including whether
@@ -88,15 +85,12 @@ interface ISeaport {
      * @return totalSize   The total size of the order that is either filled or
      *                     unfilled (i.e. the "denominator").
      */
-    function getOrderStatus(bytes32 orderHash)
+    function getOrderStatus(
+        bytes32 orderHash
+    )
         external
         view
-        returns (
-            bool isValidated,
-            bool isCancelled,
-            uint256 totalFilled,
-            uint256 totalSize
-        );
+        returns (bool isValidated, bool isCancelled, uint256 totalFilled, uint256 totalSize);
 
     /**
      * @dev An order contains eleven components: an offerer, a zone (or account that
@@ -129,10 +123,7 @@ interface ISeaport {
      *
      * @return orderHash The order hash.
      */
-    function getOrderHash(OrderComponents calldata order)
-        external
-        view
-        returns (bytes32 orderHash);
+    function getOrderHash(OrderComponents calldata order) external view returns (bytes32 orderHash);
 
     /**
      * @dev The full set of order components, with the exception of the counter,
@@ -163,14 +154,12 @@ interface ISeaport {
         bytes signature;
     }
 
-    function fulfillOrder(Order calldata order, bytes32 fulfillerConduitKey)
-        external
-        payable
-        returns (bool fulfilled);
+    function fulfillOrder(
+        Order calldata order,
+        bytes32 fulfillerConduitKey
+    ) external payable returns (bool fulfilled);
 
     function validate(Order[] memory orders) external returns (bool validated);
 
-    function cancel(OrderComponents[] memory orders)
-        external
-        returns (bool cancelled);
+    function cancel(OrderComponents[] memory orders) external returns (bool cancelled);
 }
