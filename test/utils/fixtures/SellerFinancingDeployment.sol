@@ -9,6 +9,7 @@ import "./FlashClaimReceivers/FlashClaimReceiverTestHappy.sol";
 import "./FlashClaimReceivers/FlashClaimReceiverTestNoReturn.sol";
 import "./FlashClaimReceivers/FlashClaimReceiverTestReturnsFalse.sol";
 import "../../../src/SellerFinancing.sol";
+import "../../../src/marketplaceIntegration/MarketplaceIntegration.sol";
 import "./NFTFixtures.sol";
 
 import "forge-std/Test.sol";
@@ -24,10 +25,14 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     FlashClaimReceiverBaseHappy flashClaimReceiverHappy;
     FlashClaimReceiverBaseNoReturn flashClaimReceiverNoReturn;
     FlashClaimReceiverBaseReturnsFalse flashClaimReceiverReturnsFalse;
+    MarketplaceIntegration marketplaceIntegration;
 
     address SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
     address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
     address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address SUPERRARE_MARKETPLACE = 0x34CfAC646f301356fAa8B21e94227e3583Fe3F5F;
+
+    uint256 SUPERRARE_MARKET_FEE_BPS = 300;
 
     function setUp() public virtual override {
         address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
@@ -39,7 +44,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         flashClaimReceiverHappy = new FlashClaimReceiverBaseHappy();
         flashClaimReceiverNoReturn = new FlashClaimReceiverBaseNoReturn();
         flashClaimReceiverReturnsFalse = new FlashClaimReceiverBaseReturnsFalse();
-
+        
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
         sellerFinancingImplementation.initialize(
             address(0),
@@ -70,6 +75,8 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         flashClaimReceiverHappy.updateFlashClaimContractAddress(
             address(sellerFinancing)
         );
+
+        marketplaceIntegration = new MarketplaceIntegration(address(sellerFinancing), SUPERRARE_MARKETPLACE, SUPERRARE_MARKET_FEE_BPS);
 
         vm.stopPrank();
 
