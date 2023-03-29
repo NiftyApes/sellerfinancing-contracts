@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
 
 contract TestWithdrawOfferSignature is
     Test,
@@ -62,10 +63,10 @@ contract TestWithdrawOfferSignature is
 
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
 
-        bytes memory signature = sign(SIGNER_PRIVATE_KEY_1, offerHash);
+        bytes memory signature = sign(seller1_private_key, offerHash);
 
         vm.startPrank(address(seller2));
-        vm.expectRevert("00033");
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidSigner.selector, seller1, seller2));
         sellerFinancing.withdrawOfferSignature(offer, signature);
         vm.stopPrank();
     }

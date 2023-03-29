@@ -23,9 +23,7 @@ interface IRoyaltyEngineV1 is IERC165Upgradeable {
         address tokenAddress,
         uint256 tokenId,
         uint256 value
-    )
-        external
-        returns (address payable[] memory recipients, uint256[] memory amounts);
+    ) external returns (address payable[] memory recipients, uint256[] memory amounts);
 
     /**
      * View only version of getRoyalty
@@ -40,8 +38,5 @@ interface IRoyaltyEngineV1 is IERC165Upgradeable {
         address tokenAddress,
         uint256 tokenId,
         uint256 value
-    )
-        external
-        view
-        returns (address payable[] memory recipients, uint256[] memory amounts);
+    ) external view returns (address payable[] memory recipients, uint256[] memory amounts);
 }

@@ -74,7 +74,7 @@ contract OffersLoansFixtures is
             fuzzed.price - fuzzed.downPaymentAmount >
                 fuzzed.minimumPrincipalPerPeriod
         );
-        vm.assume(fuzzed.periodDuration > 1 days);
+        vm.assume(fuzzed.periodDuration > 1 minutes);
         vm.assume(fuzzed.periodDuration <= 180 days);
         vm.assume(fuzzed.expiration > block.timestamp);
         _;

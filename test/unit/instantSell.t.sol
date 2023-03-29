@@ -94,27 +94,22 @@ contract TestInstantSell is Test, OffersLoansFixtures {
             sellerFinancing.balanceOf(seller1, address(boredApeYachtClub)),
             0
         );
-        // nftId does not exist at index 0
-        vm.expectRevert("00069");
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
-                address(boredApeYachtClub),
-                0
-            ),
+        // buyer nftId does not exist at index 0 of buyer1
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
+        sellerFinancing.tokenOfOwnerByIndex(
+            buyer1,
+            address(boredApeYachtClub),
             0
         );
 
-        // nftId does not exist at index 0
-        vm.expectRevert("00069");
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
-                address(boredApeYachtClub),
-                1
-            ),
+        // seller nftId does not exist at index 0 of seller1
+        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
+        sellerFinancing.tokenOfOwnerByIndex(
+            seller1,
+            address(boredApeYachtClub),
             0
         );
+
         // loan doesn't exist anymore
         assertEq(
             sellerFinancing
@@ -203,7 +198,8 @@ contract TestInstantSell is Test, OffersLoansFixtures {
             offer.nftContractAddress,
             offer.nftId,
             bidPrice,
-            buyer2
+            buyer2,
+            true
         );
         mintWeth(buyer2, bidPrice);
 
@@ -241,6 +237,109 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         _test_instantSell_loanClosed_simplest_case(fixedForSpeed);
     }
 
+    function _test_instantSell_loanClosed_withoutSeaportFee(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+
+
+        Offer memory offer = offerStructFromFields(
+            fuzzed,
+            defaultFixedOfferFields
+        );
+
+        (
+            address payable[] memory recipients1,
+            uint256[] memory amounts1
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyalty(
+                    offer.nftContractAddress,
+                    offer.nftId,
+                    offer.downPaymentAmount
+                );
+
+        uint256 totalRoyaltiesPaid;
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients1.length; i++) {
+            totalRoyaltiesPaid += amounts1[i];
+        }
+
+        uint256 buyer1BalanceBefore = address(buyer1).balance;
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        (
+            address payable[] memory recipients2,
+            uint256[] memory amounts2
+        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
+                .getRoyalty(
+                    offer.nftContractAddress,
+                    offer.nftId,
+                    (loan.remainingPrincipal + periodInterest)
+                );
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients2.length; i++) {
+            totalRoyaltiesPaid += amounts2[i];
+        }
+
+        // set any minimum profit value
+        uint256 minProfitAmount = 1 ether;
+
+        uint256 bidPrice = (loan.remainingPrincipal + periodInterest + minProfitAmount);
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            false
+        );
+        mintWeth(buyer2, bidPrice);
+
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(WETH_ADDRESS).approve(SEAPORT_CONDUIT, bidPrice);
+        ISeaport(SEAPORT_ADDRESS).validate(order);
+        vm.stopPrank();
+
+        vm.startPrank(buyer1);
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            minProfitAmount,
+            abi.encode(order[0], bytes32(0))
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer2);
+        uint256 buyer1BalanceAfter = address(buyer1).balance;
+        assertEq(
+            buyer1BalanceAfter,
+            (buyer1BalanceBefore - offer.downPaymentAmount + minProfitAmount)
+        );
+    }
+
+    function test_fuzz_instantSell_loanClosed_withoutSeaportFee(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_loanClosed_withoutSeaportFee(fuzzed);
+    }
+
+    function test_unit_instantSell_loanClosed_withoutSeaportFee() public {
+        FuzzedOfferFields
+            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_loanClosed_withoutSeaportFee(fixedForSpeed);
+    }
+
     function _test_instantSell_reverts_post_grace_period(
         FuzzedOfferFields memory fuzzed
     ) private {
@@ -276,7 +375,8 @@ contract TestInstantSell is Test, OffersLoansFixtures {
             offer.nftContractAddress,
             offer.nftId,
             bidPrice,
-            buyer2
+            buyer2,
+            true
         );
         mintWeth(buyer2, bidPrice);
 
@@ -286,7 +386,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        vm.expectRevert("cannot make payment, past soft grace period");
+        vm.expectRevert(ISellerFinancingErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.instantSell(
             offer.nftContractAddress,
             offer.nftId,
@@ -312,9 +412,16 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         address nftContractAddress,
         uint256 nftId,
         uint256 bidPrice,
-        address orderCreator
+        address orderCreator,
+        bool addSeaportFee
     ) internal view returns (ISeaport.Order[] memory order) {
-        uint256 seaportFeeAmount = bidPrice - (bidPrice * 39) / 40;
+        uint256 seaportFeeAmount;
+        uint256 totalOriginalConsiderationItems = 1;
+        if (addSeaportFee) {
+            seaportFeeAmount = bidPrice - (bidPrice * 39) / 40;
+            totalOriginalConsiderationItems = 2;
+        }
+
         ISeaport.ItemType offerItemType = ISeaport.ItemType.ERC20;
         address offerToken = WETH_ADDRESS;
 
@@ -324,7 +431,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
                 offerer: payable(orderCreator),
                 zone: address(0),
                 offer: new ISeaport.OfferItem[](1),
-                consideration: new ISeaport.ConsiderationItem[](2),
+                consideration: new ISeaport.ConsiderationItem[](totalOriginalConsiderationItems),
                 orderType: ISeaport.OrderType.FULL_OPEN,
                 startTime: block.timestamp,
                 endTime: block.timestamp + 24 * 60 * 60,
@@ -335,7 +442,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
                 conduitKey: bytes32(
                     0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000
                 ),
-                totalOriginalConsiderationItems: 2
+                totalOriginalConsiderationItems: totalOriginalConsiderationItems
             }),
             signature: bytes("")
         });
@@ -354,13 +461,15 @@ contract TestInstantSell is Test, OffersLoansFixtures {
             endAmount: 1,
             recipient: payable(orderCreator)
         });
-        order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
-            itemType: offerItemType,
-            token: offerToken,
-            identifierOrCriteria: 0,
-            startAmount: seaportFeeAmount,
-            endAmount: seaportFeeAmount,
-            recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
-        });
+        if (totalOriginalConsiderationItems > 1) {
+            order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
+                itemType: offerItemType,
+                token: offerToken,
+                identifierOrCriteria: 0,
+                startAmount: seaportFeeAmount,
+                endAmount: seaportFeeAmount,
+                recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
+            });
+        }
     }
 }

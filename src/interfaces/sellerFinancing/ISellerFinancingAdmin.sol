@@ -22,5 +22,5 @@ interface ISellerFinancingAdmin {
 
     /// @notice Updates Weth contract address to new address
     /// @param newWethContractAddress New Weth contract address
-    function updateWethContractAddress(address newWethContractAddress)  external;
+    function updateWethContractAddress(address newWethContractAddress) external;
 }
