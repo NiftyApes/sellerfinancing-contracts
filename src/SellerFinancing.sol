@@ -233,6 +233,10 @@ contract NiftyApesSellerFinancing is
                 (offer.price - offer.downPaymentAmount)
             );
         }
+        // requireNotSellerFinancingTicket
+        if (offer.nftContractAddress == address(this)) {
+            revert CannotBuySellerFinancingTicket();
+        }
 
         // mark signature as used
         _markSignatureUsed(offer, signature);

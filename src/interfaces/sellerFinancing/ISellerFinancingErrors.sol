@@ -25,6 +25,8 @@ interface ISellerFinancingErrors {
 
     error MsgSenderNotSeller();
 
+    error CannotBuySellerFinancingTicket();
+
     error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
 
     error InvalidOffer0Token(address given, address expected);
