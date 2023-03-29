@@ -431,7 +431,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
                 offerer: payable(orderCreator),
                 zone: address(0),
                 offer: new ISeaport.OfferItem[](1),
-                consideration: new ISeaport.ConsiderationItem[](2),
+                consideration: new ISeaport.ConsiderationItem[](totalOriginalConsiderationItems),
                 orderType: ISeaport.OrderType.FULL_OPEN,
                 startTime: block.timestamp,
                 endTime: block.timestamp + 24 * 60 * 60,
