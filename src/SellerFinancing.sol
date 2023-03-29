@@ -220,7 +220,7 @@ contract NiftyApesSellerFinancing is
             revert InsufficientMsgValue(msg.value, offer.downPaymentAmount);
         }
         if (offer.price <= offer.downPaymentAmount) {
-            revert OfferPriceNotMoreThanDownPayment(offer.price, offer.downPaymentAmount);
+            revert DownPaymentGreaterThanOrEqualToOfferPrice(offer.downPaymentAmount, offer.price);
         }
         if ((offer.price - offer.downPaymentAmount) < offer.minimumPrincipalPerPeriod) {
             revert InvalidMinimumPrincipalPerPeriod(
