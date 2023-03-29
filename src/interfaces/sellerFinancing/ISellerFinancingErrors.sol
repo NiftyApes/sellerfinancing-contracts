@@ -23,6 +23,8 @@ interface ISellerFinancingErrors {
 
     error LoanAlreadyClosed();
 
+    error MsgSenderNotSeller();
+
     error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
 
     error InvalidOffer0Token(address given, address expected);

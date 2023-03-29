@@ -306,7 +306,7 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(buyerAddress);
         _requireIsNotSanctioned(msg.sender);
         _requireOpenLoan(loan);
-        // requireLoanNotDefaulted
+        // requireLoanNotInHardDefault
         if (_currentTimestamp32() >= loan.periodEndTimestamp + loan.periodDuration) {
             revert SoftGracePeriodEnded();
         }
@@ -396,20 +396,28 @@ contract NiftyApesSellerFinancing is
         address nftContractAddress,
         uint256 nftId
     ) external whenNotPaused nonReentrant {
+        // instantiate loan
         Loan storage loan = _getLoan(nftContractAddress, nftId);
+        // get buyer
         address buyerAddress = ownerOf(loan.buyerNftId);
+        // get seller
         address sellerAddress = ownerOf(loan.sellerNftId);
 
         _requireIsNotSanctioned(sellerAddress);
-        // require principal is not 0
         _requireOpenLoan(loan);
+        // requireSenderIsSeller
+        if (msg.sender != sellerAddress) {
+            revert MsgSenderNotSeller();
+        }
         // requireLoanInDefault
         if (_currentTimestamp32() < loan.periodEndTimestamp) {
             revert LoanNotInDefault();
         }
 
+        // transfer NFT from this contract to the seller address
         _transferNft(nftContractAddress, nftId, address(this), sellerAddress);
 
+        // remove buyers view based ownership of the purchased NFT
         _removeLoanFromOwnerEnumeration(buyerAddress, nftContractAddress, nftId);
 
         // burn buyer nft
@@ -420,6 +428,7 @@ contract NiftyApesSellerFinancing is
 
         emit AssetSeized(nftContractAddress, nftId, loan);
 
+        // close loan
         delete _loans[nftContractAddress][nftId];
     }
 

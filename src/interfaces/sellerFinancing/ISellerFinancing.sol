@@ -7,14 +7,13 @@ import "./ISellerFinancingStructs.sol";
 import "./ISellerFinancingErrors.sol";
 
 /// @title The SellerFinancing interface for NiftyApes
-///        This interface is intended to be used for interacting with SellerFinancing on the protocol
 interface ISellerFinancing is
     ISellerFinancingAdmin,
     ISellerFinancingEvents,
     ISellerFinancingStructs,
     ISellerFinancingErrors
 {
-    /// @notice Returns an EIP712 standard compatible hash for a given offer
+    /// @notice Returns an EIP712 standard compatible hash for a given offer.
     /// @dev    This hash can be signed to create a valid offer.
     /// @param offer The offer to compute the hash for
     function getOfferHash(Offer memory offer) external view returns (bytes32);
@@ -51,7 +50,8 @@ interface ISellerFinancing is
     /// @param nftId The id of a specified NFT
     function makePayment(address nftContractAddress, uint256 nftId) external payable;
 
-    /// @notice seize an asset from a defaulted loan.
+    /// @notice Seize an asset from a defaulted loan.
+    /// @dev    Only the seller address can call this function
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
     function seizeAsset(address nftContractAddress, uint256 nftId) external;
