@@ -296,17 +296,22 @@ contract NiftyApesSellerFinancing is
         uint256 nftId,
         uint256 amountReceived
     ) internal returns (address buyer) {
+        // instatiate loan
         Loan storage loan = _getLoan(nftContractAddress, nftId);
+        // get buyer
         address buyerAddress = ownerOf(loan.buyerNftId);
+        // get seller
         address sellerAddress = ownerOf(loan.sellerNftId);
 
         _requireIsNotSanctioned(buyerAddress);
         _requireIsNotSanctioned(msg.sender);
         _requireOpenLoan(loan);
+        // requireLoanNotDefaulted
         if (_currentTimestamp32() >= loan.periodEndTimestamp + loan.periodDuration) {
             revert SoftGracePeriodEnded();
         }
 
+        // get minimum payment and period interest values
         (uint256 totalMinimumPayment, uint256 periodInterest) = calculateMinimumPayment(loan);
 
         // caculate the total possible payment
@@ -553,9 +558,11 @@ contract NiftyApesSellerFinancing is
     ) public view returns (uint256 minimumPayment, uint256 periodInterest) {
         // if in the current period, else prior to period minimumPayment and interest should remain 0
         if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
+            // calculate periods passed
             uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) /
                 loan.periodDuration) + 1;
 
+            // calculate minimum principal to be paid
             uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod * numPeriodsPassed;
 
             // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
