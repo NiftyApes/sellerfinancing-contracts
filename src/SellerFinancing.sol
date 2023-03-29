@@ -549,23 +549,28 @@ contract NiftyApesSellerFinancing is
         uint256 nftId,
         bytes calldata data
     ) external whenNotPaused nonReentrant {
+        // get loan
         Loan storage loan = _getLoan(nftContractAddress, nftId);
 
         _requireNftOwner(loan);
         _requireIsNotSanctioned(msg.sender);
-        _requireIsNotSanctioned(ownerOf(loan.buyerNftId));
+
         // instantiate receiver contract
         IFlashClaimReceiver receiver = IFlashClaimReceiver(receiverAddress);
+
         // transfer NFT
         _transferNft(nftContractAddress, nftId, address(this), receiverAddress);
+
         // execute firewalled external arbitrary functionality
         // function must approve this contract to transferFrom NFT in order to return to lending.sol
         if (!receiver.executeOperation(msg.sender, nftContractAddress, nftId, data)) {
             revert ExecuteOperationFailed();
         }
-        // transfer nft back to Lending.sol and require return occurs
+
+        // transfer nft back to this contract, revert if transfer fails
         _transferNft(nftContractAddress, nftId, receiverAddress, address(this));
-        // emit event
+
+        // emit flash claim event
         emit FlashClaim(nftContractAddress, nftId, receiverAddress);
     }
 
