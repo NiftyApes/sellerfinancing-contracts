@@ -56,12 +56,13 @@ interface ISellerFinancing is
     /// @param nftId The id of a specified NFT
     function seizeAsset(address nftContractAddress, uint256 nftId) external;
 
-    /// @notice Sell the underlying nft and close the loan using the proceeds of the sale.
+    /// @notice Sell the underlying nft and repay the loan using the proceeds of the sale.
     ///         Transfer remaining funds to the buyer
+    /// @dev    This function only supports valid Seaport orders
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
     /// @param minProfitAmount Minimum amount to accept for buyer's profit. Provides slippage control.
-    /// @param data Data in bytes to be passed to sale executer
+    /// @param data Order encoded as bytes
     function instantSell(
         address nftContractAddress,
         uint256 nftId,

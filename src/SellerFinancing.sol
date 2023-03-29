@@ -275,6 +275,7 @@ contract NiftyApesSellerFinancing is
         // enable view based ownership of the purchased NFT
         _addLoanToOwnerEnumeration(buyer, offer.nftContractAddress, offer.nftId);
 
+        // emit loan executed event
         emit LoanExecuted(offer.nftContractAddress, offer.nftId, seller, signature, loan);
     }
 
@@ -426,10 +427,102 @@ contract NiftyApesSellerFinancing is
         // burn seller nft
         _burn(loan.sellerNftId);
 
+        //emit asset seized event
         emit AssetSeized(nftContractAddress, nftId, loan);
 
         // close loan
         delete _loans[nftContractAddress][nftId];
+    }
+
+    /// @inheritdoc ISellerFinancing
+    function instantSell(
+        address nftContractAddress,
+        uint256 nftId,
+        uint256 minProfitAmount,
+        bytes calldata data
+    ) external whenNotPaused nonReentrant {
+        // instantiate loan
+        Loan storage loan = _getLoan(nftContractAddress, nftId);
+        // calculate period interest
+        (, uint256 periodInterest) = calculateMinimumPayment(loan);
+        // calculate total payment required to close the loan
+        uint256 totalPaymentRequired = loan.remainingPrincipal + periodInterest;
+
+        // sell the asset to get sufficient funds to repay loan
+        uint256 saleAmountReceived = _sellAsset(
+            nftContractAddress,
+            nftId,
+            totalPaymentRequired + minProfitAmount,
+            data
+        );
+
+        // make payment to close the loan and transfer remainder to the buyer
+        _makePayment(nftContractAddress, nftId, saleAmountReceived);
+
+        // emit instant sell event
+        emit InstantSell(nftContractAddress, nftId, saleAmountReceived);
+    }
+
+    function _sellAsset(
+        address nftContractAddress,
+        uint256 nftId,
+        uint256 minSaleAmount,
+        bytes calldata data
+    ) private returns (uint256 saleAmountReceived) {
+        // approve the NFT for Seaport conduit
+        IERC721Upgradeable(nftContractAddress).approve(seaportContractAddress, nftId);
+
+        // decode seaport order data
+        (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(
+            data,
+            (ISeaport.Order, bytes32)
+        );
+
+        // validate order
+        _validateSaleOrder(order, nftContractAddress, nftId);
+
+        // instantiate weth
+        IERC20Upgradeable asset = IERC20Upgradeable(wethContractAddress);
+
+        // calculate totalConsiderationAmount
+        uint256 totalConsiderationAmount;
+        for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
+            totalConsiderationAmount = order.parameters.consideration[i].endAmount;
+        }
+
+        // set allowance for seaport to transferFrom this contract during .fulfillOrder()
+        uint256 allowance = asset.allowance(address(this), seaportContractAddress);
+        if (allowance > 0) {
+            asset.safeDecreaseAllowance(seaportContractAddress, allowance);
+        }
+        asset.safeIncreaseAllowance(seaportContractAddress, totalConsiderationAmount);
+
+        // cache this contract eth balance before the sale
+        uint256 contractBalanceBefore = address(this).balance;
+
+        // execute sale on seport
+        if (!ISeaport(seaportContractAddress).fulfillOrder(order, fulfillerConduitKey)) {
+            revert SeaportOrderNotFulfilled();
+        }
+
+        // convert weth to eth
+        (bool success, ) = wethContractAddress.call(
+            abi.encodeWithSignature(
+                "withdraw(uint256)",
+                order.parameters.offer[0].endAmount - totalConsiderationAmount
+            )
+        );
+        if (!success) {
+            revert WethConversionFailed();
+        }
+
+        // calculate saleAmountReceived
+        saleAmountReceived = address(this).balance - contractBalanceBefore;
+
+        // check amount recieved is more than minSaleAmount
+        if (saleAmountReceived < minSaleAmount) {
+            revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
+        }
     }
 
     /// @inheritdoc ISellerFinancing
@@ -457,87 +550,6 @@ contract NiftyApesSellerFinancing is
         _transferNft(nftContractAddress, nftId, receiverAddress, address(this));
         // emit event
         emit FlashClaim(nftContractAddress, nftId, receiverAddress);
-    }
-
-    /// @inheritdoc ISellerFinancing
-    function instantSell(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 minProfitAmount,
-        bytes calldata data
-    ) external whenNotPaused nonReentrant {
-        // calculate total payment required to close the loan
-        Loan storage loan = _getLoan(nftContractAddress, nftId);
-        (, uint256 periodInterest) = calculateMinimumPayment(loan);
-        uint256 totalPaymentRequired = loan.remainingPrincipal + periodInterest;
-
-        // sell the asset to get minimum totalPaymentRequired + minProfit
-        uint256 saleAmountReceived = _sellAsset(
-            nftContractAddress,
-            nftId,
-            totalPaymentRequired + minProfitAmount,
-            data
-        );
-
-        // make payment to close the loan and transfer rest to the buyer
-        _makePayment(nftContractAddress, nftId, saleAmountReceived);
-
-        // emit sell event
-        emit InstantSell(nftContractAddress, nftId, saleAmountReceived);
-    }
-
-    function _sellAsset(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 minSaleAmount,
-        bytes calldata data
-    ) private returns (uint256 saleAmountReceived) {
-        // approve the NFT for Seaport conduit
-        IERC721Upgradeable(nftContractAddress).approve(seaportContractAddress, nftId);
-
-        // decode data
-        (ISeaport.Order memory order, bytes32 fulfillerConduitKey) = abi.decode(
-            data,
-            (ISeaport.Order, bytes32)
-        );
-        _validateSaleOrder(order, nftContractAddress, nftId);
-
-        IERC20Upgradeable asset = IERC20Upgradeable(wethContractAddress);
-
-        uint256 considerationAmountToBePaidBySeller;
-        for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
-            considerationAmountToBePaidBySeller = order.parameters.consideration[i].endAmount;
-        }
-
-        uint256 allowance = asset.allowance(address(this), seaportContractAddress);
-        if (allowance > 0) {
-            asset.safeDecreaseAllowance(seaportContractAddress, allowance);
-        }
-        asset.safeIncreaseAllowance(seaportContractAddress, considerationAmountToBePaidBySeller);
-
-        uint256 contractBalanceBefore = address(this).balance;
-
-        if (!ISeaport(seaportContractAddress).fulfillOrder(order, fulfillerConduitKey)) {
-            revert SeaportOrderNotFulfilled();
-        }
-
-        // convert weth to eth
-        (bool success, ) = wethContractAddress.call(
-            abi.encodeWithSignature(
-                "withdraw(uint256)",
-                order.parameters.offer[0].endAmount - considerationAmountToBePaidBySeller
-            )
-        );
-        if (!success) {
-            revert WethConversionFailed();
-        }
-
-        saleAmountReceived = address(this).balance - contractBalanceBefore;
-
-        // Check amount recieved is more than minSaleAmount
-        if (saleAmountReceived < minSaleAmount) {
-            revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
-        }
     }
 
     /// @inheritdoc ISellerFinancing
