@@ -51,13 +51,14 @@ interface ISellerFinancing is
     function makePayment(address nftContractAddress, uint256 nftId) external payable;
 
     /// @notice Seize an asset from a defaulted loan.
-    /// @dev    Only the seller address can call this function
+    /// @dev    This function is only callable by the seller address
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
     function seizeAsset(address nftContractAddress, uint256 nftId) external;
 
     /// @notice Sell the underlying nft and repay the loan using the proceeds of the sale.
     ///         Transfer remaining funds to the buyer
+    /// @dev    This function is only callable by the buyer address
     /// @dev    This function only supports valid Seaport orders
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT

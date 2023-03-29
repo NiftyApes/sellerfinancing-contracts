@@ -447,6 +447,19 @@ contract NiftyApesSellerFinancing is
     ) external whenNotPaused nonReentrant {
         // instantiate loan
         Loan storage loan = _getLoan(nftContractAddress, nftId);
+        // get buyer
+        address buyerAddress = ownerOf(loan.buyerNftId);
+
+        _requireIsNotSanctioned(msg.sender);
+        // requireSenderIsBuyer
+        if (msg.sender != buyerAddress) {
+            revert MsgSenderNotBuyer();
+        }
+        // requireLoanNotInHardDefault
+        if (_currentTimestamp32() >= loan.periodEndTimestamp + loan.periodDuration) {
+            revert SoftGracePeriodEnded();
+        }
+
         // calculate period interest
         (, uint256 periodInterest) = calculateMinimumPayment(loan);
         // calculate total payment required to close the loan
