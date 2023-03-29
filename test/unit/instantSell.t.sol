@@ -134,8 +134,6 @@ contract TestInstantSell is Test, OffersLoansFixtures {
     function _test_instantSell_loanClosed_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) private {
-        
-
         Offer memory offer = offerStructFromFields(
             fuzzed,
             defaultFixedOfferFields
@@ -190,7 +188,11 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + periodInterest + minProfitAmount) * 40 + 38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal +
+            periodInterest +
+            minProfitAmount) *
+            40 +
+            38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -238,7 +240,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
     function _test_instantSell_loanClosed_withoutSeaportFee(
         FuzzedOfferFields memory fuzzed
     ) private {
-        
+
 
         Offer memory offer = offerStructFromFields(
             fuzzed,
@@ -341,7 +343,6 @@ contract TestInstantSell is Test, OffersLoansFixtures {
     function _test_instantSell_reverts_post_grace_period(
         FuzzedOfferFields memory fuzzed
     ) private {
-        
         Offer memory offer = offerStructFromFields(
             fuzzed,
             defaultFixedOfferFields
@@ -365,7 +366,10 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) + minProfitAmount) * 40 + 38) / 39;
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
+            minProfitAmount) *
+            40 +
+            38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -417,62 +421,55 @@ contract TestInstantSell is Test, OffersLoansFixtures {
             seaportFeeAmount = bidPrice - (bidPrice * 39) / 40;
             totalOriginalConsiderationItems = 2;
         }
-        
+
         ISeaport.ItemType offerItemType = ISeaport.ItemType.ERC20;
         address offerToken = WETH_ADDRESS;
 
         order = new ISeaport.Order[](1);
-        order[0] = ISeaport.Order(
-            {
-                parameters: ISeaport.OrderParameters(
-                    {
-                        offerer: payable(orderCreator),
-                        zone: 0x004C00500000aD104D7DBd00e3ae0A5C00560C00,
-                        offer: new ISeaport.OfferItem[](1),
-                        consideration: new ISeaport.ConsiderationItem[](totalOriginalConsiderationItems),
-                        orderType: ISeaport.OrderType.FULL_OPEN,
-                        startTime: block.timestamp,
-                        endTime: block.timestamp + 24*60*60,
-                        zoneHash: bytes32(0x0000000000000000000000000000000000000000000000000000000000000000),
-                        salt: 1,
-                        conduitKey: bytes32(0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000),
-                        totalOriginalConsiderationItems: totalOriginalConsiderationItems
-                    }
+        order[0] = ISeaport.Order({
+            parameters: ISeaport.OrderParameters({
+                offerer: payable(orderCreator),
+                zone: address(0),
+                offer: new ISeaport.OfferItem[](1),
+                consideration: new ISeaport.ConsiderationItem[](2),
+                orderType: ISeaport.OrderType.FULL_OPEN,
+                startTime: block.timestamp,
+                endTime: block.timestamp + 24 * 60 * 60,
+                zoneHash: bytes32(
+                    0x0000000000000000000000000000000000000000000000000000000000000000
                 ),
-                signature: bytes("")
-            }
-        );
-        order[0].parameters.offer[0] = ISeaport.OfferItem(
-            {
+                salt: 1,
+                conduitKey: bytes32(
+                    0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000
+                ),
+                totalOriginalConsiderationItems: totalOriginalConsiderationItems
+            }),
+            signature: bytes("")
+        });
+        order[0].parameters.offer[0] = ISeaport.OfferItem({
+            itemType: offerItemType,
+            token: offerToken,
+            identifierOrCriteria: 0,
+            startAmount: bidPrice,
+            endAmount: bidPrice
+        });
+        order[0].parameters.consideration[0] = ISeaport.ConsiderationItem({
+            itemType: ISeaport.ItemType.ERC721,
+            token: nftContractAddress,
+            identifierOrCriteria: nftId,
+            startAmount: 1,
+            endAmount: 1,
+            recipient: payable(orderCreator)
+        });
+        if (totalOriginalConsiderationItems > 1) {
+            order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
                 itemType: offerItemType,
                 token: offerToken,
                 identifierOrCriteria: 0,
-                startAmount: bidPrice,
-                endAmount: bidPrice
-            }
-        );
-        order[0].parameters.consideration[0] = ISeaport.ConsiderationItem(
-            {
-                itemType: ISeaport.ItemType.ERC721,
-                token: nftContractAddress,
-                identifierOrCriteria: nftId,
-                startAmount: 1,
-                endAmount: 1,
-                recipient: payable(orderCreator)
-            }
-        );
-        if (totalOriginalConsiderationItems > 1) {
-            order[0].parameters.consideration[1] = ISeaport.ConsiderationItem(
-                {
-                    itemType: offerItemType,
-                    token: offerToken,
-                    identifierOrCriteria: 0,
-                    startAmount: seaportFeeAmount,
-                    endAmount: seaportFeeAmount,
-                    recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
-                }
-            );
+                startAmount: seaportFeeAmount,
+                endAmount: seaportFeeAmount,
+                recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
+            });
         }
     }
-
 }

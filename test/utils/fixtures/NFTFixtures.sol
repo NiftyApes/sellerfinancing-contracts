@@ -14,13 +14,13 @@ contract NFTFixtures is Test, BaseTest, UsersFixtures {
         IERC721Upgradeable(0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D);
 
     function setUp() public virtual override {
-        vm.rollFork(16600125);
+        vm.rollFork(16901983);
         super.setUp();
 
         vm.startPrank(flamingoDAO);
 
         boredApeYachtClub.transferFrom(flamingoDAO, address(seller1), 8661);
-        boredApeYachtClub.transferFrom(flamingoDAO, address(seller2), 6974);
+        // boredApeYachtClub.transferFrom(flamingoDAO, address(seller2), 6974);
 
         vm.stopPrank();
     }
