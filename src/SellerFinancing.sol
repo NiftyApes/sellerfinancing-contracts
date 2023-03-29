@@ -211,8 +211,8 @@ contract NiftyApesSellerFinancing is
         if (loan.periodBeginTimestamp != 0) {
             revert LoanAlreadyOpen();
         }
-        // require24HourMinimumDuration
-        if (offer.periodDuration < 1 days) {
+        // require1MinsMinimumDuration
+        if (offer.periodDuration < 1 minutes) {
             revert InvalidPeriodDuration();
         }
         // ensure msg.value is sufficient for downPayment

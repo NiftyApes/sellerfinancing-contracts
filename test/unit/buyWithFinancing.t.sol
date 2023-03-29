@@ -229,7 +229,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
             fuzzed,
             defaultFixedOfferFields
         );
-        offer.periodDuration = 1 days - 1;
+        offer.periodDuration = 1 minutes - 1;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
