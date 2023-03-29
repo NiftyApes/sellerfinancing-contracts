@@ -17,78 +17,45 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
 
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
-        assertEq(
-            boredApeYachtClub.ownerOf(offer.nftId),
-            address(sellerFinancing)
-        );
+        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
         // balance increments to one
-        assertEq(
-            sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)),
-            1
-        );
+        assertEq(sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)), 1);
         // nftId exists at index 0
         assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
-                address(boredApeYachtClub),
-                0
-            ),
+            sellerFinancing.tokenOfOwnerByIndex(buyer1, address(boredApeYachtClub), 0),
             offer.nftId
         );
         // loan auction exists
         assertEq(
-            sellerFinancing
-                .getLoan(address(boredApeYachtClub), offer.nftId)
-                .periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(0),
-            buyer1
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), buyer1);
         // seller NFT minted to seller
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(1),
-            seller1
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
         //buyer nftId has tokenURI same as original nft
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId),
             IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(offer.nftId)
         );
         Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
+
+        // check loan struct values
         assertEq(loan.buyerNftId, 0);
         assertEq(loan.sellerNftId, 1);
-        assertEq(
-            loan.remainingPrincipal,
-            offer.price - offer.downPaymentAmount
-        );
-        assertEq(
-            loan.minimumPrincipalPerPeriod,
-            offer.minimumPrincipalPerPeriod
-        );
+        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(
-            loan.periodEndTimestamp,
-            block.timestamp + offer.periodDuration
-        );
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function _test_buyWithFinancing_simplest_case(
-        FuzzedOfferFields memory fuzzed
-    ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+    function _test_buyWithFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
     }
@@ -100,26 +67,33 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     }
 
     function test_unit_buyWithFinancing_simplest_case() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_simplest_case(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_offerSignerNotOwner(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.prank(seller1);
-        IERC721Upgradeable(offer.nftContractAddress).safeTransferFrom(seller1, seller2, offer.nftId);
-        
+        IERC721Upgradeable(offer.nftContractAddress).safeTransferFrom(
+            seller1,
+            seller2,
+            offer.nftId
+        );
+
         vm.startPrank(buyer1);
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.NotNftOwner.selector, offer.nftContractAddress, offer.nftId, seller1));
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.NotNftOwner.selector,
+                offer.nftContractAddress,
+                offer.nftId,
+                seller1
+            )
+        );
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1
@@ -134,22 +108,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     }
 
     function test_unit_buyWithFinancing_reverts_if_offerSignerNotOwner() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_reverts_if_offerSignerNotOwner(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_signatureAlreadyUsed(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1
@@ -157,10 +127,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         vm.stopPrank();
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         vm.warp(loan.periodEndTimestamp + 1);
 
@@ -168,8 +135,13 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
 
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.SignatureNotAvailable.selector, offerSignature));
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SignatureNotAvailable.selector,
+                offerSignature
+            )
+        );
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1
@@ -184,25 +156,21 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     }
 
     function test_unit_buyWithFinancing_reverts_if_signatureAlreadyUsed() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_reverts_if_signatureAlreadyUsed(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_offerExpired(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
         vm.assume(fuzzed.expiration < type(uint32).max - 1);
         vm.warp(uint256(offer.expiration) + 1);
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.OfferExpired.selector);
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1
@@ -217,24 +185,20 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     }
 
     function test_unit_buyWithFinancing_reverts_if_offerExpired() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_reverts_if_offerExpired(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_invalidPeriodDuration(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.periodDuration = 1 minutes - 1;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.InvalidPeriodDuration.selector);
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1
@@ -249,23 +213,25 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     }
 
     function test_unit_buyWithFinancing_reverts_if_invalidPeriodDuration() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_reverts_if_invalidPeriodDuration(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InsufficientMsgValue.selector, offer.downPaymentAmount - 1, offer.downPaymentAmount));
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount - 1}(
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.InsufficientMsgValue.selector,
+                offer.downPaymentAmount - 1,
+                offer.downPaymentAmount
+            )
+        );
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount - 1 }(
             offer,
             offerSignature,
             buyer1
@@ -280,24 +246,26 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     }
 
     function test_unit_buyWithFinancing_reverts_if_invalidDownpaymentValue() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.price = offer.downPaymentAmount - 1;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.DownPaymentGreaterThanOrEqualToOfferPrice.selector, offer.downPaymentAmount, offer.price));
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.DownPaymentGreaterThanOrEqualToOfferPrice.selector,
+                offer.downPaymentAmount,
+                offer.price
+            )
+        );
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1
@@ -312,24 +280,26 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     }
 
     function test_unit_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.minimumPrincipalPerPeriod = (offer.price - offer.downPaymentAmount) + 1;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidMinimumPrincipalPerPeriod.selector, offer.minimumPrincipalPerPeriod, offer.price - offer.downPaymentAmount));
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.InvalidMinimumPrincipalPerPeriod.selector,
+                offer.minimumPrincipalPerPeriod,
+                offer.price - offer.downPaymentAmount
+            )
+        );
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1
@@ -344,11 +314,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     }
 
     function test_unit_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(fixedForSpeed);
     }
-
 
     // function _test_buyWithFinancing_events(FuzzedOfferFields memory fuzzed)
     //     private

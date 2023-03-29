@@ -195,18 +195,21 @@ contract NiftyApesSellerFinancing is
         bytes calldata signature,
         address buyer
     ) external payable whenNotPaused nonReentrant {
+        // instantiate loan
+        Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
+        // get seller
         address seller = getOfferSigner(offer, signature);
+
         _require721Owner(offer.nftContractAddress, offer.nftId, seller);
         _requireAvailableSignature(signature);
         _requireSignature65(signature);
         _requireIsNotSanctioned(seller);
         _requireIsNotSanctioned(buyer);
+        _requireOfferNotExpired(offer);
         // requireOfferisValid
         if (offer.nftContractAddress == address(0)) {
             revert ZeroAddress();
         }
-        _requireOfferNotExpired(offer);
-        Loan storage loan = _getLoan(offer.nftContractAddress, offer.nftId);
         // requireNoOpenLoan
         if (loan.periodBeginTimestamp != 0) {
             revert LoanAlreadyOpen();
@@ -215,13 +218,15 @@ contract NiftyApesSellerFinancing is
         if (offer.periodDuration < 1 minutes) {
             revert InvalidPeriodDuration();
         }
-        // ensure msg.value is sufficient for downPayment
+        // requireSufficientMsgValue
         if (msg.value < offer.downPaymentAmount) {
             revert InsufficientMsgValue(msg.value, offer.downPaymentAmount);
         }
+        // requireDownPaymentLessThanOfferPrice
         if (offer.price <= offer.downPaymentAmount) {
             revert DownPaymentGreaterThanOrEqualToOfferPrice(offer.downPaymentAmount, offer.price);
         }
+        // requireMinimumPrincipalLessThanTotalPrincipal
         if ((offer.price - offer.downPaymentAmount) < offer.minimumPrincipalPerPeriod) {
             revert InvalidMinimumPrincipalPerPeriod(
                 offer.minimumPrincipalPerPeriod,
@@ -264,9 +269,10 @@ contract NiftyApesSellerFinancing is
         // create loan
         _createLoan(loan, offer, sellerNftId, buyerNftId, (offer.price - offer.downPaymentAmount));
 
-        // Transfer nft from seller to this contract, revert on failure
+        // transfer nft from seller to this contract, revert on failure
         _transferNft(offer.nftContractAddress, offer.nftId, seller, address(this));
 
+        // enable view based ownership of the purchased NFT
         _addLoanToOwnerEnumeration(buyer, offer.nftContractAddress, offer.nftId);
 
         emit LoanExecuted(offer.nftContractAddress, offer.nftId, seller, signature, loan);
