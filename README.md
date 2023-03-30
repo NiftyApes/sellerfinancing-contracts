@@ -4,16 +4,43 @@
 
 The NiftyApes Seller Financing system enables the seller of an NFT to directly offer financing to a buyer without the need for 3rd party liquidity.
 
-A general flow is described as:
-
-1. The owner of an NFT may list it at a given price, down payment amount, interest rate per period, minimum principal per period (which determines the number of pay periods) and pay period duration.
-2. Once executed, the NFT is entered into escrow in the NiftyApes Seller Financing contract, and a buyer can repay the loan in installments over time. During the loan a buyer can utilize their purchased NFT by using the Upon full repayment the buyer will receive NFT to their EOA or contract address.
-3. If the buyer defaults, the seller keeps any payments made so far and can reclaim the NFT to keep or resell.
-4. The system affords buyers the ability to make a late payment during a soft grace period that is one additional pay period in duration, so long as the seller has not already seized the NFT. This allows the buyer and seller the opportunity to communicate and negotitate a late payment without an automatic loss of investment by the buyer.
-
-Here is simple diagram of the system:
+A simple diagram of the system:
 
 ![NiftyApes Seller Financing Flow Diagram](https://github.com/NiftyApes/sellerFinancing/blob/a17a94c3c4923e16f41b7e420fb6a610f607ac8b/NiftyApes_SellerFinancing_FlowDiagram.png)(
+
+The flow and main actions of the system are described as:
+
+#### List NFT With Financing
+
+1. The owner of an NFT may list it at a given price, down payment amount, interest rate per period, minimum principal per period (which determines the number of pay periods) and pay period duration by signing a properly formed offer sturct and supplying it to the NiftyApes API.
+
+#### Execute A Purchase
+
+2. When a buyer executes a sale by supplying the signed financing offer to the `buyWithFinancing()` function the NFT is entered into escrow in the NiftyApes Seller Financing contract and a loan is initiated.
+
+#### Utilize The Purchased NFT
+
+3. During the loan a buyer can utilize their purchased NFT by calling the `balanceOf()` and `tokenOfOwnerById()` functions to read ownership of specified nftContractAddress or the `flashClaim()` function to conduct any arbitrary onchain action using the NFT.
+
+#### Sell At Any Time
+
+4. At any time during the loan or soft grace period, a buyer can accept a valid Seaport bid order for the NFT using the `instantSell()` function so long as the proceeds of the sale cover the remaining principal of the loan plus any relevant interest. This action will pay any remaining principal and interest due on the loan to the seller, transfer the remaining value to the buyer, and transfer the underlying NFT to the new buyer.
+
+#### Buyer And Seller Tickets
+
+5. In addition, both buyer and seller are minted an NFT loan ticket that represents ownership of their side of the loan and which they can transfer or sell to any other address.
+
+#### Make A Payment and Repay Loan
+
+6. A buyer can repay the loan in installments over time, or in full at any time, using the `makePayment()` function. Upon full repayment the buyer will receive the purchased NFT to their EOA or contract address and both buyer and seller loan tickets are burned.
+
+#### Seize A Defaulted Asset
+
+7. If a buyer defaults, the seller can call the `seizeAsset()` function, thus keeping any payments made so far and reclaiming the NFT to keep or resell. Upon asset seizure both buyer and seller loan tickets are burned.
+
+#### Late Payments
+
+8. The system affords buyers the ability to make a late payment during a soft grace period that is one additional pay period in duration, so long as the seller has not already seized the NFT. This allows the buyer and seller the opportunity to communicate and negotitate a late payment without an automatic loss of investment by the buyer.
 
 ### Getting Started
 
