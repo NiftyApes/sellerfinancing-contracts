@@ -42,6 +42,10 @@ The flow and main actions of the system are described as:
 
 8. The system affords buyers the ability to make a late payment during a soft grace period that is one additional pay period in duration, so long as the seller has not already seized the NFT. This allows the buyer and seller the opportunity to communicate and negotitate a late payment without an automatic loss of investment by the buyer.
 
+## Marketplace Integration
+
+The intention is for the main usge of the NiftyApes Seller Financing protocol to be through the NiftyApes SDK. This SDK will be integrated with 3rd party marketplace dapps. In order to serve this use case we have provided a `MarketplaceIntegration` contract in addition to the core Seller Financing protocol. The integration contract allows an owner to specify a `marketplaceFeeBps` and `marketplaceFeeRecipient`, and allows a user to call the `buyWithFinancing()` function which passes the calculated marketplace fee to the `marketplaceFeeRecipient` upon execution.
+
 ## Getting Started
 
 To run tests:
