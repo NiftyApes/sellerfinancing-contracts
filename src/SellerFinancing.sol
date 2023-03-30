@@ -205,6 +205,7 @@ contract NiftyApesSellerFinancing is
         _requireSignature65(signature);
         _requireIsNotSanctioned(seller);
         _requireIsNotSanctioned(buyer);
+        _requireIsNotSanctioned(msg.sender);
         _requireOfferNotExpired(offer);
         // requireOfferisValid
         if (offer.nftContractAddress == address(0)) {
