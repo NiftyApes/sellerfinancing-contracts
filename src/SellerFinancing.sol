@@ -24,6 +24,7 @@ import "./lib/ECDSABridge.sol";
 /// @custom:version 1.0
 /// @author captnseagraves (captnseagraves.eth)
 /// @custom:contributor zishansami102 (zishansami.eth)
+/// @custom:contributor zjmiller (zjmiller.eth)
 contract NiftyApesSellerFinancing is
     OwnableUpgradeable,
     PausableUpgradeable,
@@ -58,9 +59,6 @@ contract NiftyApesSellerFinancing is
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
 
-    // instead of address to nftId to struct, could create a loanHash from the address ID and loan ID/Nonce,
-    // and use that as the pointer to the loan Struct. - ks
-
     /// @dev A mapping for a NFT to a loan .
     ///      The mapping has to be broken into two parts since an NFT is denominated by its address (first part)
     ///      and its nftId (second part) in our code base.
@@ -69,8 +67,6 @@ contract NiftyApesSellerFinancing is
     /// @dev A mapping to mark a signature as used.
     ///      The mapping allows users to withdraw offers that they made by signature.
     mapping(bytes => bool) private _cancelledOrFinalized;
-
-    // could mint an NFT and have these in an inherited contract - ks
 
     // Mapping owner to nftContractAddress to token count
     mapping(address => mapping(address => uint256)) private _balances;
