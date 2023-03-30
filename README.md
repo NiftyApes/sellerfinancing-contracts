@@ -1,12 +1,12 @@
 # <h1 align="center"> NiftyApes Seller Financing </h1>
 
-### High Level Description
+## System Description
 
 The NiftyApes Seller Financing system enables the seller of an NFT to directly offer financing to a buyer without the need for 3rd party liquidity.
 
 A simple diagram of the system:
 
-![NiftyApes Seller Financing Flow Diagram](https://github.com/NiftyApes/sellerFinancing/blob/44a6c4c831f04661b187744da080d6f7de6325cf/NiftyApes_SellerFinancing_FlowDiagram_1.png)(
+![NiftyApes Seller Financing Flow Diagram](https://github.com/NiftyApes/sellerFinancing/blob/44a6c4c831f04661b187744da080d6f7de6325cf/NiftyApes_SellerFinancing_FlowDiagram_1.png)
 
 The flow and main actions of the system are described as:
 
@@ -20,7 +20,7 @@ The flow and main actions of the system are described as:
 
 #### Utilize The Purchased NFT
 
-3. During the loan a buyer can utilize their purchased NFT by calling the `balanceOf()` and `tokenOfOwnerById()` functions to read ownership of specified nftContractAddress or the `flashClaim()` function to conduct any arbitrary onchain action using the NFT.
+3. During the loan a buyer can utilize their purchased NFT by calling the `balanceOf()` and `tokenOfOwnerById()` functions to read ownership of specified nftContractAddress and nftId, or the `flashClaim()` function to conduct any arbitrary onchain action using the NFT.
 
 #### Sell At Any Time
 
@@ -28,7 +28,7 @@ The flow and main actions of the system are described as:
 
 #### Buyer And Seller Tickets
 
-5. In addition, both buyer and seller are minted an NFT loan ticket that represents ownership of their side of the loan and which they can transfer or sell to any other address.
+5. In addition, both buyer and seller are minted an NFT loan ticket that represents ownership of their side of the loan and which they can transfer or sell to any other address. This allows another actor to assume the debt obligation or stream of revenue of the loan.
 
 #### Make A Payment and Repay Loan
 
@@ -36,13 +36,13 @@ The flow and main actions of the system are described as:
 
 #### Seize A Defaulted Asset
 
-7. If a buyer defaults, the seller can call the `seizeAsset()` function, thus keeping any payments made so far and reclaiming the NFT to keep or resell. Upon asset seizure both buyer and seller loan tickets are burned.
+7. If a buyer defaults (failing to make a payment before the end of a pay period), the seller can call the `seizeAsset()` function, thus keeping any payments made so far and reclaiming the NFT to keep or resell. Upon asset seizure both buyer and seller loan tickets are burned.
 
 #### Late Payments
 
 8. The system affords buyers the ability to make a late payment during a soft grace period that is one additional pay period in duration, so long as the seller has not already seized the NFT. This allows the buyer and seller the opportunity to communicate and negotitate a late payment without an automatic loss of investment by the buyer.
 
-### Getting Started
+## Getting Started
 
 To run tests:
 
@@ -50,11 +50,13 @@ To run tests:
 
 To run deploy script:
 
-1. supply env variable
+1. supply required env variables
 2. `source .env`
-3. `forge script script/Goerli_Deploy_SellerFinancing.s.sol:DeploySellerFinancingScript --optimize --rpc-url $GOERLI_RPC_URL --private-key $GOERLI_PRIVATE_KEY --slow --broadcast`
+3. `forge script script/Goerli_Deploy_SellerFinancing.s.sol:DeploySellerFinancingScript --optimize --rpc-url $GOERLI_RPC_URL --private-key $GOERLI_PRIVATE_KEY --slow --broadcast --verify`
 
 ### Contract verification
+
+**In the case verification fails on deployment**
 
 Easiest way is to use `forge` CLI. Documentation here: https://book.getfoundry.sh/reference/forge/forge-verify-contract
 
