@@ -6,7 +6,7 @@ The NiftyApes Seller Financing system enables the seller of an NFT to directly o
 
 A simple diagram of the system:
 
-![NiftyApes Seller Financing Flow Diagram](https://github.com/NiftyApes/sellerFinancing/blob/a17a94c3c4923e16f41b7e420fb6a610f607ac8b/NiftyApes_SellerFinancing_FlowDiagram.png)(
+![NiftyApes Seller Financing Flow Diagram](https://github.com/NiftyApes/sellerFinancing/blob/44a6c4c831f04661b187744da080d6f7de6325cf/NiftyApes_SellerFinancing_FlowDiagram_1.png)(
 
 The flow and main actions of the system are described as:
 
