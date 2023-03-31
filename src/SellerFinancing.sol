@@ -50,7 +50,7 @@ contract NiftyApesSellerFinancing is
             "Offer(uint128 price,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration)"
         );
 
-    // increaments by two for each loan, once for buyerNftId, once for sellerNftId
+    // increments by two for each loan, once for buyerNftId, once for sellerNftId
     uint256 private loanNftNonce;
 
     /// @dev The stored address for the royalties engine
@@ -203,7 +203,7 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(buyer);
         _requireIsNotSanctioned(msg.sender);
         _requireOfferNotExpired(offer);
-        // requireOfferisValid
+        // requireOfferIsValid
         if (offer.nftContractAddress == address(0)) {
             revert ZeroAddress();
         }
@@ -298,7 +298,7 @@ contract NiftyApesSellerFinancing is
         uint256 nftId,
         uint256 amountReceived
     ) internal returns (address buyer) {
-        // instatiate loan
+        // instantiate loan
         Loan storage loan = _getLoan(nftContractAddress, nftId);
         // get buyer
         address buyerAddress = ownerOf(loan.buyerNftId);
@@ -316,7 +316,7 @@ contract NiftyApesSellerFinancing is
         // get minimum payment and period interest values
         (uint256 totalMinimumPayment, uint256 periodInterest) = calculateMinimumPayment(loan);
 
-        // caculate the total possible payment
+        // calculate the total possible payment
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
 
         //require amountReceived to be larger than the total minimum payment
@@ -347,7 +347,7 @@ contract NiftyApesSellerFinancing is
         // update loan struct
         loan.remainingPrincipal -= uint128(amountReceived - periodInterest);
 
-        // check if remianingPrincipal is 0
+        // check if remainingPrincipal is 0
         if (loan.remainingPrincipal == 0) {
             // if principal == 0 set nft transfer address to the buyer
             buyer = buyerAddress;
@@ -376,7 +376,7 @@ contract NiftyApesSellerFinancing is
             if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
                 uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) /
                     loan.periodDuration) + 1;
-                // increment the currentperiodBegin and End Timestamps equal to the periodDuration times numPeriodsPassed
+                // increment the currentPeriodBegin and End Timestamps equal to the periodDuration times numPeriodsPassed
                 loan.periodBeginTimestamp += loan.periodDuration * uint32(numPeriodsPassed);
                 loan.periodEndTimestamp += loan.periodDuration * uint32(numPeriodsPassed);
             }
@@ -514,7 +514,7 @@ contract NiftyApesSellerFinancing is
         // cache this contract eth balance before the sale
         uint256 contractBalanceBefore = address(this).balance;
 
-        // execute sale on seport
+        // execute sale on Seaport
         if (!ISeaport(seaportContractAddress).fulfillOrder(order, fulfillerConduitKey)) {
             revert SeaportOrderNotFulfilled();
         }
@@ -533,7 +533,7 @@ contract NiftyApesSellerFinancing is
         // calculate saleAmountReceived
         saleAmountReceived = address(this).balance - contractBalanceBefore;
 
-        // check amount recieved is more than minSaleAmount
+        // check amount received is more than minSaleAmount
         if (saleAmountReceived < minSaleAmount) {
             revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
         }
@@ -692,7 +692,7 @@ contract NiftyApesSellerFinancing is
         }
     }
 
-    /// @dev If "to" is a contract that doesnt except ETH, send value back to "from" and continue
+    /// @dev If "to" is a contract that doesn't accept ETH, send value back to "from" and continue
     /// otherwise "to" could force a default by sending bearer nft to contract that does not accept ETH
     function _conditionalSendValue(address to, address from, uint256 amount) internal {
         if (address(this).balance < amount) {
@@ -703,7 +703,7 @@ contract NiftyApesSellerFinancing is
 
         if (!toSuccess) {
             (bool fromSuccess, ) = from.call{ value: amount }("");
-            // require ETH is sucessfully sent to either to or from
+            // require ETH is successfully sent to either to or from
             // we do not want ETH hanging in contract.
             if (!fromSuccess) {
                 revert ConditionSendValueFailed(from, to, amount);
