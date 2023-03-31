@@ -109,17 +109,13 @@ contract NiftyApesSellerFinancing is
 
     /// @inheritdoc ISellerFinancingAdmin
     function updateSeaportContractAddress(address newSeaportContractAddress) external onlyOwner {
-        if (newSeaportContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(newSeaportContractAddress);
         seaportContractAddress = newSeaportContractAddress;
     }
 
     /// @inheritdoc ISellerFinancingAdmin
     function updateWethContractAddress(address newWethContractAddress) external onlyOwner {
-        if (newWethContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(newWethContractAddress);
         wethContractAddress = newWethContractAddress;
     }
 
@@ -179,7 +175,6 @@ contract NiftyApesSellerFinancing is
         bytes memory signature
     ) external whenNotPaused {
         _requireAvailableSignature(signature);
-        _requireSignature65(signature);
         address signer = getOfferSigner(offer, signature);
         _requireSigner(signer, msg.sender);
         _markSignatureUsed(offer, signature);
@@ -198,15 +193,12 @@ contract NiftyApesSellerFinancing is
 
         _require721Owner(offer.nftContractAddress, offer.nftId, seller);
         _requireAvailableSignature(signature);
-        _requireSignature65(signature);
         _requireIsNotSanctioned(seller);
         _requireIsNotSanctioned(buyer);
         _requireIsNotSanctioned(msg.sender);
         _requireOfferNotExpired(offer);
         // requireOfferisValid
-        if (offer.nftContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(offer.nftContractAddress);
         // requireNoOpenLoan
         if (loan.periodBeginTimestamp != 0) {
             revert LoanAlreadyOpen();
@@ -277,7 +269,7 @@ contract NiftyApesSellerFinancing is
         _addLoanToOwnerEnumeration(buyer, offer.nftContractAddress, offer.nftId);
 
         // emit loan executed event
-        emit LoanExecuted(offer.nftContractAddress, offer.nftId, seller, signature, loan);
+        emit LoanExecuted(offer.nftContractAddress, offer.nftId, signature, loan);
     }
 
     /// @inheritdoc ISellerFinancing
@@ -309,9 +301,7 @@ contract NiftyApesSellerFinancing is
         _requireIsNotSanctioned(msg.sender);
         _requireOpenLoan(loan);
         // requireLoanNotInHardDefault
-        if (_currentTimestamp32() >= loan.periodEndTimestamp + loan.periodDuration) {
-            revert SoftGracePeriodEnded();
-        }
+        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
 
         // get minimum payment and period interest values
         (uint256 totalMinimumPayment, uint256 periodInterest) = calculateMinimumPayment(loan);
@@ -407,10 +397,8 @@ contract NiftyApesSellerFinancing is
 
         _requireIsNotSanctioned(sellerAddress);
         _requireOpenLoan(loan);
-        // requireSenderIsSeller
-        if (msg.sender != sellerAddress) {
-            revert MsgSenderNotSeller();
-        }
+        // requireMsgSenderIsSeller
+        _requireMsgSenderIsValidCaller(sellerAddress);
         // requireLoanInDefault
         if (_currentTimestamp32() < loan.periodEndTimestamp) {
             revert LoanNotInDefault();
@@ -448,14 +436,10 @@ contract NiftyApesSellerFinancing is
         address buyerAddress = ownerOf(loan.buyerNftId);
 
         _requireIsNotSanctioned(msg.sender);
-        // requireSenderIsBuyer
-        if (msg.sender != buyerAddress) {
-            revert MsgSenderNotBuyer();
-        }
+        // requireMsgSenderIsBuyer
+        _requireMsgSenderIsValidCaller(buyerAddress);
         // requireLoanNotInHardDefault
-        if (_currentTimestamp32() >= loan.periodEndTimestamp + loan.periodDuration) {
-            revert SoftGracePeriodEnded();
-        }
+        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
 
         // calculate period interest
         (, uint256 periodInterest) = calculateMinimumPayment(loan);
@@ -573,9 +557,7 @@ contract NiftyApesSellerFinancing is
 
     /// @inheritdoc ISellerFinancing
     function balanceOf(address owner, address nftContractAddress) public view returns (uint256) {
-        if (owner == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(owner);
         return _balances[owner][nftContractAddress];
     }
 
@@ -820,12 +802,6 @@ contract NiftyApesSellerFinancing is
         }
     }
 
-    function _requireSignature65(bytes memory signature) public pure {
-        if (signature.length != 65) {
-            revert NotSignature65(signature);
-        }
-    }
-
     function _requireOfferNotExpired(Offer memory offer) internal view {
         if (offer.expiration <= SafeCastUpgradeable.toUint32(block.timestamp)) {
             revert OfferExpired();
@@ -857,6 +833,24 @@ contract NiftyApesSellerFinancing is
     function _requireNftOwner(Loan storage loan) internal view {
         if (msg.sender != ownerOf(loan.buyerNftId)) {
             revert NotNftOwner(address(this), loan.buyerNftId, msg.sender);
+        }
+    }
+
+    function _requireNonZeroAddress(address given) internal pure {
+        if (given == address(0)) {
+            revert ZeroAddress();
+        }
+    }
+
+    function _requireLoanNotInHardDefault(uint32 hardDefaultTimestamp) internal view {
+        if (_currentTimestamp32() >= hardDefaultTimestamp) {
+            revert SoftGracePeriodEnded();
+        }
+    }
+
+    function _requireMsgSenderIsValidCaller(address expectedCaller) internal view {
+        if(msg.sender != expectedCaller) {
+            revert InvalidCaller(msg.sender, expectedCaller);
         }
     }
 
