@@ -8,10 +8,10 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 import "../../src/interfaces/seaport/ISeaport.sol";
-
+import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
 import "../common/Console.sol";
 
-contract TestInstantSell is Test, OffersLoansFixtures {
+contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function setUp() public override {
         super.setUp();
     }
@@ -180,9 +180,11 @@ contract TestInstantSell is Test, OffersLoansFixtures {
                 );
 
         // payout royalties
+        uint256 royaltiesInInstantSell;
         for (uint256 i = 0; i < recipients2.length; i++) {
-            totalRoyaltiesPaid += amounts2[i];
+            royaltiesInInstantSell += amounts2[i];
         }
+        totalRoyaltiesPaid += royaltiesInInstantSell;
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
@@ -209,6 +211,18 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+            offer.nftContractAddress,
+            offer.nftId,
+            loan.remainingPrincipal + periodInterest,
+            royaltiesInInstantSell,
+            periodInterest,
+            loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit InstantSell(offer.nftContractAddress, offer.nftId, 0);
+        
         sellerFinancing.instantSell(
             offer.nftContractAddress,
             offer.nftId,
@@ -218,9 +232,8 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         vm.stopPrank();
 
         assertionsForClosedLoan(offer, buyer2);
-        uint256 buyer1BalanceAfter = address(buyer1).balance;
         assertEq(
-            buyer1BalanceAfter,
+            address(buyer1).balance,
             (buyer1BalanceBefore - offer.downPaymentAmount + minProfitAmount)
         );
     }
@@ -471,5 +484,180 @@ contract TestInstantSell is Test, OffersLoansFixtures {
                 recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
             });
         }
+    }
+
+    function _test_instantSell_reverts_ifCallerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        // set any minimum profit value
+        uint256 minProfitAmount = 1 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
+            minProfitAmount) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            true
+        );
+
+        vm.prank(buyer1);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+
+        vm.startPrank(SANCTIONED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SanctionedAddress.selector,
+                SANCTIONED_ADDRESS
+            )
+        );
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            minProfitAmount,
+            abi.encode(order[0], bytes32(0))
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_instantSell_reverts_ifCallerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_reverts_ifCallerSanctioned(fuzzed);
+    }
+
+    function test_unit_instantSell_reverts_ifCallerSanctioned() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_reverts_ifCallerSanctioned(fixedForSpeed);
+    }
+
+    function _test_instantSell_reverts_ifCallerIsNotBuyer(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        // set any minimum profit value
+        uint256 minProfitAmount = 1 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
+            minProfitAmount) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            true
+        );
+
+        vm.startPrank(buyer2);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.InvalidCaller.selector,
+                buyer2,
+                buyer1
+            )
+        );
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            minProfitAmount,
+            abi.encode(order[0], bytes32(0))
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_instantSell_reverts_ifCallerIsNotBuyer(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_reverts_ifCallerIsNotBuyer(fuzzed);
+    }
+
+    function test_unit_instantSell_reverts_ifCallerIsNotBuyer() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_reverts_ifCallerIsNotBuyer(fixedForSpeed);
+    }
+
+    function _test_instantSell_reverts_ifLoanInHardDefault(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        vm.warp(loan.periodEndTimestamp + loan.periodDuration + 1);
+
+        // set any minimum profit value
+        uint256 minProfitAmount = 1 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
+            minProfitAmount) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            true
+        );
+
+        vm.startPrank(buyer1);
+        vm.expectRevert(ISellerFinancingErrors.SoftGracePeriodEnded.selector);
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            minProfitAmount,
+            abi.encode(order[0], bytes32(0))
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_instantSell_reverts_ifLoanInHardDefault(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_reverts_ifLoanInHardDefault(fuzzed);
+    }
+
+    function test_unit_instantSell_reverts_ifLoanInHardDefault() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_reverts_ifLoanInHardDefault(fixedForSpeed);
     }
 }

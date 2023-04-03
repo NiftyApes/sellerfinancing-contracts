@@ -11,7 +11,7 @@ import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
 
-contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents{
+contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function setUp() public override {
         super.setUp();
     }

@@ -8,10 +8,11 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
 
 import "../common/Console.sol";
 
-contract TestMakePayment is Test, OffersLoansFixtures {
+contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function setUp() public override {
         super.setUp();
     }
@@ -110,10 +111,23 @@ contract TestMakePayment is Test, OffersLoansFixtures {
             );
 
         // payout royalties
+        uint256 royaltiesPaidInMakePayment;
         for (uint256 i = 0; i < recipients2.length; i++) {
-            totalRoyaltiesPaid += amounts2[i];
+            royaltiesPaidInMakePayment += amounts2[i];
         }
+        totalRoyaltiesPaid += royaltiesPaidInMakePayment;
         vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.nftContractAddress,
+                offer.nftId,
+                loan.remainingPrincipal + periodInterest,
+                royaltiesPaidInMakePayment,
+                periodInterest,
+                loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit LoanRepaid(offer.nftContractAddress, offer.nftId, loan);
         sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
             offer.nftContractAddress,
             offer.nftId
@@ -122,17 +136,14 @@ contract TestMakePayment is Test, OffersLoansFixtures {
 
         assertionsForClosedLoan(offer, buyer1);
 
-        uint256 sellerBalanceAfter = address(seller1).balance;
-        uint256 royaltiesBalanceAfter = address(recipients1[0]).balance;
-
         // seller paid out correctly
         assertEq(
-            sellerBalanceAfter,
+            address(seller1).balance,
             (sellerBalanceBefore + offer.price + periodInterest - totalRoyaltiesPaid)
         );
 
         // royatlies paid out correctly
-        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
+        assertEq(address(recipients1[0]).balance, (royaltiesBalanceBefore + totalRoyaltiesPaid));
     }
 
     function test_fuzz_makePayment_fullRepayment_simplest_case(
@@ -144,6 +155,51 @@ contract TestMakePayment is Test, OffersLoansFixtures {
     function test_unit_makePayment_fullRepayment_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_makePayment_fullRepayment_simplest_case(fixedForSpeed);
+    }
+
+    function _test_makePayment_returns_anyExtraAmountNotReqToCloseTheLoan(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        uint256 buyer1BalanceBeforePayment = address(buyer1).balance;
+        uint256 extraAmountToBeSent = 100;
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{
+            value: ((loan.remainingPrincipal + periodInterest) + extraAmountToBeSent)
+        }(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+        assertionsForClosedLoan(offer, buyer1);
+
+        uint256 buyer1BalanceAfterPayment = address(buyer1).balance;
+        assertEq(
+            buyer1BalanceAfterPayment,
+            (buyer1BalanceBeforePayment - (loan.remainingPrincipal + periodInterest))
+        );
+    }
+
+    function test_fuzz_makePayment_returns_anyExtraAmountNotReqToCloseTheLoan(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_returns_anyExtraAmountNotReqToCloseTheLoan(fuzzed);
+    }
+
+    function test_unit_makePayment_returns_anyExtraAmountNotReqToCloseTheLoan() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_returns_anyExtraAmountNotReqToCloseTheLoan(fixedForSpeed);
     }
 
     function _test_makePayment_partialRepayment_simplest_case(
@@ -168,6 +224,15 @@ contract TestMakePayment is Test, OffersLoansFixtures {
         uint256 totalRoyaltiesPaid = amounts[0];
 
         vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.nftContractAddress,
+                offer.nftId,
+                totalMinimumPayment,
+                totalRoyaltiesPaid,
+                periodInterest,
+                loan
+        );
         sellerFinancing.makePayment{ value: totalMinimumPayment }(
             offer.nftContractAddress,
             offer.nftId
@@ -353,5 +418,126 @@ contract TestMakePayment is Test, OffersLoansFixtures {
     function test_unit_makePayment_partialRepayment_in_grace_period() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_makePayment_partialRepayment_in_grace_period(fixedForSpeed);
+    }
+
+    function _test_makePayment_reverts_ifCallerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        vm.startPrank(SANCTIONED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SanctionedAddress.selector,
+                SANCTIONED_ADDRESS
+            )
+        );
+        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_makePayment_reverts_ifCallerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_reverts_ifCallerSanctioned(fuzzed);
+    }
+
+    function test_unit_makePayment_reverts_ifCallerSanctioned() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_reverts_ifCallerSanctioned(fixedForSpeed);
+    }
+
+    function _test_makePayment_reverts_ifLoanAlreadyClosed(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + periodInterest)
+        }(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer1);
+
+        vm.startPrank(seller1);
+        vm.expectRevert("ERC721: invalid token ID");
+        sellerFinancing.makePayment{value: 1}(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+    }
+
+    function test_fuzz_makePayment_reverts_ifLoanAlreadyClosed(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_reverts_ifLoanAlreadyClosed(fuzzed);
+    }
+
+    function test_unit_makePayment_reverts_ifLoanAlreadyClosed() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_reverts_ifLoanAlreadyClosed(fixedForSpeed);
+    }
+
+    function _test_makePayment_reverts_ifAmountReceivedLessThanReqMinPayment(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        vm.startPrank(buyer1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.AmountReceivedLessThanRequiredMinimumPayment.selector,
+                loan.minimumPrincipalPerPeriod + periodInterest - 1,
+                loan.minimumPrincipalPerPeriod + periodInterest
+            )
+        );
+        sellerFinancing.makePayment{
+            value: (loan.minimumPrincipalPerPeriod + periodInterest - 1)
+        }(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+    }
+
+    function test_fuzz_makePayment_reverts_ifAmountReceivedLessThanReqMinPayment(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_reverts_ifAmountReceivedLessThanReqMinPayment(fuzzed);
+    }
+
+    function test_unit_makePayment_reverts_ifAmountReceivedLessThanReqMinPayment() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_reverts_ifAmountReceivedLessThanReqMinPayment(fixedForSpeed);
     }
 }

@@ -299,7 +299,6 @@ contract NiftyApesSellerFinancing is
 
         _requireIsNotSanctioned(buyerAddress);
         _requireIsNotSanctioned(msg.sender);
-        _requireOpenLoan(loan);
         // requireLoanNotInHardDefault
         _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
 
@@ -396,7 +395,6 @@ contract NiftyApesSellerFinancing is
         address sellerAddress = ownerOf(loan.sellerNftId);
 
         _requireIsNotSanctioned(sellerAddress);
-        _requireOpenLoan(loan);
         // requireMsgSenderIsSeller
         _requireMsgSenderIsValidCaller(sellerAddress);
         // requireLoanInDefault
@@ -821,12 +819,6 @@ contract NiftyApesSellerFinancing is
     function _requireSigner(address signer, address expected) internal pure {
         if (signer != expected) {
             revert InvalidSigner(signer, expected);
-        }
-    }
-
-    function _requireOpenLoan(Loan storage loan) internal view {
-        if (loan.remainingPrincipal == 0) {
-            revert LoanAlreadyClosed();
         }
     }
 

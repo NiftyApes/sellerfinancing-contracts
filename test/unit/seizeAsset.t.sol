@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
 
-contract TestSeizeAsset is Test, OffersLoansFixtures {
+contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function setUp() public override {
         super.setUp();
     }
@@ -150,7 +151,11 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
 
         vm.warp(loan.periodEndTimestamp + 1);
 
+        vm.expectEmit(true, true, false, false);
+        emit AssetSeized(offer.nftContractAddress, offer.nftId, loan);
+
         vm.startPrank(seller1);
+        
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
 
@@ -209,7 +214,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-         Loan memory loan = sellerFinancing.getLoan(
+        Loan memory loan = sellerFinancing.getLoan(
             offer.nftContractAddress,
             offer.nftId
         );
@@ -243,5 +248,75 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         FuzzedOfferFields
             memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_seizeAsset_reverts_if_loanClosed(fixedForSpeed);
+    }
+
+    function _test_seizeAsset_reverts_ifCallerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        vm.warp(loan.periodEndTimestamp + 1);
+
+        vm.prank(seller1);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(seller1, SANCTIONED_ADDRESS, loan.sellerNftId);
+
+        vm.startPrank(SANCTIONED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SanctionedAddress.selector,
+                SANCTIONED_ADDRESS
+            )
+        );
+        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+    }
+
+    function test_fuzz_seizeAsset_reverts_ifCallerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_seizeAsset_reverts_ifCallerSanctioned(fuzzed);
+    }
+
+    function test_unit_seizeAsset_reverts_ifCallerSanctioned() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_seizeAsset_reverts_ifCallerSanctioned(fixedForSpeed);
+    }
+
+    function _test_seizeAsset_reverts_ifCallerNotSeller(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        vm.warp(loan.periodEndTimestamp + 1);
+
+        vm.startPrank(seller2);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.InvalidCaller.selector,
+                seller2,
+                seller1
+            )
+        );
+        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+    }
+
+    function test_fuzz_seizeAsset_reverts_ifCallerNotSeller(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_seizeAsset_reverts_ifCallerNotSeller(fuzzed);
+    }
+
+    function test_unit_seizeAsset_reverts_ifCallerNotSeller() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_seizeAsset_reverts_ifCallerNotSeller(fixedForSpeed);
     }
 }
