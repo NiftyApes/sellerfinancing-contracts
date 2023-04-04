@@ -199,10 +199,6 @@ contract NiftyApesSellerFinancing is
         _requireOfferNotExpired(offer);
         // requireOfferisValid
         _requireNonZeroAddress(offer.nftContractAddress);
-        // requireNoOpenLoan
-        if (loan.periodBeginTimestamp != 0) {
-            revert LoanAlreadyOpen();
-        }
         // require1MinsMinimumDuration
         if (offer.periodDuration < 1 minutes) {
             revert InvalidPeriodDuration();
@@ -487,11 +483,7 @@ contract NiftyApesSellerFinancing is
         }
 
         // set allowance for seaport to transferFrom this contract during .fulfillOrder()
-        uint256 allowance = asset.allowance(address(this), seaportContractAddress);
-        if (allowance > 0) {
-            asset.safeDecreaseAllowance(seaportContractAddress, allowance);
-        }
-        asset.safeIncreaseAllowance(seaportContractAddress, totalConsiderationAmount);
+        asset.approve(seaportContractAddress, totalConsiderationAmount);
 
         // cache this contract eth balance before the sale
         uint256 contractBalanceBefore = address(this).balance;

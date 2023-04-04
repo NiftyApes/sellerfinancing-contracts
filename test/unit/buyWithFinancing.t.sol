@@ -476,4 +476,46 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_reverts_if_callerSanctioned(fixedForSpeed);
     }
+
+    function _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        offer.nftContractAddress = address(sellerFinancing);
+        offer.nftId = loan.sellerNftId;
+
+        bytes memory offerSignature2 =  signOffer(seller1_private_key, offer);
+
+        vm.startPrank(buyer1);
+        vm.expectRevert(ISellerFinancingErrors.CannotBuySellerFinancingTicket.selector);
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature2,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_reverts_if_offerForSellerFinancingTicket() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(fixedForSpeed);
+    }
 }

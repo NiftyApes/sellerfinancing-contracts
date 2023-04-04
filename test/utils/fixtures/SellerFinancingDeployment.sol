@@ -34,8 +34,10 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
 
     uint256 SUPERRARE_MARKET_FEE_BPS = 300;
 
+    address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
+
     function setUp() public virtual override {
-        address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
+        
 
         super.setUp();
 

@@ -17,8 +17,6 @@ interface ISellerFinancingErrors {
 
     error InvalidSigner(address signer, address expected);
 
-    error LoanAlreadyOpen();
-
     error LoanAlreadyClosed();
 
     error InvalidCaller(address caller, address expected);
