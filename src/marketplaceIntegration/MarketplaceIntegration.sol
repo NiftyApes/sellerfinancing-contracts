@@ -95,6 +95,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
         address buyer
     ) external payable whenNotPaused {
         _requireIsNotSanctioned(msg.sender);
+        _requireIsNotSanctioned(buyer);
 
         uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) /
             MAX_BPS;

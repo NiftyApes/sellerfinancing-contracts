@@ -415,7 +415,6 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.minimumPrincipalPerPeriod = (offer.price - offer.downPaymentAmount) + 1;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
@@ -448,7 +447,6 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.minimumPrincipalPerPeriod = (offer.price - offer.downPaymentAmount) + 1;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(SANCTIONED_ADDRESS);
