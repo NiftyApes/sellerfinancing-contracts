@@ -1,5 +1,5 @@
 # NiftyApesSellerFinancing
-[Git Source](https://github.com/NiftyApes/sellerFinancing/blob/c32bcc4ddea85d7a717bf9d657523b95f48a4510/src/SellerFinancing.sol)
+[Git Source](https://github.com/NiftyApes/sellerFinancing/blob/f6ca9d9e78c8f1005882d5e3953bf8db14722758/src/SellerFinancing.sol)
 
 **Inherits:**
 OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, EIP712Upgradeable, ERC721URIStorageUpgradeable, ERC721HolderUpgradeable, [ISellerFinancing](/src/interfaces/sellerFinancing/ISellerFinancing.sol/interface.ISellerFinancing.md)
@@ -46,12 +46,39 @@ uint256 private loanNftNonce;
 ```
 
 
-### royaltiesEngineAddress
+### royaltiesEngineContractAddress
 *The stored address for the royalties engine*
 
 
 ```solidity
-address private royaltiesEngineAddress;
+address private royaltiesEngineContractAddress;
+```
+
+
+### delegateRegistryContractAddress
+*The stored address for the delegate registry contract*
+
+
+```solidity
+address public delegateRegistryContractAddress;
+```
+
+
+### seaportContractAddress
+*The stored address for the seaport contract*
+
+
+```solidity
+address public seaportContractAddress;
+```
+
+
+### wethContractAddress
+*The stored address for the weth contract*
+
+
+```solidity
+address public wethContractAddress;
 ```
 
 
@@ -85,41 +112,6 @@ mapping(bytes => bool) private _cancelledOrFinalized;
 ```
 
 
-### _balances
-
-```solidity
-mapping(address => mapping(address => uint256)) private _balances;
-```
-
-
-### _ownedTokens
-
-```solidity
-mapping(address => mapping(address => mapping(uint256 => uint256))) private _ownedTokens;
-```
-
-
-### _ownedTokensIndex
-
-```solidity
-mapping(address => mapping(uint256 => uint256)) private _ownedTokensIndex;
-```
-
-
-### seaportContractAddress
-
-```solidity
-address public seaportContractAddress;
-```
-
-
-### wethContractAddress
-
-```solidity
-address public wethContractAddress;
-```
-
-
 ### __gap
 *This empty reserved space is put in place to allow future versions to add new
 variables without shifting storage.*
@@ -140,11 +132,42 @@ its state outside of a constructor.
 
 ```solidity
 function initialize(
-    address newRoyaltiesEngineAddress,
+    address newRoyaltiesEngineContractAddress,
+    address newDelegateRegistryContractAddress,
     address newSeaportContractAddress,
     address newWethContractAddress
 ) public initializer;
 ```
+
+### updateRoyaltiesEngineContractAddress
+
+Updates royalty engine contract address to new address
+
+
+```solidity
+function updateRoyaltiesEngineContractAddress(address newRoyaltiesEngineContractAddress) external onlyOwner;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newRoyaltiesEngineContractAddress`|`address`||
+
+
+### updateDelegateRegistryContractAddress
+
+Updates delegate registry contract address to new address
+
+
+```solidity
+function updateDelegateRegistryContractAddress(address newDelegateRegistryContractAddress) external onlyOwner;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newDelegateRegistryContractAddress`|`address`|New delegate registry address|
+
 
 ### updateSeaportContractAddress
 
@@ -371,61 +394,6 @@ function _sellAsset(address nftContractAddress, uint256 nftId, uint256 minSaleAm
     returns (uint256 saleAmountReceived);
 ```
 
-### flashClaim
-
-Allows an nftOwner to claim their nft and perform arbtrary actions (claim airdrops, vote in goverance, etc)
-while maintaining their loan
-
-
-```solidity
-function flashClaim(address receiverAddress, address nftContractAddress, uint256 nftId, bytes calldata data)
-    external
-    whenNotPaused
-    nonReentrant;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`receiverAddress`|`address`||
-|`nftContractAddress`|`address`|The address of the nft collection|
-|`nftId`|`uint256`|The id of the specified nft|
-|`data`|`bytes`|Arbitrary data structure, intended to contain user-defined parameters|
-
-
-### balanceOf
-
-Returns the total NFTs from a given collection owned by a user which has active loans in NiftyApes.
-
-
-```solidity
-function balanceOf(address owner, address nftContractAddress) public view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`owner`|`address`|The address of the owner|
-|`nftContractAddress`|`address`|The address of the NFT collection|
-
-
-### tokenOfOwnerByIndex
-
-Returns an NFT token ID owned by `owner` at a given `index` of its token list.
-
-
-```solidity
-function tokenOfOwnerByIndex(address owner, address nftContractAddress, uint256 index) public view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`owner`|`address`|The address of the user|
-|`nftContractAddress`|`address`|The address of the NFT collection|
-|`index`|`uint256`|The index of the owner's token list|
-
-
 ### calculateMinimumPayment
 
 Returns minimum payment required for the current period and current period interest
@@ -516,43 +484,6 @@ function _createLoan(Loan storage loan, Offer memory offer, uint256 sellerNftId,
 ```solidity
 function _transferNft(address nftContractAddress, uint256 nftId, address from, address to) internal;
 ```
-
-### _addLoanToOwnerEnumeration
-
-*Private function to add a token to this extension's ownership-tracking data structures.*
-
-
-```solidity
-function _addLoanToOwnerEnumeration(address owner, address nftContractAddress, uint256 tokenId) private;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`owner`|`address`|address representing the new owner of the given token ID|
-|`nftContractAddress`|`address`|address nft collection address|
-|`tokenId`|`uint256`|uint256 ID of the token to be added to the tokens list of the given address|
-
-
-### _removeLoanFromOwnerEnumeration
-
-*Private function to remove a token from this extension's ownership-tracking data structures. Note that
-while the token is not assigned a new owner, the `_ownedTokensIndex` mapping is _not_ updated: this allows for
-gas optimizations e.g. when performing a transfer operation (avoiding double writes).
-This has O(1) time complexity, but alters the order of the _ownedTokens array.*
-
-
-```solidity
-function _removeLoanFromOwnerEnumeration(address owner, address nftContractAddress, uint256 tokenId) private;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`owner`|`address`|address representing the owner of the given token ID to be removed|
-|`nftContractAddress`|`address`|address nft collection address|
-|`tokenId`|`uint256`|uint256 ID of the token to be removed from the tokens list of the given address|
-
 
 ### _currentTimestamp32
 

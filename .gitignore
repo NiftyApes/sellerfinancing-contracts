@@ -2,6 +2,7 @@ out/
 broadcast/
 cache/
 node_modules/
+docs/
 package-lock.json
 .env
 .idea

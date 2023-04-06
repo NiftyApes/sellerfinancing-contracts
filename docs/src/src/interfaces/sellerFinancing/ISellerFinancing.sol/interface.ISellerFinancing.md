@@ -1,5 +1,5 @@
 # ISellerFinancing
-[Git Source](https://github.com/NiftyApes/sellerFinancing/blob/c32bcc4ddea85d7a717bf9d657523b95f48a4510/src/interfaces/sellerFinancing/ISellerFinancing.sol)
+[Git Source](https://github.com/NiftyApes/sellerFinancing/blob/f6ca9d9e78c8f1005882d5e3953bf8db14722758/src/interfaces/sellerFinancing/ISellerFinancing.sol)
 
 **Inherits:**
 [ISellerFinancingAdmin](/src/interfaces/sellerFinancing/ISellerFinancingAdmin.sol/interface.ISellerFinancingAdmin.md), [ISellerFinancingEvents](/src/interfaces/sellerFinancing/ISellerFinancingEvents.sol/interface.ISellerFinancingEvents.md), [ISellerFinancingStructs](/src/interfaces/sellerFinancing/ISellerFinancingStructs.sol/interface.ISellerFinancingStructs.md), [ISellerFinancingErrors](/src/interfaces/sellerFinancing/ISellerFinancingErrors.sol/interface.ISellerFinancingErrors.md)
@@ -151,25 +151,6 @@ function instantSell(address nftContractAddress, uint256 nftId, uint256 minProfi
 |`data`|`bytes`|Order encoded as bytes|
 
 
-### flashClaim
-
-Allows an nftOwner to claim their nft and perform arbtrary actions (claim airdrops, vote in goverance, etc)
-while maintaining their loan
-
-
-```solidity
-function flashClaim(address receiver, address nftContractAddress, uint256 nftId, bytes calldata data) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`receiver`|`address`|The address of the external contract that will receive and return the nft|
-|`nftContractAddress`|`address`|The address of the nft collection|
-|`nftId`|`uint256`|The id of the specified nft|
-|`data`|`bytes`|Arbitrary data structure, intended to contain user-defined parameters|
-
-
 ### getLoan
 
 Returns a loan identified by a given nft.
@@ -184,39 +165,6 @@ function getLoan(address nftContractAddress, uint256 nftId) external view return
 |----|----|-----------|
 |`nftContractAddress`|`address`|The address of the NFT collection|
 |`nftId`|`uint256`|The id of a specified NFT|
-
-
-### balanceOf
-
-Returns the total NFTs from a given collection owned by a user which has active loans in NiftyApes.
-
-
-```solidity
-function balanceOf(address owner, address nftContractAddress) external returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`owner`|`address`|The address of the owner|
-|`nftContractAddress`|`address`|The address of the NFT collection|
-
-
-### tokenOfOwnerByIndex
-
-Returns an NFT token ID owned by `owner` at a given `index` of its token list.
-
-
-```solidity
-function tokenOfOwnerByIndex(address owner, address nftContractAddress, uint256 index) external returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`owner`|`address`|The address of the user|
-|`nftContractAddress`|`address`|The address of the NFT collection|
-|`index`|`uint256`|The index of the owner's token list|
 
 
 ### calculateMinimumPayment
@@ -252,6 +200,7 @@ function calculateMinimumPayment(Loan memory loan)
 ```solidity
 function initialize(
     address newRoyaltiesEngineAddress,
+    address newDelegateRegistryAddress,
     address newSeaportContractAddress,
     address newWethContractAddress
 ) external;

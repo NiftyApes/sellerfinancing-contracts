@@ -1,5 +1,5 @@
 # ISellerFinancingAdmin
-[Git Source](https://github.com/NiftyApes/sellerFinancing/blob/c32bcc4ddea85d7a717bf9d657523b95f48a4510/src/interfaces/sellerFinancing/ISellerFinancingAdmin.sol)
+[Git Source](https://github.com/NiftyApes/sellerFinancing/blob/f6ca9d9e78c8f1005882d5e3953bf8db14722758/src/interfaces/sellerFinancing/ISellerFinancingAdmin.sol)
 
 
 ## Functions
@@ -39,6 +39,36 @@ Unpauses sanctions checks
 ```solidity
 function unpauseSanctions() external;
 ```
+
+### updateRoyaltiesEngineContractAddress
+
+Updates royalty engine contract address to new address
+
+
+```solidity
+function updateRoyaltiesEngineContractAddress(address newRoyaltyEngineContractAddress) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newRoyaltyEngineContractAddress`|`address`|New royalty engine address|
+
+
+### updateDelegateRegistryContractAddress
+
+Updates delegate registry contract address to new address
+
+
+```solidity
+function updateDelegateRegistryContractAddress(address newDelegateRegistryContractAddress) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newDelegateRegistryContractAddress`|`address`|New delegate registry address|
+
 
 ### updateSeaportContractAddress
 

@@ -1,6 +1,7 @@
 
 
 # Contents
+- [delegateCash](/src/interfaces/delegateCash)
 - [royaltyRegistry](/src/interfaces/royaltyRegistry)
 - [sanctions](/src/interfaces/sanctions)
 - [seaport](/src/interfaces/seaport)

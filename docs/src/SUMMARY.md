@@ -1,12 +1,9 @@
 # Summary
 - [Home](README.md)
 # src
-  - [❱ flashClaim](src/flashClaim/README.md)
-    - [❱ base](src/flashClaim/base/README.md)
-      - [FlashClaimReceiverBase](src/flashClaim/base/FlashClaimReceiverBase.sol/abstract.FlashClaimReceiverBase.md)
-    - [❱ interfaces](src/flashClaim/interfaces/README.md)
-      - [IFlashClaimReceiver](src/flashClaim/interfaces/IFlashClaimReceiver.sol/interface.IFlashClaimReceiver.md)
   - [❱ interfaces](src/interfaces/README.md)
+    - [❱ delegateCash](src/interfaces/delegateCash/README.md)
+      - [IDelegationRegistry](src/interfaces/delegateCash/IDelegationRegistry.sol/interface.IDelegationRegistry.md)
     - [❱ royaltyRegistry](src/interfaces/royaltyRegistry/README.md)
       - [IRoyaltyEngineV1](src/interfaces/royaltyRegistry/IRoyaltyEngineV1.sol/interface.IRoyaltyEngineV1.md)
     - [❱ sanctions](src/interfaces/sanctions/README.md)
