@@ -18,136 +18,72 @@ contract TestInstantSell is Test, OffersLoansFixtures {
 
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
+        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
+        // require delegate.cash has buyer delegation
         assertEq(
-            boredApeYachtClub.ownerOf(offer.nftId),
-            address(sellerFinancing)
-        );
-        // balance increments to one
-        assertEq(
-            sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)),
-            1
-        );
-        // nftId exists at index 0
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
                 address(boredApeYachtClub),
-                0
+                offer.nftId
             ),
-            offer.nftId
+            true
         );
         // loan exists
         assertEq(
-            sellerFinancing
-                .getLoan(address(boredApeYachtClub), offer.nftId)
-                .periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(0),
-            buyer1
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), buyer1);
         // seller NFT minted to seller
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(1),
-            seller1
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
         assertEq(loan.buyerNftId, 0);
         assertEq(loan.sellerNftId, 1);
-        assertEq(
-            loan.remainingPrincipal,
-            offer.price - offer.downPaymentAmount
-        );
-        assertEq(
-            loan.minimumPrincipalPerPeriod,
-            offer.minimumPrincipalPerPeriod
-        );
+        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(
-            loan.periodEndTimestamp,
-            block.timestamp + offer.periodDuration
-        );
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function assertionsForClosedLoan(
-        Offer memory offer,
-        address expectedNftOwner
-    ) private {
+    function assertionsForClosedLoan(Offer memory offer, address expectedNftOwner) private {
         // expected address has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), expectedNftOwner);
 
-        // loan reciept balance decrements to zero
+        // require delegate.cash buyer delegation has been revoked
         assertEq(
-            sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)),
-            0
-        );
-
-        assertEq(
-            sellerFinancing.balanceOf(seller1, address(boredApeYachtClub)),
-            0
-        );
-        // buyer nftId does not exist at index 0 of buyer1
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
-        sellerFinancing.tokenOfOwnerByIndex(
-            buyer1,
-            address(boredApeYachtClub),
-            0
-        );
-
-        // seller nftId does not exist at index 0 of seller1
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
-        sellerFinancing.tokenOfOwnerByIndex(
-            seller1,
-            address(boredApeYachtClub),
-            0
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
+                address(boredApeYachtClub),
+                offer.nftId
+            ),
+            false
         );
 
         // loan doesn't exist anymore
         assertEq(
-            sellerFinancing
-                .getLoan(address(boredApeYachtClub), offer.nftId)
-                .periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
             0
         );
         // buyer NFT burned
         vm.expectRevert("ERC721: invalid token ID");
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(0),
-            address(0)
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), address(0));
         // seller NFT burned
         vm.expectRevert("ERC721: invalid token ID");
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(1),
-            address(0)
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), address(0));
     }
 
-    function _test_instantSell_loanClosed_simplest_case(
-        FuzzedOfferFields memory fuzzed
-    ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+    function _test_instantSell_loanClosed_simplest_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        (
-            address payable[] memory recipients1,
-            uint256[] memory amounts1
-        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyalty(
-                    offer.nftContractAddress,
-                    offer.nftId,
-                    offer.downPaymentAmount
-                );
+        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.nftContractAddress, offer.nftId, offer.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -160,24 +96,17 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
-        (
-            address payable[] memory recipients2,
-            uint256[] memory amounts2
-        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyalty(
-                    offer.nftContractAddress,
-                    offer.nftId,
-                    (loan.remainingPrincipal + periodInterest)
-                );
+        (address payable[] memory recipients2, uint256[] memory amounts2) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(
+                offer.nftContractAddress,
+                offer.nftId,
+                (loan.remainingPrincipal + periodInterest)
+            );
 
         // payout royalties
         for (uint256 i = 0; i < recipients2.length; i++) {
@@ -188,9 +117,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal +
-            periodInterest +
-            minProfitAmount) *
+        uint256 bidPrice = ((loan.remainingPrincipal + periodInterest + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -232,30 +159,18 @@ contract TestInstantSell is Test, OffersLoansFixtures {
     }
 
     function test_unit_instantSell_loanClosed_simplest_case() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_instantSell_loanClosed_simplest_case(fixedForSpeed);
     }
 
     function _test_instantSell_loanClosed_withoutSeaportFee(
         FuzzedOfferFields memory fuzzed
     ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
-
-        (
-            address payable[] memory recipients1,
-            uint256[] memory amounts1
-        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyalty(
-                    offer.nftContractAddress,
-                    offer.nftId,
-                    offer.downPaymentAmount
-                );
+        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.nftContractAddress, offer.nftId, offer.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -268,24 +183,17 @@ contract TestInstantSell is Test, OffersLoansFixtures {
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
-        (
-            address payable[] memory recipients2,
-            uint256[] memory amounts2
-        ) = IRoyaltyEngineV1(0x0385603ab55642cb4Dd5De3aE9e306809991804f)
-                .getRoyalty(
-                    offer.nftContractAddress,
-                    offer.nftId,
-                    (loan.remainingPrincipal + periodInterest)
-                );
+        (address payable[] memory recipients2, uint256[] memory amounts2) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(
+                offer.nftContractAddress,
+                offer.nftId,
+                (loan.remainingPrincipal + periodInterest)
+            );
 
         // payout royalties
         for (uint256 i = 0; i < recipients2.length; i++) {
@@ -335,39 +243,27 @@ contract TestInstantSell is Test, OffersLoansFixtures {
     }
 
     function test_unit_instantSell_loanClosed_withoutSeaportFee() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_instantSell_loanClosed_withoutSeaportFee(fixedForSpeed);
     }
 
-    function _test_instantSell_reverts_post_grace_period(
-        FuzzedOfferFields memory fuzzed
-    ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+    function _test_instantSell_reverts_post_grace_period(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         skip(loan.periodDuration * 2);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
-            minProfitAmount) *
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -403,8 +299,7 @@ contract TestInstantSell is Test, OffersLoansFixtures {
     }
 
     function test_unit_instantSell_reverts_post_grace_period() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_instantSell_reverts_post_grace_period(fixedForSpeed);
     }
 

@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./interfaces/sellerFinancing/ISellerFinancing.sol";
 import "./interfaces/sanctions/SanctionsList.sol";
 import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
-import "./flashClaim/interfaces/IFlashClaimReceiver.sol";
+import "./interfaces/delegateCash/IDelegationRegistry.sol";
 import "./interfaces/seaport/ISeaport.sol";
 import "./lib/ECDSABridge.sol";
 
@@ -54,7 +54,16 @@ contract NiftyApesSellerFinancing is
     uint256 private loanNftNonce;
 
     /// @dev The stored address for the royalties engine
-    address private royaltiesEngineAddress;
+    address private royaltiesEngineContractAddress;
+
+    /// @dev The stored address for the delegate registry contract
+    address public delegateRegistryContractAddress;
+
+    /// @dev The stored address for the seaport contract
+    address public seaportContractAddress;
+
+    /// @dev The stored address for the weth contract
+    address public wethContractAddress;
 
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
@@ -68,21 +77,6 @@ contract NiftyApesSellerFinancing is
     ///      The mapping allows users to withdraw offers that they made by signature.
     mapping(bytes => bool) private _cancelledOrFinalized;
 
-    // Mapping owner to nftContractAddress to token count
-    mapping(address => mapping(address => uint256)) private _balances;
-
-    // Mapping from owner to nftContractAddress to list of owned token IDs
-    mapping(address => mapping(address => mapping(uint256 => uint256))) private _ownedTokens;
-
-    // Mapping from nftContractAddress to token ID to index of the owner tokens list
-    mapping(address => mapping(uint256 => uint256)) private _ownedTokensIndex;
-
-    // Address of the seaport contract
-    address public seaportContractAddress;
-
-    // Address of the weth contract
-    address public wethContractAddress;
-
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting storage.
     uint256[498] private __gap;
@@ -91,7 +85,8 @@ contract NiftyApesSellerFinancing is
     ///         NiftyApes is intended to be deployed behind a proxy and thus needs to initialize
     ///         its state outside of a constructor.
     function initialize(
-        address newRoyaltiesEngineAddress,
+        address newRoyaltiesEngineContractAddress,
+        address newDelegateRegistryContractAddress,
         address newSeaportContractAddress,
         address newWethContractAddress
     ) public initializer {
@@ -102,9 +97,30 @@ contract NiftyApesSellerFinancing is
         ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init("NiftyApes Seller Financing Tickets", "BANANAS");
 
-        royaltiesEngineAddress = newRoyaltiesEngineAddress;
+        royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
+        delegateRegistryContractAddress = newDelegateRegistryContractAddress;
         seaportContractAddress = newSeaportContractAddress;
         wethContractAddress = newWethContractAddress;
+    }
+
+    /// @inheritdoc ISellerFinancingAdmin
+    function updateRoyaltiesEngineContractAddress(
+        address newRoyaltiesEngineContractAddress
+    ) external onlyOwner {
+        if (newRoyaltiesEngineContractAddress == address(0)) {
+            revert ZeroAddress();
+        }
+        royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
+    }
+
+    /// @inheritdoc ISellerFinancingAdmin
+    function updateDelegateRegistryContractAddress(
+        address newDelegateRegistryContractAddress
+    ) external onlyOwner {
+        if (newDelegateRegistryContractAddress == address(0)) {
+            revert ZeroAddress();
+        }
+        delegateRegistryContractAddress = newDelegateRegistryContractAddress;
     }
 
     /// @inheritdoc ISellerFinancingAdmin
@@ -273,8 +289,13 @@ contract NiftyApesSellerFinancing is
         // transfer nft from seller to this contract, revert on failure
         _transferNft(offer.nftContractAddress, offer.nftId, seller, address(this));
 
-        // enable view based ownership of the purchased NFT
-        _addLoanToOwnerEnumeration(buyer, offer.nftContractAddress, offer.nftId);
+        // add buyer delegate.cash delegation
+        IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
+            buyer,
+            offer.nftContractAddress,
+            offer.nftId,
+            true
+        );
 
         // emit loan executed event
         emit LoanExecuted(offer.nftContractAddress, offer.nftId, seller, signature, loan);
@@ -351,7 +372,13 @@ contract NiftyApesSellerFinancing is
         if (loan.remainingPrincipal == 0) {
             // if principal == 0 set nft transfer address to the buyer
             buyer = buyerAddress;
-            _removeLoanFromOwnerEnumeration(buyerAddress, nftContractAddress, nftId);
+            // remove buyer delegate.cash delegation
+            IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
+                buyerAddress,
+                nftContractAddress,
+                nftId,
+                false
+            );
             // burn buyer nft
             _burn(loan.buyerNftId);
             // burn seller nft
@@ -416,11 +443,13 @@ contract NiftyApesSellerFinancing is
             revert LoanNotInDefault();
         }
 
-        // transfer NFT from this contract to the seller address
-        _transferNft(nftContractAddress, nftId, address(this), sellerAddress);
-
-        // remove buyers view based ownership of the purchased NFT
-        _removeLoanFromOwnerEnumeration(buyerAddress, nftContractAddress, nftId);
+        // remove buyer delegate.cash delegation
+        IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
+            buyerAddress,
+            nftContractAddress,
+            nftId,
+            false
+        );
 
         // burn buyer nft
         _burn(loan.buyerNftId);
@@ -433,6 +462,9 @@ contract NiftyApesSellerFinancing is
 
         // close loan
         delete _loans[nftContractAddress][nftId];
+
+        // transfer NFT from this contract to the seller address
+        _transferNft(nftContractAddress, nftId, address(this), sellerAddress);
     }
 
     /// @inheritdoc ISellerFinancing
@@ -540,59 +572,6 @@ contract NiftyApesSellerFinancing is
     }
 
     /// @inheritdoc ISellerFinancing
-    function flashClaim(
-        address receiverAddress,
-        address nftContractAddress,
-        uint256 nftId,
-        bytes calldata data
-    ) external whenNotPaused nonReentrant {
-        // get loan
-        Loan storage loan = _getLoan(nftContractAddress, nftId);
-
-        _requireNftOwner(loan);
-        _requireIsNotSanctioned(msg.sender);
-
-        // instantiate receiver contract
-        IFlashClaimReceiver receiver = IFlashClaimReceiver(receiverAddress);
-
-        // transfer NFT
-        _transferNft(nftContractAddress, nftId, address(this), receiverAddress);
-
-        // execute firewalled external arbitrary functionality
-        // function must approve this contract to transferFrom NFT in order to return to lending.sol
-        if (!receiver.executeOperation(msg.sender, nftContractAddress, nftId, data)) {
-            revert ExecuteOperationFailed();
-        }
-
-        // transfer nft back to this contract, revert if transfer fails
-        _transferNft(nftContractAddress, nftId, receiverAddress, address(this));
-
-        // emit flash claim event
-        emit FlashClaim(nftContractAddress, nftId, receiverAddress);
-    }
-
-    /// @inheritdoc ISellerFinancing
-    function balanceOf(address owner, address nftContractAddress) public view returns (uint256) {
-        if (owner == address(0)) {
-            revert ZeroAddress();
-        }
-        return _balances[owner][nftContractAddress];
-    }
-
-    /// @inheritdoc ISellerFinancing
-    function tokenOfOwnerByIndex(
-        address owner,
-        address nftContractAddress,
-        uint256 index
-    ) public view returns (uint256) {
-        uint256 ownerTokenBalance = balanceOf(owner, nftContractAddress);
-        if (index >= ownerTokenBalance) {
-            revert InvalidIndex(index, ownerTokenBalance);
-        }
-        return _ownedTokens[owner][nftContractAddress][index];
-    }
-
-    /// @inheritdoc ISellerFinancing
     function calculateMinimumPayment(
         Loan memory loan
     ) public view returns (uint256 minimumPayment, uint256 periodInterest) {
@@ -680,7 +659,7 @@ contract NiftyApesSellerFinancing is
     ) private returns (uint256 totalRoyaltiesPaid) {
         // query royalty recipients and amounts
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
-            royaltiesEngineAddress
+            royaltiesEngineContractAddress
         ).getRoyaltyView(nftContractAddress, nftId, amount);
 
         // payout royalties
@@ -750,54 +729,6 @@ contract NiftyApesSellerFinancing is
         address to
     ) internal {
         IERC721Upgradeable(nftContractAddress).safeTransferFrom(from, to, nftId);
-    }
-
-    /// @dev Private function to add a token to this extension's ownership-tracking data structures.
-    /// @param owner address representing the new owner of the given token ID
-    /// @param nftContractAddress address nft collection address
-    /// @param tokenId uint256 ID of the token to be added to the tokens list of the given address
-    function _addLoanToOwnerEnumeration(
-        address owner,
-        address nftContractAddress,
-        uint256 tokenId
-    ) private {
-        uint256 length = _balances[owner][nftContractAddress];
-        _ownedTokens[owner][nftContractAddress][length] = tokenId;
-        _ownedTokensIndex[nftContractAddress][tokenId] = length;
-        _balances[owner][nftContractAddress] += 1;
-    }
-
-    /// @dev Private function to remove a token from this extension's ownership-tracking data structures. Note that
-    /// while the token is not assigned a new owner, the `_ownedTokensIndex` mapping is _not_ updated: this allows for
-    /// gas optimizations e.g. when performing a transfer operation (avoiding double writes).
-    /// This has O(1) time complexity, but alters the order of the _ownedTokens array.
-    /// @param owner address representing the owner of the given token ID to be removed
-    /// @param nftContractAddress address nft collection address
-    /// @param tokenId uint256 ID of the token to be removed from the tokens list of the given address
-    function _removeLoanFromOwnerEnumeration(
-        address owner,
-        address nftContractAddress,
-        uint256 tokenId
-    ) private {
-        // To prevent a gap in from's tokens array, we store the last token in the index of the token to delete, and then delete the last slot (swap and pop).
-
-        uint256 lastTokenIndex = balanceOf(owner, nftContractAddress) - 1;
-        uint256 tokenIndex = _ownedTokensIndex[nftContractAddress][tokenId];
-
-        // When the token to delete is the last token, the swap operation is unnecessary
-        if (tokenIndex != lastTokenIndex) {
-            uint256 lastTokenId = _ownedTokens[owner][nftContractAddress][lastTokenIndex];
-
-            _ownedTokens[owner][nftContractAddress][tokenIndex] = lastTokenId; // Move the last token to the slot of the to-delete token
-            _ownedTokensIndex[nftContractAddress][lastTokenId] = tokenIndex; // Update the moved token's index
-        }
-
-        // This also deletes the contents at the last position of the array
-        delete _ownedTokensIndex[nftContractAddress][tokenId];
-        delete _ownedTokens[owner][nftContractAddress][lastTokenIndex];
-
-        // decrease the owner's collection balance by one
-        _balances[owner][nftContractAddress] -= 1;
     }
 
     function _currentTimestamp32() internal view returns (uint32) {

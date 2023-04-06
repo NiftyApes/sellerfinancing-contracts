@@ -15,138 +15,70 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
 
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
+        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
+        // require delegate.cash has buyer delegation
         assertEq(
-            boredApeYachtClub.ownerOf(offer.nftId),
-            address(sellerFinancing)
-        );
-        // balance increments to one
-        assertEq(
-            sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)),
-            1
-        );
-        // nftId exists at index 0
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
                 address(boredApeYachtClub),
-                0
+                offer.nftId
             ),
-            offer.nftId
+            true
         );
         // loan auction exists
         assertEq(
-            sellerFinancing
-                .getLoan(address(boredApeYachtClub), offer.nftId)
-                .periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(0),
-            buyer1
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), buyer1);
         // seller NFT minted to seller
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(1),
-            seller1
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
         assertEq(loan.buyerNftId, 0);
         assertEq(loan.sellerNftId, 1);
-        assertEq(
-            loan.remainingPrincipal,
-            offer.price - offer.downPaymentAmount
-        );
-        assertEq(
-            loan.minimumPrincipalPerPeriod,
-            offer.minimumPrincipalPerPeriod
-        );
+        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(
-            loan.periodEndTimestamp,
-            block.timestamp + offer.periodDuration
-        );
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function assertionsForClosedLoan(
-        Offer memory offer,
-        address expectedNftOwner
-    ) private {
+    function assertionsForClosedLoan(Offer memory offer, address expectedNftOwner) private {
         // expected address has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), expectedNftOwner);
-
-        // loan reciept balance decrements to zero
+        // require delegate.cash buyer delegation has been revoked
         assertEq(
-            sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)),
-            0
-        );
-
-        assertEq(
-            sellerFinancing.balanceOf(seller1, address(boredApeYachtClub)),
-            0
-        );
-        // nftId does not exist at index 0
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
                 address(boredApeYachtClub),
-                0
+                offer.nftId
             ),
-            0
-        );
-
-        // nftId does not exist at index 0
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 1, 0));
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(
-                buyer1,
-                address(boredApeYachtClub),
-                1
-            ),
-            0
+            false
         );
         // loan doesn't exist anymore
         assertEq(
-            sellerFinancing
-                .getLoan(address(boredApeYachtClub), offer.nftId)
-                .periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
             0
         );
         // buyer NFT burned
         vm.expectRevert("ERC721: invalid token ID");
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(0),
-            address(0)
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), address(0));
         // seller NFT burned
         vm.expectRevert("ERC721: invalid token ID");
-        assertEq(
-            IERC721Upgradeable(address(sellerFinancing)).ownerOf(1),
-            address(0)
-        );
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), address(0));
     }
 
-    function _test_seizeAsset_simplest_case(FuzzedOfferFields memory fuzzed)
-        private
-    {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+    function _test_seizeAsset_simplest_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         vm.warp(loan.periodEndTimestamp + 1);
 
@@ -157,26 +89,19 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         assertionsForClosedLoan(offer, seller1);
     }
 
-    function test_fuzz_seizeAsset_simplest_case(FuzzedOfferFields memory fuzzed)
-        public
-        validateFuzzedOfferFields(fuzzed)
-    {
+    function test_fuzz_seizeAsset_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
         _test_seizeAsset_simplest_case(fuzzed);
     }
 
     function test_unit_seizeAsset_simplest_case() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_seizeAsset_simplest_case(fixedForSpeed);
     }
 
-    function _test_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed)
-        private
-    {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+    function _test_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
@@ -186,42 +111,31 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         vm.stopPrank();
     }
 
-    function test_fuzz_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed)
-        public
-        validateFuzzedOfferFields(fuzzed)
-    {
+    function test_fuzz_seizeAsset_reverts_if_not_expired(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
         _test_seizeAsset_reverts_if_not_expired(fuzzed);
     }
 
     function test_unit_seizeAsset_reverts_if_not_expired() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_seizeAsset_reverts_if_not_expired(fixedForSpeed);
     }
 
-    function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed)
-        private
-    {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+    function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-         Loan memory loan = sellerFinancing.getLoan(
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
             offer.nftContractAddress,
             offer.nftId
         );
-
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
-
-        vm.startPrank(buyer1);
-        sellerFinancing.makePayment{
-            value: (loan.remainingPrincipal + periodInterest)
-        }(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
 
         assertionsForClosedLoan(offer, buyer1);
@@ -232,16 +146,14 @@ contract TestSeizeAsset is Test, OffersLoansFixtures {
         vm.stopPrank();
     }
 
-    function test_fuzz_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed)
-        public
-        validateFuzzedOfferFields(fuzzed)
-    {
+    function test_fuzz_seizeAsset_reverts_if_loanClosed(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
         _test_seizeAsset_reverts_if_loanClosed(fuzzed);
     }
 
     function test_unit_seizeAsset_reverts_if_loanClosed() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_seizeAsset_reverts_if_loanClosed(fixedForSpeed);
     }
 

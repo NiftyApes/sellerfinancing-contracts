@@ -7,11 +7,7 @@ import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
-contract TestGetOfferHash is
-    Test,
-    ISellerFinancingStructs,
-    OffersLoansFixtures
-{
+contract TestGetOfferHash is Test, ISellerFinancingStructs, OffersLoansFixtures {
     function setUp() public override {
         super.setUp();
     }
@@ -19,9 +15,7 @@ contract TestGetOfferHash is
     function test_unit_getOfferHash() public {
         Offer memory offer = Offer({
             creator: seller1,
-            nftContractAddress: address(
-                0xB4FFCD625FefD541b77925c7A37A55f488bC69d9
-            ),
+            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
             price: 1 ether,
             downPaymentAmount: 0.3 ether,
@@ -33,7 +27,7 @@ contract TestGetOfferHash is
 
         bytes32 functionOfferHash = sellerFinancing.getOfferHash(offer);
 
-        bytes32 expectedFunctionHash = 0xdc9e2ea3c668ae9441d0986b6de891c023de78862783d13cf7d5d3e5485e0d42;
+        bytes32 expectedFunctionHash = 0x48d5e6502c524af49b65a24c236fed558f7ca14ac28c0d7379605876efec948b;
 
         assertEq(functionOfferHash, expectedFunctionHash);
     }

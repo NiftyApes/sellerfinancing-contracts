@@ -15,6 +15,8 @@ contract DeploySellerFinancingScript is Script {
 
     function run() external {
         address goerliRoyaltiesEngineAddress = 0xe7c9Cb6D966f76f3B5142167088927Bf34966a1f;
+        address goerliDelegateRegistryAddress = 0x00000000000076A84feF008CDAbe6409d2FE638B;
+
         address SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
         address GOERLI_WETH_ADDRESS = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
 
@@ -24,6 +26,7 @@ contract DeploySellerFinancingScript is Script {
         sellerFinancing = new NiftyApesSellerFinancing();
         sellerFinancing.initialize(
             goerliRoyaltiesEngineAddress,
+            goerliDelegateRegistryAddress,
             SEAPORT_ADDRESS,
             GOERLI_WETH_ADDRESS
         );

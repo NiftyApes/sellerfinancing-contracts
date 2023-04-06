@@ -19,12 +19,15 @@ contract TestMakePayment is Test, OffersLoansFixtures {
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
-        // balance increments to one
-        assertEq(sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)), 1);
-        // nftId exists at index 0
+        // require delegate.cash has buyer delegation
         assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(buyer1, address(boredApeYachtClub), 0),
-            offer.nftId
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
+                address(boredApeYachtClub),
+                offer.nftId
+            ),
+            true
         );
         // loan exists
         assertEq(
@@ -50,18 +53,16 @@ contract TestMakePayment is Test, OffersLoansFixtures {
     function assertionsForClosedLoan(Offer memory offer, address expectedNftOwner) private {
         // expected address has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), expectedNftOwner);
-
-        // loan reciept balance decrements to zero
-        assertEq(sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)), 0);
-
-        assertEq(sellerFinancing.balanceOf(seller1, address(boredApeYachtClub)), 0);
-        // nftId does not exist at index 0
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 0, 0));
-        assertEq(sellerFinancing.tokenOfOwnerByIndex(buyer1, address(boredApeYachtClub), 0), 0);
-
-        // nftId does not exist at index 0
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidIndex.selector, 1, 0));
-        assertEq(sellerFinancing.tokenOfOwnerByIndex(buyer1, address(boredApeYachtClub), 1), 0);
+        // require delegate.cash buyer delegation has been revoked
+        assertEq(
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
+                address(boredApeYachtClub),
+                offer.nftId
+            ),
+            false
+        );
         // loan doesn't exist anymore
         assertEq(
             sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,

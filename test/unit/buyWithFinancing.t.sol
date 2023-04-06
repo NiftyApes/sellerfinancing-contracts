@@ -18,14 +18,17 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
-        // balance increments to one
-        assertEq(sellerFinancing.balanceOf(buyer1, address(boredApeYachtClub)), 1);
-        // nftId exists at index 0
-        assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(buyer1, address(boredApeYachtClub), 0),
-            offer.nftId
-        );
         // loan auction exists
+        // require delegate.cash has buyer delegation
+        assertEq(
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
+                address(boredApeYachtClub),
+                offer.nftId
+            ),
+            true
+        );
         assertEq(
             sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
             block.timestamp
