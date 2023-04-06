@@ -99,7 +99,8 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
     }
@@ -125,7 +126,8 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer);
@@ -147,7 +149,8 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
     }
@@ -176,7 +179,8 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
     }
@@ -204,7 +208,8 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
     }
@@ -237,7 +242,8 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount - 1 }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
     }
@@ -271,7 +277,8 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
     }
@@ -305,7 +312,8 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
     }

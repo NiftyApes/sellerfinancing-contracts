@@ -27,6 +27,11 @@ interface ISellerFinancing is
     /// @param signature The signature to check
     function getOfferSignatureStatus(bytes calldata signature) external view returns (bool status);
 
+    /// @notice Returns the usage count of a given signature
+    ///         Only increments for collection offers
+    /// @param signature The signature to return a count for
+    function getCollectionOfferCount(bytes memory signature) external view returns (uint64 count);
+
     /// @notice Withdraw a given offer
     /// @dev    Calling this method allows users to withdraw a given offer by cancelling their signature on chain
     /// @param offer The offer to withdraw
@@ -41,7 +46,8 @@ interface ISellerFinancing is
     function buyWithFinancing(
         Offer calldata offer,
         bytes memory signature,
-        address buyer
+        address buyer,
+        uint256 nftId
     ) external payable;
 
     /// @notice Make a partial payment or full repayment of a loan.

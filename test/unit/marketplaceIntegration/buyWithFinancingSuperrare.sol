@@ -61,7 +61,8 @@ contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
         marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer);
