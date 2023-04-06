@@ -73,6 +73,10 @@ contract NiftyApesSellerFinancing is
     ///      and its nftId (second part) in our code base.
     mapping(address => mapping(uint256 => Loan)) private _loans;
 
+    /// @dev A mapping for a Seller Financing Ticket to an underlying NFT Asset .
+    ///      This mapping enables the protocol to query a loan by Seller Financing Ticket Id.
+    mapping(uint256 => UnderlyingNft) private _underlyingNfts;
+
     /// @dev A mapping to mark a signature as used.
     ///      The mapping allows users to withdraw offers that they made by signature.
     mapping(bytes => bool) private _cancelledOrFinalized;
@@ -394,6 +398,10 @@ contract NiftyApesSellerFinancing is
             );
             // emit loan repaid event
             emit LoanRepaid(nftContractAddress, nftId, loan);
+            // delete buyer nft id pointer
+            delete _underlyingNfts[loan.buyerNftId];
+            // delete seller nft id pointer
+            delete _underlyingNfts[loan.sellerNftId];
             // delete loan
             delete _loans[nftContractAddress][nftId];
         }
@@ -460,6 +468,10 @@ contract NiftyApesSellerFinancing is
         //emit asset seized event
         emit AssetSeized(nftContractAddress, nftId, loan);
 
+        // delete buyer nft id pointer
+        delete _underlyingNfts[loan.buyerNftId];
+        // delete seller nft id pointer
+        delete _underlyingNfts[loan.sellerNftId];
         // close loan
         delete _loans[nftContractAddress][nftId];
 
@@ -569,6 +581,58 @@ contract NiftyApesSellerFinancing is
         if (saleAmountReceived < minSaleAmount) {
             revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
         }
+    }
+
+    function transferFrom(address from, address to, uint256 tokenId) public pure override {
+        // values are stated here to silence compiler warnings
+        from;
+        to;
+        tokenId;
+        revert TransferFromDisallowedUseSafeTransferFrom();
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) public override {
+        if (!_isApprovedOrOwner(_msgSender(), tokenId)) {
+            revert CallerIsNotTokenOwnerOrApproved();
+        }
+
+        // if the token is a buyer seller financing ticket
+        if (tokenId % 2 == 0) {
+            // get underlying nft
+            UnderlyingNft memory underlyingNft = _getUnderlyingNft(tokenId);
+
+            // remove from delegate.cash delegation
+            IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
+                from,
+                underlyingNft.nftContractAddress,
+                underlyingNft.nftId,
+                false
+            );
+
+            // add to delegate.cash delegation
+            IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
+                to,
+                underlyingNft.nftContractAddress,
+                underlyingNft.nftId,
+                true
+            );
+        }
+
+        _transfer(from, to, tokenId);
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public pure override {
+        // values are stated here to silence compiler warnings
+        from;
+        to;
+        tokenId;
+        data;
+        revert SafeTransferFromWithDataDisallowedUseSafeTransferFrom();
     }
 
     /// @inheritdoc ISellerFinancing
@@ -705,6 +769,19 @@ contract NiftyApesSellerFinancing is
         return _loans[nftContractAddress][nftId];
     }
 
+    /// @inheritdoc ISellerFinancing
+    function getUnderlyingNft(
+        uint256 sellerFinancingTicketId
+    ) external view returns (UnderlyingNft memory) {
+        return _getUnderlyingNft(sellerFinancingTicketId);
+    }
+
+    function _getUnderlyingNft(
+        uint256 sellerFinancingTicketId
+    ) private view returns (UnderlyingNft storage) {
+        return _underlyingNfts[sellerFinancingTicketId];
+    }
+
     function _createLoan(
         Loan storage loan,
         Offer memory offer,
@@ -720,6 +797,18 @@ contract NiftyApesSellerFinancing is
         loan.minimumPrincipalPerPeriod = offer.minimumPrincipalPerPeriod;
         loan.periodInterestRateBps = offer.periodInterestRateBps;
         loan.periodDuration = offer.periodDuration;
+
+        // instantiate underlying nft pointer
+        UnderlyingNft storage buyerUnderlyingNft = _getUnderlyingNft(buyerNftId);
+        // set underlying nft values
+        buyerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
+        buyerUnderlyingNft.nftId = offer.nftId;
+
+        // instantiate underlying nft pointer
+        UnderlyingNft storage sellerUnderlyingNft = _getUnderlyingNft(sellerNftId);
+        // set underlying nft values
+        sellerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
+        sellerUnderlyingNft.nftId = offer.nftId;
     }
 
     function _transferNft(

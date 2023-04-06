@@ -29,6 +29,12 @@ interface ISellerFinancingErrors {
 
     error CannotBuySellerFinancingTicket();
 
+    error TransferFromDisallowedUseSafeTransferFrom();
+
+    error CallerIsNotTokenOwnerOrApproved();
+
+    error SafeTransferFromWithDataDisallowedUseSafeTransferFrom();
+
     error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
 
     error InvalidOffer0Token(address given, address expected);

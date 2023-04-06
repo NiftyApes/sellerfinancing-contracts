@@ -76,6 +76,12 @@ interface ISellerFinancing is
     /// @param nftId The id of a specified NFT
     function getLoan(address nftContractAddress, uint256 nftId) external view returns (Loan memory);
 
+    /// @notice Returns the underlying nft of a specified a seller financing ticket id.
+    /// @param sellerFinancingTicketId The id of a specified seller financing ticket id
+    function getUnderlyingNft(
+        uint256 sellerFinancingTicketId
+    ) external view returns (UnderlyingNft memory);
+
     /// @notice Returns minimum payment required for the current period and current period interest
     /// @dev    This function calculates a sum of current and late payment values if applicable
     /// @param loan Loan struct details

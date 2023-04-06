@@ -49,4 +49,11 @@ interface ISellerFinancingStructs {
         // Timestamp of period beginning
         uint32 periodBeginTimestamp;
     }
+
+    struct UnderlyingNft {
+        // NFT contract address
+        address nftContractAddress;
+        // NFT ID
+        uint256 nftId;
+    }
 }
