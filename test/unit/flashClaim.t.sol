@@ -24,6 +24,8 @@ contract TestFlashClaim is Test, ISellerFinancingEvents, OffersLoansFixtures {
         createOfferAndBuyWithFinancing(offer);
 
         vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit FlashClaim(offer.nftContractAddress, offer.nftId, address(flashClaimReceiverHappy));
         sellerFinancing.flashClaim(
             address(flashClaimReceiverHappy),
             offer.nftContractAddress,
@@ -121,5 +123,43 @@ contract TestFlashClaim is Test, ISellerFinancingEvents, OffersLoansFixtures {
             bytes("")
         );
         vm.stopPrank();
+    }
+
+    function _test_flashClaim_reverts_ifCallerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        vm.prank(buyer1);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+
+        vm.startPrank(SANCTIONED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SanctionedAddress.selector,
+                SANCTIONED_ADDRESS
+            )
+        );
+        sellerFinancing.flashClaim(
+            address(flashClaimReceiverHappy),
+            offer.nftContractAddress,
+            offer.nftId,
+            bytes("")
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_flashClaim_reverts_ifCallerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_flashClaim_reverts_ifCallerSanctioned(fuzzed);
+    }
+
+    function test_unit_flashClaim_reverts_ifCallerSanctioned() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_flashClaim_reverts_ifCallerSanctioned(fixedForSpeed);
     }
 }

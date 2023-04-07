@@ -20,7 +20,7 @@ contract NFTFixtures is Test, BaseTest, UsersFixtures {
         vm.startPrank(flamingoDAO);
 
         boredApeYachtClub.transferFrom(flamingoDAO, address(seller1), 8661);
-        // boredApeYachtClub.transferFrom(flamingoDAO, address(seller2), 6974);
+        boredApeYachtClub.transferFrom(flamingoDAO, SANCTIONED_ADDRESS , 6974);
 
         vm.stopPrank();
     }
