@@ -62,7 +62,8 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
         marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
 
@@ -73,7 +74,8 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
         marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
 

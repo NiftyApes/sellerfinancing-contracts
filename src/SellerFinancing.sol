@@ -236,7 +236,6 @@ contract NiftyApesSellerFinancing is
         address seller = getOfferSigner(offer, signature);
 
         _require721Owner(offer.nftContractAddress, nftId, seller);
-        _requireSignature65(signature);
         _requireIsNotSanctioned(seller);
         _requireIsNotSanctioned(buyer);
         _requireIsNotSanctioned(msg.sender);

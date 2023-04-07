@@ -63,7 +63,8 @@ contract TestPauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures {
         marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
-            SANCTIONED_ADDRESS
+            SANCTIONED_ADDRESS,
+            offer.nftId
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer, SANCTIONED_ADDRESS);

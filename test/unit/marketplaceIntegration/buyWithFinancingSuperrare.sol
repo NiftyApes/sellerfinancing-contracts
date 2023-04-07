@@ -86,14 +86,11 @@ contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
     function _test_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = offer.price * SUPERRARE_MARKET_FEE_BPS / 10_000;
-        
+        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -102,23 +99,26 @@ contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
                 offer.downPaymentAmount + marketplaceFee
             )
         );
-        marketplaceIntegration.buyWithFinancing{value: offer.downPaymentAmount + marketplaceFee - 1}(
-            offer,
-            offerSignature,
-            buyer1
-        );
+        marketplaceIntegration.buyWithFinancing{
+            value: offer.downPaymentAmount + marketplaceFee - 1
+        }(offer, offerSignature, buyer1, offer.nftId);
         vm.stopPrank();
     }
 
     function test_fuzz_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(fuzzed);
+        _test_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
+            fuzzed
+        );
     }
 
-    function test_unit_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(fixedForSpeed);
+    function test_unit_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee()
+        public
+    {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
+            fixedForSpeed
+        );
     }
 }
