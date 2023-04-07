@@ -44,7 +44,27 @@ The flow and main actions of the system are described as:
 
 ## Marketplace Integration
 
-The intention is for the main usge of the NiftyApes Seller Financing protocol to be through the NiftyApes SDK. This SDK will be integrated with 3rd party marketplace dapps. In order to serve this use case we have provided a `MarketplaceIntegration` contract in addition to the core Seller Financing protocol. The integration contract allows an owner to specify a `marketplaceFeeBps` and `marketplaceFeeRecipient`, and allows a user to call the `buyWithFinancing()` function which passes the calculated marketplace fee to the `marketplaceFeeRecipient` upon execution.
+The intention is for the main usage of the NiftyApes Seller Financing protocol to be through the NiftyApes SDK. This SDK will be integrated with 3rd party marketplace dapps. In order to serve this use case we have provided a `MarketplaceIntegration` contract in addition to the core Seller Financing protocol. The integration contract allows an owner to specify a `marketplaceFeeBps` and `marketplaceFeeRecipient`, and allows a user to call the `buyWithFinancing()` function which passes the calculated marketplace fee to the `marketplaceFeeRecipient` upon execution.
+
+## Use Cases
+
+So far, we have identified 4 major use cases for the NiftyApes Seller Financing Protocol and the NiftyApes SDK. Each of these use cases may have a different frontend UI but are served by the same smart contract functionality.
+
+#### Mint Financing
+
+1. Creators can offer financing on a lazy mint of their collection. Creators can sell more NFTs, more quickly, for more money. Buyers have the ability to buy more NFTs with the same amount of money. Buyers can sell the NFTs they have minted at any time if the proceeds of the sale cover the remaining principal and interest of the loan.
+
+#### Artist Financing
+
+2. Similarly, as in the traditional art world via entities like Sotheby's or Christie's, artists can offer financing on a 1/1 or limited piece drop. Artists can sell more art, more quickly, for more money. In this case, perhaps a major draw is that buyers have the ability to spend more on art with the same initial capital. This might result in higher sale prices for artists and larger collections for buyers. It may also provide a more consistent stream of income for artists rather than the lump sum payments they commonly have in todays digital art markets.
+
+#### Secondary Markets
+
+3. Sellers can offer financing as a way to achieve a higher sale price they may be targeting, as well as selling more NFTs, more quickly, for more money. Buyers can purchase an NFT in installments over time while still accessing the on-chain and IRL benefits of the NFT such as discord access, air drops, voiting in governance, and attending IRL events.
+
+#### Short Term Trading
+
+4. Sellers can offer short term loans in collections with high volume, sufficient bid depth, and positive price action, locking in a profitable trade via a price mark up each time a buyer fully closes their loan (whether the buyer makes a profit or not). Sellers are significantly hedged against default by the amount of down payment they require to service the loan and by a buyer's incentive to cut losses. Buyers can make more money by buying multiple short term loans for trades they would otherwise already be making. If a loan requires a 20% down payment and a 1% price mark up a buyer can buy 5 NFTs with the same capital they would have previously used to buy 1 NFT. If the price in this example goes up by 5% the buyer would make a 20% gain rather than a 5% gain made on the same capital previously.
 
 ## Getting Started
 
