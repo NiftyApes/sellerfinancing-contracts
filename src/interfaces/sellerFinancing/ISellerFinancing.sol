@@ -32,6 +32,12 @@ interface ISellerFinancing is
     /// @param signature The signature to return a count for
     function getCollectionOfferCount(bytes memory signature) external view returns (uint64 count);
 
+    /// @notice Returns value stored in `seaportContractAddress`
+    function seaportContractAddress() external returns (address);
+
+    /// @notice Returns value stored in `wethContractAddress`
+    function wethContractAddress() external returns (address);
+
     /// @notice Withdraw a given offer
     /// @dev    Calling this method allows users to withdraw a given offer by cancelling their signature on chain
     /// @param offer The offer to withdraw

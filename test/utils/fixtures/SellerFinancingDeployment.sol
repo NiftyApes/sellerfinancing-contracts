@@ -25,13 +25,12 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
     address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address SUPERRARE_MARKETPLACE = 0x34CfAC646f301356fAa8B21e94227e3583Fe3F5F;
+    address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
     address mainnetDelegateRegistryAddress = 0x00000000000076A84feF008CDAbe6409d2FE638B;
 
     uint256 SUPERRARE_MARKET_FEE_BPS = 300;
 
     function setUp() public virtual override {
-        address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
-
         super.setUp();
 
         vm.startPrank(owner);

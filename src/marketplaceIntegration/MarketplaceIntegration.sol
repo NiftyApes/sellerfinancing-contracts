@@ -91,6 +91,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
         uint256 nftId
     ) external payable whenNotPaused {
         _requireIsNotSanctioned(msg.sender);
+        _requireIsNotSanctioned(buyer);
 
         uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / MAX_BPS;
         if (msg.value < offer.downPaymentAmount + marketplaceFeeAmount) {
