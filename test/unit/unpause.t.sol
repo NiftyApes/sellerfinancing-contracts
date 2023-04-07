@@ -6,11 +6,7 @@ import "forge-std/Test.sol";
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 
-contract TestUnpause is
-    Test,
-    BaseTest,
-    OffersLoansFixtures
-{
+contract TestUnpause is Test, BaseTest, OffersLoansFixtures {
     function setUp() public override {
         super.setUp();
     }
@@ -18,12 +14,15 @@ contract TestUnpause is
     function assertionsForExecutedLoan(Offer memory offer, address expectedbuyer) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
-        // balance increments to one
-        assertEq(sellerFinancing.balanceOf(expectedbuyer, address(boredApeYachtClub)), 1);
-        // nftId exists at index 0
+        // require delegate.cash has buyer delegation
         assertEq(
-            sellerFinancing.tokenOfOwnerByIndex(expectedbuyer, address(boredApeYachtClub), 0),
-            offer.nftId
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
+                address(boredApeYachtClub),
+                offer.nftId
+            ),
+            true
         );
         // loan auction exists
         assertEq(
@@ -55,7 +54,10 @@ contract TestUnpause is
     }
 
     function test_unit_unpause_simple_case() public {
-        Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
+        Offer memory offer = offerStructFromFields(
+            defaultFixedFuzzedFieldsForFastUnitTesting,
+            defaultFixedOfferFields
+        );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.prank(owner);

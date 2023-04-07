@@ -6,11 +6,7 @@ import "forge-std/Test.sol";
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 
-contract TestSellerFinancingInitialize is
-    Test,
-    BaseTest,
-    OffersLoansFixtures
-{
+contract TestSellerFinancingInitialize is Test, BaseTest, OffersLoansFixtures {
     function setUp() public override {
         super.setUp();
     }
@@ -32,6 +28,7 @@ contract TestSellerFinancingInitialize is
         // initialize proxies
         sellerFinancingTest.initialize(
             mainnetRoyaltiesEngineAddress,
+            mainnetDelegateRegistryAddress,
             SEAPORT_ADDRESS,
             WETH_ADDRESS
         );
