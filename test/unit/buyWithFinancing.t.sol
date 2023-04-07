@@ -9,8 +9,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeab
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
 
-contract TestBuyWithFinancing is Test, OffersLoansFixtures {
+contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function setUp() public override {
         super.setUp();
     }
@@ -59,8 +60,35 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
 
     function _test_buyWithFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        
+        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.nftContractAddress, offer.nftId, offer.downPaymentAmount);
+
+        uint256 totalRoyaltiesPaid;
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients1.length; i++) {
+            totalRoyaltiesPaid += amounts1[i];
+        }
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+        uint256 royaltiesBalanceBefore = address(recipients1[0]).balance;
+
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+        uint256 royaltiesBalanceAfter = address(recipients1[0]).balance;
+
+        // seller paid out correctly
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.downPaymentAmount - totalRoyaltiesPaid)
+        );
+
+        // royatlies paid out correctly
+        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
     }
 
     function test_fuzz_buyWithFinancing_simplest_case(
@@ -72,6 +100,71 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
     function test_unit_buyWithFinancing_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithFinancing_simplest_case(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancing_returnsExtraAmountMoreThanDownpayment(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        // set any value > 0
+        uint256 extraAmount = 1234567890;
+        uint256 buyer1BalanceBefore = address(buyer1).balance;
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount + extraAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+
+        // assert only offer.downPaymentAmount is consumed and extraAmount is returned
+        uint256 buyer1BalanceAfter = address(buyer1).balance;
+        assertEq(buyer1BalanceAfter, buyer1BalanceBefore - offer.downPaymentAmount);
+    }
+
+    function test_fuzz_buyWithFinancing_returnsExtraAmountMoreThanDownpayment(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_returnsExtraAmountMoreThanDownpayment(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_returnsExtraAmountMoreThanDownpayment() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_returnsExtraAmountMoreThanDownpayment(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancing_emitsExpectedEvents(FuzzedOfferFields memory fuzzed) private {
+        ISellerFinancingStructs.Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+       
+        vm.expectEmit(true, true, false, false);
+        emit OfferSignatureUsed(offer.nftContractAddress, offer.nftId, offer, offerSignature);
+
+        vm.expectEmit(true, true, false, false);
+        emit LoanExecuted(offer.nftContractAddress, offer.nftId, offerSignature, loan);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWithFinancing_emitsExpectedEvents(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_emitsExpectedEvents(fuzzed);
+    }
+
+    function test_unit_buyWithFinancing_emitsExpectedEvents() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_emitsExpectedEvents(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_offerSignerNotOwner(
@@ -321,223 +414,109 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures {
         _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(fixedForSpeed);
     }
 
-    // function _test_buyWithFinancing_events(FuzzedOfferFields memory fuzzed)
-    //     private
-    // {
-    //     Offer memory offer = offerStructFromFields(
-    //         fuzzed,
-    //         defaultFixedOfferFields
-    //     );
+    function _test_buyWithFinancing_reverts_if_buyerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        bytes memory offerSignature = seller1CreateOffer(offer);
 
-    //     Loan memory loan = sellerFinancing.getLoan(
-    //         offer.nftContractAddress,
-    //         offer.nftId
-    //     );
+        vm.startPrank(buyer1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SanctionedAddress.selector,
+                SANCTIONED_ADDRESS
+            )
+        );
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature,
+            SANCTIONED_ADDRESS
+        );
+        vm.stopPrank();
+    }
 
-    //     vm.expectEmit(true, true, false, false);
-    //     emit LoanExecuted(offer.nftContractAddress, offer.nftId, loan);
+    function test_fuzz_buyWithFinancing_reverts_if_buyerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_buyerSanctioned(fuzzed);
+    }
 
-    //     createOfferAndTryTobuyWithFinancing(offer, "should work");
-    // }
+    function test_unit_buyWithFinancing_reverts_if_buyerSanctioned() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_buyerSanctioned(fixedForSpeed);
+    }
 
-    // function test_unit_buyWithFinancing_events() public {
-    //     _test_buyWithFinancing_events(
-    //         defaultFixedFuzzedFieldsForFastUnitTesting
-    //     );
-    // }
+    function _test_buyWithFinancing_reverts_if_callerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        bytes memory offerSignature = seller1CreateOffer(offer);
 
-    // function test_fuzz_buyWithFinancing_events(
-    //     FuzzedOfferFields memory fuzzed
-    // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_buyWithFinancing_events(fuzzed);
-    // }
+        vm.startPrank(SANCTIONED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SanctionedAddress.selector,
+                SANCTIONED_ADDRESS
+            )
+        );
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
+    }
 
-    // function _test_cannot_buyWithFinancing_if_offer_expired(
-    //     FuzzedOfferFields memory fuzzed
-    // ) private {
-    //     Offer memory offer = offerStructFromFields(
-    //         fuzzed,
-    //         defaultFixedOfferFields
-    //     );
-    //     createOffer(offer, seller1);
-    //     vm.warp(offer.expiration);
-    //     approvesellerFinancing(offer);
-    //     tryTobuyWithFinancing(offer, "00010");
-    // }
+    function test_fuzz_buyWithFinancing_reverts_if_callerSanctioned(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_callerSanctioned(fuzzed);
+    }
 
-    // function test_fuzz_cannot_buyWithFinancing_if_offer_expired(
-    //     FuzzedOfferFields memory fuzzed
-    // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_buyWithFinancing_if_offer_expired(fuzzed);
-    // }
+    function test_unit_buyWithFinancing_reverts_if_callerSanctioned() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_callerSanctioned(fixedForSpeed);
+    }
 
-    // function test_unit_cannot_buyWithFinancing_if_offer_expired() public {
-    //     _test_cannot_buyWithFinancing_if_offer_expired(
-    //         defaultFixedFuzzedFieldsForFastUnitTesting
-    //     );
-    // }
+    function _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        bytes memory offerSignature = seller1CreateOffer(offer);
 
-    // function _test_cannot_buyWithFinancing_if_dont_own_nft(
-    //     FuzzedOfferFields memory fuzzed
-    // ) private {
-    //     Offer memory offer = offerStructFromFields(
-    //         fuzzed,
-    //         defaultFixedOfferFields
-    //     );
-    //     createOffer(offer, seller1);
-    //     approvesellerFinancing(offer);
-    //     vm.startPrank(buyer1);
-    //     boredApeYachtClub.safeTransferFrom(buyer1, buyer2, 1);
-    //     vm.stopPrank();
-    //     tryTobuyWithFinancing(offer, "00021");
-    // }
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount}(
+            offer,
+            offerSignature,
+            buyer1
+        );
+        vm.stopPrank();
 
-    // function test_fuzz_cannot_buyWithFinancing_if_dont_own_nft(
-    //     FuzzedOfferFields memory fuzzed
-    // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_buyWithFinancing_if_dont_own_nft(fuzzed);
-    // }
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-    // function test_unit_cannot_buyWithFinancing_if_dont_own_nft() public {
-    //     _test_cannot_buyWithFinancing_if_dont_own_nft(
-    //         defaultFixedFuzzedFieldsForFastUnitTesting
-    //     );
-    // }
+        offer.nftContractAddress = address(sellerFinancing);
+        offer.nftId = loan.sellerNftId;
 
-    // function _test_cannot_buyWithFinancing_if_loan_active(
-    //     FuzzedOfferFields memory fuzzed
-    // ) private {
-    //     defaultFixedOfferFields.sellerOffer = true;
-    //     fuzzed.floorTerm = true;
+        bytes memory offerSignature2 =  signOffer(seller1_private_key, offer);
 
-    //     Offer memory offer = offerStructFromFields(
-    //         fuzzed,
-    //         defaultFixedOfferFields
-    //     );
-    //     offer.floorTermLimit = 2;
+        vm.startPrank(buyer1);
+        vm.expectRevert(ISellerFinancingErrors.CannotBuySellerFinancingTicket.selector);
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature2,
+            buyer1
+        );
+        vm.stopPrank();
+    }
 
-    //     createOffer(offer, seller1);
+    function test_fuzz_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(fuzzed);
+    }
 
-    //     approvesellerFinancing(offer);
-    //     tryTobuyWithFinancing(offer, "should work");
-
-    //     tryTobuyWithFinancing(offer, "00006");
-    // }
-
-    // function test_fuzz_buyWithFinancing_if_loan_active(
-    //     FuzzedOfferFields memory fuzzed
-    // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_buyWithFinancing_if_loan_active(fuzzed);
-    // }
-
-    // function test_unit_buyWithFinancing_if_loan_active() public {
-    //     _test_cannot_buyWithFinancing_if_loan_active(
-    //         defaultFixedFuzzedFieldsForFastUnitTesting
-    //     );
-    // }
-
-    // function _test_cannot_buyWithFinancing_sanctioned_address_borrower(
-    //     FuzzedOfferFields memory fuzzed
-    // ) private {
-    //     defaultFixedOfferFields.sellerOffer = true;
-    //     defaultFixedOfferFields.nftId = 3;
-
-    //     Offer memory offer = offerStructFromFields(
-    //         fuzzed,
-    //         defaultFixedOfferFields
-    //     );
-
-    //     createOffer(offer, seller1);
-
-    //     bytes32 offerHash = offers.getOfferHash(offer);
-
-    //     vm.startPrank(SANCTIONED_ADDRESS);
-    //     boredApeYachtClub.approve(address(sellerFinancing), 3);
-
-    //     vm.expectRevert("00017");
-    //     sellerFinancing.buyWithFinancing(offer.nftId, offerHash);
-    //     vm.stopPrank();
-    // }
-
-    // function test_fuzz_buyWithFinancing_sanctioned_address_borrower(
-    //     FuzzedOfferFields memory fuzzed
-    // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_buyWithFinancing_sanctioned_address_borrower(fuzzed);
-    // }
-
-    // function test_unit_buyWithFinancing_sanctioned_address_borrower()
-    //     public
-    // {
-    //     _test_cannot_buyWithFinancing_sanctioned_address_borrower(
-    //         defaultFixedFuzzedFieldsForFastUnitTesting
-    //     );
-    // }
-
-    // function _test_cannot_buyWithFinancing_sanctioned_address_seller(
-    //     FuzzedOfferFields memory fuzzed
-    // ) private {
-    //     vm.startPrank(owner);
-    //     liquidity.pauseSanctions();
-    //     vm.stopPrank();
-
-    //     fuzzed.randomAsset = 0;
-
-    //     if (integration) {
-    //         vm.startPrank(daiWhale);
-    //         daiToken.transfer(
-    //             SANCTIONED_ADDRESS,
-    //             defaultDaiLiquiditySupplied / 2
-    //         );
-    //         vm.stopPrank();
-    //     } else {
-    //         vm.startPrank(SANCTIONED_ADDRESS);
-    //         daiToken.mint(SANCTIONED_ADDRESS, defaultDaiLiquiditySupplied / 2);
-    //         vm.stopPrank();
-    //     }
-
-    //     vm.startPrank(SANCTIONED_ADDRESS);
-    //     daiToken.approve(address(liquidity), defaultDaiLiquiditySupplied / 2);
-
-    //     liquidity.supplyErc20(
-    //         address(daiToken),
-    //         defaultDaiLiquiditySupplied / 2
-    //     );
-    //     vm.stopPrank();
-
-    //     defaultFixedOfferFields.sellerOffer = true;
-
-    //     Offer memory offer = offerStructFromFields(
-    //         fuzzed,
-    //         defaultFixedOfferFields
-    //     );
-
-    //     createOffer(offer, SANCTIONED_ADDRESS);
-
-    //     vm.startPrank(owner);
-    //     liquidity.unpauseSanctions();
-    //     vm.stopPrank();
-
-    //     bytes32 offerHash = offers.getOfferHash(offer);
-
-    //     vm.startPrank(buyer1);
-    //     boredApeYachtClub.approve(address(sellerFinancing), 1);
-
-    //     vm.expectRevert("00017");
-    //     sellerFinancing.buyWithFinancing(offer.nftId, offerHash);
-    //     vm.stopPrank();
-    // }
-
-    // function test_fuzz_buyWithFinancing_sanctioned_address_seller(
-    //     FuzzedOfferFields memory fuzzed
-    // ) public validateFuzzedOfferFields(fuzzed) {
-    //     _test_cannot_buyWithFinancing_sanctioned_address_seller(fuzzed);
-    // }
-
-    // function test_unit_buyWithFinancing_sanctioned_address_seller()
-    //     public
-    // {
-    //     _test_cannot_buyWithFinancing_sanctioned_address_seller(
-    //         defaultFixedFuzzedFieldsForFastUnitTesting
-    //     );
-    // }
+    function test_unit_buyWithFinancing_reverts_if_offerForSellerFinancingTicket() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(fixedForSpeed);
+    }
 }

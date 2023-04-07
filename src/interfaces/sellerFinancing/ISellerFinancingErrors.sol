@@ -9,8 +9,6 @@ interface ISellerFinancingErrors {
 
     error SignatureNotAvailable(bytes signature);
 
-    error NotSignature65(bytes signature);
-
     error OfferExpired();
 
     error SanctionedAddress(address account);
@@ -19,13 +17,9 @@ interface ISellerFinancingErrors {
 
     error InvalidSigner(address signer, address expected);
 
-    error LoanAlreadyOpen();
-
     error LoanAlreadyClosed();
 
-    error MsgSenderNotSeller();
-
-    error MsgSenderNotBuyer();
+    error InvalidCaller(address caller, address expected);
 
     error CannotBuySellerFinancingTicket();
 
