@@ -32,6 +32,12 @@ interface ISellerFinancing is
     /// @param signature The signature to return a count for
     function getCollectionOfferCount(bytes memory signature) external view returns (uint64 count);
 
+    /// @notice Returns value stored in `royaltiesEngineContractAddress`
+    function royaltiesEngineContractAddress() external returns (address);
+
+    /// @notice Returns value stored in `delegateRegistryContractAddress`
+    function delegateRegistryContractAddress() external returns (address);
+
     /// @notice Returns value stored in `seaportContractAddress`
     function seaportContractAddress() external returns (address);
 
