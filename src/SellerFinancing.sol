@@ -53,7 +53,7 @@ contract NiftyApesSellerFinancing is
     uint256 private loanNftNonce;
 
     /// @dev The stored address for the royalties engine
-    address private royaltiesEngineContractAddress;
+    address public royaltiesEngineContractAddress;
 
     /// @dev The stored address for the delegate registry contract
     address public delegateRegistryContractAddress;
@@ -217,15 +217,14 @@ contract NiftyApesSellerFinancing is
     ) external payable whenNotPaused nonReentrant {
         // check for collection offer
         if (offer.nftId != ~uint256(0)) {
-            nftId = offer.nftId;
+            if (nftId != offer.nftId) {
+                revert NftIdsMustMatch();
+            }
             _requireAvailableSignature(signature);
             // mark signature as used
             _markSignatureUsed(offer, signature);
         } else {
-            if (nftId != offer.nftId) {
-                revert NftIdsMustMatch();
-            }
-            if (offer.collectionOfferLimit >= getCollectionOfferCount(signature)) {
+            if (getCollectionOfferCount(signature) >= offer.collectionOfferLimit) {
                 revert CollectionOfferLimitReached();
             }
             _collectionOfferCounters[signature] += 1;
@@ -576,20 +575,8 @@ contract NiftyApesSellerFinancing is
             revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
         }
     }
-
-    function transferFrom(address from, address to, uint256 tokenId) public pure override {
-        // values are stated here to silence compiler warnings
-        from;
-        to;
-        tokenId;
-        revert TransferFromDisallowedUseSafeTransferFrom();
-    }
-
-    function safeTransferFrom(address from, address to, uint256 tokenId) public override {
-        if (!_isApprovedOrOwner(_msgSender(), tokenId)) {
-            revert CallerIsNotTokenOwnerOrApproved();
-        }
-
+    
+    function _transfer(address from, address to, uint256 tokenId) internal override {
         // if the token is a buyer seller financing ticket
         if (tokenId % 2 == 0) {
             // get underlying nft
@@ -612,21 +599,7 @@ contract NiftyApesSellerFinancing is
             );
         }
 
-        _transfer(from, to, tokenId);
-    }
-
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) public pure override {
-        // values are stated here to silence compiler warnings
-        from;
-        to;
-        tokenId;
-        data;
-        revert SafeTransferFromWithDataDisallowedUseSafeTransferFrom();
+        super._transfer(from, to, tokenId);
     }
 
     /// @inheritdoc ISellerFinancing
@@ -853,12 +826,6 @@ contract NiftyApesSellerFinancing is
     function _requireSigner(address signer, address expected) internal pure {
         if (signer != expected) {
             revert InvalidSigner(signer, expected);
-        }
-    }
-
-    function _requireNftOwner(Loan storage loan) internal view {
-        if (msg.sender != ownerOf(loan.buyerNftId)) {
-            revert NotNftOwner(address(this), loan.buyerNftId, msg.sender);
         }
     }
 
