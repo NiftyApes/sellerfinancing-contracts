@@ -14,7 +14,7 @@ interface ISellerFinancingStructs {
         // SLOT 2
         // Offer NFT ID
         uint256 nftId;
-        // SLOT 3 - 96 remaining
+        // SLOT 3 - 32 remaining
         // Offer NFT contract address
         address nftContractAddress;
         // Offer creator
@@ -25,6 +25,8 @@ interface ISellerFinancingStructs {
         uint32 periodDuration;
         // Timestamp of offer expiration
         uint32 expiration;
+        // collection offer usage limit, ignored if nftId is not ~uint256(0)
+        uint64 collectionOfferLimit;
     }
 
     struct Loan {

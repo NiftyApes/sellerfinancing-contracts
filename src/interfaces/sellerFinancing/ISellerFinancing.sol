@@ -27,6 +27,17 @@ interface ISellerFinancing is
     /// @param signature The signature to check
     function getOfferSignatureStatus(bytes calldata signature) external view returns (bool status);
 
+    /// @notice Returns the usage count of a given signature
+    ///         Only increments for collection offers
+    /// @param signature The signature to return a count for
+    function getCollectionOfferCount(bytes memory signature) external view returns (uint64 count);
+
+    /// @notice Returns value stored in `royaltiesEngineContractAddress`
+    function royaltiesEngineContractAddress() external returns (address);
+
+    /// @notice Returns value stored in `delegateRegistryContractAddress`
+    function delegateRegistryContractAddress() external returns (address);
+
     /// @notice Returns value stored in `seaportContractAddress`
     function seaportContractAddress() external returns (address);
 
@@ -47,7 +58,8 @@ interface ISellerFinancing is
     function buyWithFinancing(
         Offer calldata offer,
         bytes memory signature,
-        address buyer
+        address buyer,
+        uint256 nftId
     ) external payable;
 
     /// @notice Make a partial payment or full repayment of a loan.

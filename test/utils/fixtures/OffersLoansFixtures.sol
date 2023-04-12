@@ -14,12 +14,7 @@ uint256 constant MAX_BPS = 10_000;
 uint256 constant MAX_FEE = 1_000;
 
 // Note: need "sign" function from BaseTest for signOffer below
-contract OffersLoansFixtures is
-    Test,
-    BaseTest,
-    ISellerFinancingStructs,
-    SellerFinancingDeployment
-{
+contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerFinancingDeployment {
     struct FuzzedOfferFields {
         uint128 price;
         uint128 downPaymentAmount;
@@ -33,6 +28,7 @@ contract OffersLoansFixtures is
         address creator;
         uint256 nftId;
         address nftContractAddress;
+        uint64 collectionOfferLimit;
     }
 
     FixedOfferFields internal defaultFixedOfferFields;
@@ -47,7 +43,8 @@ contract OffersLoansFixtures is
         defaultFixedOfferFields = FixedOfferFields({
             creator: seller1,
             nftContractAddress: address(boredApeYachtClub),
-            nftId: 8661
+            nftId: 8661,
+            collectionOfferLimit: 1
         });
 
         // in addition to fuzz tests, we have fast unit tests
@@ -70,10 +67,7 @@ contract OffersLoansFixtures is
         vm.assume(fuzzed.periodInterestRateBps < 100000);
 
         vm.assume(fuzzed.price > fuzzed.downPaymentAmount);
-        vm.assume(
-            fuzzed.price - fuzzed.downPaymentAmount >
-                fuzzed.minimumPrincipalPerPeriod
-        );
+        vm.assume(fuzzed.price - fuzzed.downPaymentAmount > fuzzed.minimumPrincipalPerPeriod);
         vm.assume(fuzzed.periodDuration > 1 minutes);
         vm.assume(fuzzed.periodDuration <= 180 days);
         vm.assume(fuzzed.expiration > block.timestamp);
@@ -94,24 +88,19 @@ contract OffersLoansFixtures is
                 minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
                 periodInterestRateBps: fuzzed.periodInterestRateBps,
                 periodDuration: fuzzed.periodDuration,
-                expiration: fuzzed.expiration
+                expiration: fuzzed.expiration,
+                collectionOfferLimit: fixedFields.collectionOfferLimit
             });
     }
 
-    function signOffer(uint256 signerPrivateKey, Offer memory offer)
-        public
-        returns (bytes memory)
-    {
+    function signOffer(uint256 signerPrivateKey, Offer memory offer) public returns (bytes memory) {
         // This is the EIP712 signed hash
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
 
         return sign(signerPrivateKey, offerHash);
     }
 
-    function seller1CreateOffer(Offer memory offer)
-        internal
-        returns (bytes memory signature)
-    {
+    function seller1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
         vm.stopPrank();
@@ -123,10 +112,11 @@ contract OffersLoansFixtures is
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{value: offer.downPaymentAmount}(
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
     }

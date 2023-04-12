@@ -23,11 +23,9 @@ interface ISellerFinancingErrors {
 
     error CannotBuySellerFinancingTicket();
 
-    error TransferFromDisallowedUseSafeTransferFrom();
+    error NftIdsMustMatch();
 
-    error CallerIsNotTokenOwnerOrApproved();
-
-    error SafeTransferFromWithDataDisallowedUseSafeTransferFrom();
+    error CollectionOfferLimitReached();
 
     error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
 

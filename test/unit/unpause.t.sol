@@ -68,7 +68,8 @@ contract TestUnpause is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
 
@@ -79,7 +80,8 @@ contract TestUnpause is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
         vm.stopPrank();
 

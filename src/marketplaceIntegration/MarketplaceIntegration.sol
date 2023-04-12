@@ -16,8 +16,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
     using Address for address payable;
 
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
-    address private constant SANCTIONS_CONTRACT =
-        0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
+    address private constant SANCTIONS_CONTRACT = 0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 
     /// @notice The base value for fees in the protocol.
     uint256 private constant MAX_BPS = 10_000;
@@ -59,17 +58,13 @@ contract MarketplaceIntegration is Ownable, Pausable {
     }
 
     /// @param newMarketplaceFeeRecipient New address for MarketplaceFeeRecipient
-    function updateMarketplaceFeeRecipient(
-        address newMarketplaceFeeRecipient
-    ) external onlyOwner {
+    function updateMarketplaceFeeRecipient(address newMarketplaceFeeRecipient) external onlyOwner {
         _requireNonZeroAddress(newMarketplaceFeeRecipient);
         marketplaceFeeRecipient = payable(newMarketplaceFeeRecipient);
     }
 
     /// @param newMarketplaceFeeBps New value for marketplaceFeeBps
-    function updateMarketplaceFeeBps(
-        uint256 newMarketplaceFeeBps
-    ) external onlyOwner {
+    function updateMarketplaceFeeBps(uint256 newMarketplaceFeeBps) external onlyOwner {
         marketplaceFeeBps = newMarketplaceFeeBps;
     }
 
@@ -92,24 +87,21 @@ contract MarketplaceIntegration is Ownable, Pausable {
     function buyWithFinancing(
         ISellerFinancing.Offer memory offer,
         bytes calldata signature,
-        address buyer
+        address buyer,
+        uint256 nftId
     ) external payable whenNotPaused {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
-        uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) /
-            MAX_BPS;
+        uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / MAX_BPS;
         if (msg.value < offer.downPaymentAmount + marketplaceFeeAmount) {
-            revert InsufficientMsgValue(
-                msg.value,
-                offer.downPaymentAmount + marketplaceFeeAmount
-            );
+            revert InsufficientMsgValue(msg.value, offer.downPaymentAmount + marketplaceFeeAmount);
         }
         marketplaceFeeRecipient.sendValue(marketplaceFeeAmount);
 
         ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
             value: msg.value - marketplaceFeeAmount
-        }(offer, signature, buyer);
+        }(offer, signature, buyer, nftId);
     }
 
     function _requireNonZeroAddress(address given) internal pure {

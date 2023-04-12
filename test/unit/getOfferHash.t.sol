@@ -22,12 +22,13 @@ contract TestGetOfferHash is Test, ISellerFinancingStructs, OffersLoansFixtures 
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
             periodDuration: 30 days,
-            expiration: uint32(1657217355)
+            expiration: uint32(1657217355),
+            collectionOfferLimit: 1
         });
 
         bytes32 functionOfferHash = sellerFinancing.getOfferHash(offer);
 
-        bytes32 expectedFunctionHash = 0x48d5e6502c524af49b65a24c236fed558f7ca14ac28c0d7379605876efec948b;
+        bytes32 expectedFunctionHash = 0xf20f8d01a4b5585ad185a5e1be44f4f4013b912818200476da9eac2cb1205727;
 
         assertEq(functionOfferHash, expectedFunctionHash);
     }

@@ -67,7 +67,8 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            SANCTIONED_ADDRESS
+            SANCTIONED_ADDRESS,
+            offer.nftId
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer, SANCTIONED_ADDRESS);

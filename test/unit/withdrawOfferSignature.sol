@@ -25,16 +25,15 @@ contract TestWithdrawOfferSignature is
     function test_unit_withdrawOfferSignature_works() public {
         Offer memory offer = Offer({
             creator: seller1,
-            nftContractAddress: address(
-                0xB4FFCD625FefD541b77925c7A37A55f488bC69d9
-            ),
+            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
             price: 1 ether,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
             periodDuration: 30 days,
-            expiration: uint32(1657217355)
+            expiration: uint32(1657217355),
+            collectionOfferLimit: 1
         });
 
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
@@ -49,16 +48,15 @@ contract TestWithdrawOfferSignature is
     function test_unit_cannot_withdrawOfferSignature_not_signer() public {
         Offer memory offer = Offer({
             creator: seller1,
-            nftContractAddress: address(
-                0xB4FFCD625FefD541b77925c7A37A55f488bC69d9
-            ),
+            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
             price: 1 ether,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
             periodDuration: 30 days,
-            expiration: uint32(1657217355)
+            expiration: uint32(1657217355),
+            collectionOfferLimit: 1
         });
 
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
@@ -66,7 +64,9 @@ contract TestWithdrawOfferSignature is
         bytes memory signature = sign(seller1_private_key, offerHash);
 
         vm.startPrank(address(seller2));
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidSigner.selector, seller1, seller2));
+        vm.expectRevert(
+            abi.encodeWithSelector(ISellerFinancingErrors.InvalidSigner.selector, seller1, seller2)
+        );
         sellerFinancing.withdrawOfferSignature(offer, signature);
         vm.stopPrank();
     }

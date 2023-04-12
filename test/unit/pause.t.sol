@@ -26,7 +26,8 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
 
         vm.expectRevert("Pausable: paused");
