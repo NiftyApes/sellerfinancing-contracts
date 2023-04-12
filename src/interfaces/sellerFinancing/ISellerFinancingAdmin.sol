@@ -16,6 +16,16 @@ interface ISellerFinancingAdmin {
     /// @notice Unpauses sanctions checks
     function unpauseSanctions() external;
 
+    /// @notice Updates royalty engine contract address to new address
+    /// @param newRoyaltyEngineContractAddress New royalty engine address
+    function updateRoyaltiesEngineContractAddress(address newRoyaltyEngineContractAddress) external;
+
+    /// @notice Updates delegate registry contract address to new address
+    /// @param newDelegateRegistryContractAddress New delegate registry address
+    function updateDelegateRegistryContractAddress(
+        address newDelegateRegistryContractAddress
+    ) external;
+
     /// @notice Updates seaport contract address to new address
     /// @param newSeaportContractAddress New seaport address
     function updateSeaportContractAddress(address newSeaportContractAddress) external;

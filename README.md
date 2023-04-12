@@ -20,7 +20,7 @@ The flow and main actions of the system are described as:
 
 #### Utilize The Purchased NFT
 
-3. During the loan a buyer can utilize their purchased NFT by calling the `balanceOf()` and `tokenOfOwnerById()` functions to read ownership of specified nftContractAddress and nftId, or the `flashClaim()` function to conduct any arbitrary onchain action using the NFT.
+3. During the loan a buyer can utilize their purchased NFT on an platform, protocol, or service supported by delegate.cash.
 
 #### Sell At Any Time
 

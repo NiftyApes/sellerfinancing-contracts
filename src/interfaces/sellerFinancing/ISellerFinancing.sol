@@ -27,6 +27,17 @@ interface ISellerFinancing is
     /// @param signature The signature to check
     function getOfferSignatureStatus(bytes calldata signature) external view returns (bool status);
 
+    /// @notice Returns the usage count of a given signature
+    ///         Only increments for collection offers
+    /// @param signature The signature to return a count for
+    function getCollectionOfferCount(bytes memory signature) external view returns (uint64 count);
+
+    /// @notice Returns value stored in `royaltiesEngineContractAddress`
+    function royaltiesEngineContractAddress() external returns (address);
+
+    /// @notice Returns value stored in `delegateRegistryContractAddress`
+    function delegateRegistryContractAddress() external returns (address);
+
     /// @notice Returns value stored in `seaportContractAddress`
     function seaportContractAddress() external returns (address);
 
@@ -47,7 +58,8 @@ interface ISellerFinancing is
     function buyWithFinancing(
         Offer calldata offer,
         bytes memory signature,
-        address buyer
+        address buyer,
+        uint256 nftId
     ) external payable;
 
     /// @notice Make a partial payment or full repayment of a loan.
@@ -77,38 +89,16 @@ interface ISellerFinancing is
         bytes calldata data
     ) external;
 
-    /// @notice Allows an nftOwner to claim their nft and perform arbtrary actions (claim airdrops, vote in goverance, etc)
-    ///         while maintaining their loan
-    /// @param receiver The address of the external contract that will receive and return the nft
-    /// @param nftContractAddress The address of the nft collection
-    /// @param nftId The id of the specified nft
-    /// @param data Arbitrary data structure, intended to contain user-defined parameters
-    function flashClaim(
-        address receiver,
-        address nftContractAddress,
-        uint256 nftId,
-        bytes calldata data
-    ) external;
-
     /// @notice Returns a loan identified by a given nft.
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
     function getLoan(address nftContractAddress, uint256 nftId) external view returns (Loan memory);
 
-    /// @notice Returns the total NFTs from a given collection owned by a user which has active loans in NiftyApes.
-    /// @param owner The address of the owner
-    /// @param nftContractAddress The address of the NFT collection
-    function balanceOf(address owner, address nftContractAddress) external returns (uint256);
-
-    /// @notice Returns an NFT token ID owned by `owner` at a given `index` of its token list.
-    /// @param owner The address of the user
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param index The index of the owner's token list
-    function tokenOfOwnerByIndex(
-        address owner,
-        address nftContractAddress,
-        uint256 index
-    ) external returns (uint256);
+    /// @notice Returns the underlying nft of a specified a seller financing ticket id.
+    /// @param sellerFinancingTicketId The id of a specified seller financing ticket id
+    function getUnderlyingNft(
+        uint256 sellerFinancingTicketId
+    ) external view returns (UnderlyingNft memory);
 
     /// @notice Returns minimum payment required for the current period and current period interest
     /// @dev    This function calculates a sum of current and late payment values if applicable
@@ -121,6 +111,7 @@ interface ISellerFinancing is
 
     function initialize(
         address newRoyaltiesEngineAddress,
+        address newDelegateRegistryAddress,
         address newSeaportContractAddress,
         address newWethContractAddress
     ) external;

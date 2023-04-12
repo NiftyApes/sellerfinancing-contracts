@@ -6,17 +6,16 @@ import "forge-std/Test.sol";
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 
-contract TestPause is
-    Test,
-    BaseTest,
-    OffersLoansFixtures
-{
+contract TestPause is Test, BaseTest, OffersLoansFixtures {
     function setUp() public override {
         super.setUp();
     }
 
     function test_unit_pause_simple_case() public {
-        Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
+        Offer memory offer = offerStructFromFields(
+            defaultFixedFuzzedFieldsForFastUnitTesting,
+            defaultFixedOfferFields
+        );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.prank(owner);
@@ -27,14 +26,12 @@ contract TestPause is
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1
+            buyer1,
+            offer.nftId
         );
 
         vm.expectRevert("Pausable: paused");
-        sellerFinancing.makePayment{ value: (1) }(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        sellerFinancing.makePayment{ value: (1) }(offer.nftContractAddress, offer.nftId);
 
         vm.expectRevert("Pausable: paused");
         sellerFinancing.instantSell(
@@ -42,14 +39,6 @@ contract TestPause is
             offer.nftId,
             0,
             abi.encode("dummy order", bytes32(0))
-        );
-
-        vm.expectRevert("Pausable: paused");
-        sellerFinancing.flashClaim(
-            address(1),
-            offer.nftContractAddress,
-            offer.nftId,
-            bytes("")
         );
         vm.stopPrank();
 

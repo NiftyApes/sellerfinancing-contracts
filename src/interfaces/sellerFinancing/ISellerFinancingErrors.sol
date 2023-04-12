@@ -23,6 +23,10 @@ interface ISellerFinancingErrors {
 
     error CannotBuySellerFinancingTicket();
 
+    error NftIdsMustMatch();
+
+    error CollectionOfferLimitReached();
+
     error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
 
     error InvalidOffer0Token(address given, address expected);

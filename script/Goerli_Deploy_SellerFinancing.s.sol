@@ -21,17 +21,14 @@ contract DeploySellerFinancingScript is Script {
 
     function run() external {
         address goerliRoyaltiesEngineAddress = 0xe7c9Cb6D966f76f3B5142167088927Bf34966a1f;
+        address goerliDelegateRegistryAddress = 0x00000000000076A84feF008CDAbe6409d2FE638B;
         address goerliMultisigAddress = 0x213dE8CcA7C414C0DE08F456F9c4a2Abc4104028;
 
         vm.startBroadcast();
 
         // deploy and initialize implementation contracts
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(
-            address(0),
-            address(0),
-            address(0)
-        );
+        sellerFinancingImplementation.initialize(address(0), address(0), address(0), address(0));
 
         // deploy proxy admins
         sellerFinancingProxyAdmin = new ProxyAdmin();
@@ -49,6 +46,7 @@ contract DeploySellerFinancingScript is Script {
         // initialize proxies
         sellerFinancing.initialize(
             goerliRoyaltiesEngineAddress,
+            goerliDelegateRegistryAddress,
             SEAPORT_ADDRESS,
             WETH_ADDRESS
         );
@@ -60,9 +58,7 @@ contract DeploySellerFinancingScript is Script {
         sellerFinancingImplementation.transferOwnership(goerliMultisigAddress);
 
         // change ownership of proxies
-        IOwnership(address(sellerFinancing)).transferOwnership(
-            goerliMultisigAddress
-        );
+        IOwnership(address(sellerFinancing)).transferOwnership(goerliMultisigAddress);
 
         // change ownership of proxyAdmin
         sellerFinancingProxyAdmin.transferOwnership(goerliMultisigAddress);
