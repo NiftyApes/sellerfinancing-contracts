@@ -5,8 +5,11 @@ import "@openzeppelin-norm/contracts/proxy/transparent/TransparentUpgradeablePro
 import "@openzeppelin-norm/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../../../src/interfaces/sellerFinancing/ISellerFinancing.sol";
+import "../../../src/interfaces/maker/ISellerFinancingMaker.sol";
 import "../../../src/SellerFinancing.sol";
 import "../../../src/marketplaceIntegration/MarketplaceIntegration.sol";
+import "../../../src/maker/SellerFinancingMaker.sol";
+import "../../../src/externalExecuters/SeaportExecuter.sol";
 import "./NFTFixtures.sol";
 
 import "forge-std/Test.sol";
@@ -19,7 +22,13 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
 
+    SellerFinancingMaker makerImplementation;
+    TransparentUpgradeableProxy makerProxy;
+    ISellerFinancingMaker maker;
+
     MarketplaceIntegration marketplaceIntegration;
+
+    SeaportExecuter seaportExecuter;
 
     address SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
     address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
@@ -38,6 +47,9 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
         sellerFinancingImplementation.initialize(address(0), address(0), address(0), address(0));
 
+        makerImplementation = new SellerFinancingMaker();
+        makerImplementation.initialize(address(0));
+
         // deploy proxy admin
         sellerFinancingProxyAdmin = new ProxyAdmin();
 
@@ -47,9 +59,15 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
             address(sellerFinancingProxyAdmin),
             bytes("")
         );
+        makerProxy = new TransparentUpgradeableProxy(
+            address(makerImplementation),
+            address(sellerFinancingProxyAdmin),
+            bytes("")
+        );
 
         // declare interfaces
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
+        maker = ISellerFinancingMaker(address(makerProxy));
 
         // initialize proxies
         sellerFinancing.initialize(
@@ -58,12 +76,17 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
             SEAPORT_ADDRESS,
             WETH_ADDRESS
         );
+        maker.initialize(address(sellerFinancing));
 
         marketplaceIntegration = new MarketplaceIntegration(
             address(sellerFinancing),
             SUPERRARE_MARKETPLACE,
             SUPERRARE_MARKET_FEE_BPS
         );
+
+        maker.setApprovalForSigner(seller1, true);
+
+        seaportExecuter = new SeaportExecuter(SEAPORT_ADDRESS, WETH_ADDRESS);
 
         vm.stopPrank();
 
