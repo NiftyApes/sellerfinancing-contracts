@@ -46,7 +46,7 @@ contract SeaportExecuter is
     constructor (
         address newSeaportContractAddress,
         address newWethContractAddress
-    ) public {
+    ) {
         seaportContractAddress = newSeaportContractAddress;
         wethContractAddress = newWethContractAddress;
     }
