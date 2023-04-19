@@ -154,7 +154,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
 
@@ -237,7 +237,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
 
@@ -300,7 +300,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -361,7 +361,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -420,7 +420,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -475,7 +475,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -531,7 +531,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             0,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -587,7 +587,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             0,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -642,7 +642,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             0,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -697,7 +697,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             0,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -752,7 +752,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             0,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -808,7 +808,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             0,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -864,7 +864,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             0,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -935,7 +935,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount + 1,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
