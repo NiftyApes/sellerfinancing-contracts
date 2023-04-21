@@ -531,10 +531,7 @@ contract NiftyApesSellerFinancing is
         IERC721Upgradeable(nftContractAddress).approve(seaportContractAddress, nftId);
 
         // decode seaport order data
-        (ISeaport.Order memory order) = abi.decode(
-            data,
-            (ISeaport.Order)
-        );
+        ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
 
         // validate order
         _validateSaleOrder(order, nftContractAddress, nftId);
@@ -578,7 +575,7 @@ contract NiftyApesSellerFinancing is
             revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
         }
     }
-    
+
     function _transfer(address from, address to, uint256 tokenId) internal override {
         // if the token is a buyer seller financing ticket
         if (tokenId % 2 == 0) {
@@ -686,14 +683,16 @@ contract NiftyApesSellerFinancing is
     }
 
     function _callERC1271isValidSignature(
-    address _addr,
-    bytes32 _hash,
-    bytes calldata _signature
-  ) private returns (bool) {
-    (, bytes memory data) = _addr.call(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature));
-    return bytes4(data) == 0x1626ba7e;
-  }
-  
+        address _addr,
+        bytes32 _hash,
+        bytes calldata _signature
+    ) private returns (bool) {
+        (, bytes memory data) = _addr.call(
+            abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature)
+        );
+        return bytes4(data) == 0x1626ba7e;
+    }
+
     function _payRoyalties(
         address nftContractAddress,
         uint256 nftId,
@@ -721,14 +720,33 @@ contract NiftyApesSellerFinancing is
             revert InsufficientBalance(amount, address(this).balance);
         }
 
-        (bool toSuccess, ) = to.call{ value: amount }("");
+        // check if to is sanctioned
+        bool isToSanctioned;
+        if (!_sanctionsPause) {
+            SanctionsList sanctionsList = SanctionsList(SANCTIONS_CONTRACT);
+            isToSanctioned = sanctionsList.isSanctioned(to);
+        }
 
-        if (!toSuccess) {
+        // if sanctioned, return value to from
+        if (isToSanctioned) {
             (bool fromSuccess, ) = from.call{ value: amount }("");
             // require ETH is successfully sent to either to or from
             // we do not want ETH hanging in contract.
             if (!fromSuccess) {
                 revert ConditionSendValueFailed(from, to, amount);
+            }
+        } else {
+            // attempt to send value to to
+            (bool toSuccess, ) = to.call{ value: amount }("");
+
+            // if send fails, return vale to from
+            if (!toSuccess) {
+                (bool fromSuccess, ) = from.call{ value: amount }("");
+                // require ETH is successfully sent to either to or from
+                // we do not want ETH hanging in contract.
+                if (!fromSuccess) {
+                    revert ConditionSendValueFailed(from, to, amount);
+                }
             }
         }
     }
