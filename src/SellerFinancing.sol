@@ -293,16 +293,16 @@ contract NiftyApesSellerFinancing is
         );
 
         // mint seller nft
-        uint256 sellerNftId = loanNftNonce;
+        // use loanNftNonce to prevent stack too deep error
+        _safeMint(seller, loanNftNonce);
         loanNftNonce++;
-        _safeMint(seller, sellerNftId);
 
         // create loan
         _createLoan(
             loan,
             offer,
             nftId,
-            sellerNftId,
+            loanNftNonce - 1,
             buyerNftId,
             (offer.price - offer.downPaymentAmount)
         );
