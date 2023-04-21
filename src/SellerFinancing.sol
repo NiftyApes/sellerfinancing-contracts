@@ -531,10 +531,7 @@ contract NiftyApesSellerFinancing is
         IERC721Upgradeable(nftContractAddress).approve(seaportContractAddress, nftId);
 
         // decode seaport order data
-        (ISeaport.Order memory order) = abi.decode(
-            data,
-            (ISeaport.Order)
-        );
+        ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
 
         // validate order
         _validateSaleOrder(order, nftContractAddress, nftId);
@@ -545,7 +542,7 @@ contract NiftyApesSellerFinancing is
         // calculate totalConsiderationAmount
         uint256 totalConsiderationAmount;
         for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
-            totalConsiderationAmount = order.parameters.consideration[i].endAmount;
+            totalConsiderationAmount += order.parameters.consideration[i].endAmount;
         }
 
         // set allowance for seaport to transferFrom this contract during .fulfillOrder()
@@ -578,7 +575,7 @@ contract NiftyApesSellerFinancing is
             revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
         }
     }
-    
+
     function _transfer(address from, address to, uint256 tokenId) internal override {
         // if the token is a buyer seller financing ticket
         if (tokenId % 2 == 0) {
@@ -686,14 +683,16 @@ contract NiftyApesSellerFinancing is
     }
 
     function _callERC1271isValidSignature(
-    address _addr,
-    bytes32 _hash,
-    bytes calldata _signature
-  ) private returns (bool) {
-    (, bytes memory data) = _addr.call(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature));
-    return bytes4(data) == 0x1626ba7e;
-  }
-  
+        address _addr,
+        bytes32 _hash,
+        bytes calldata _signature
+    ) private returns (bool) {
+        (, bytes memory data) = _addr.call(
+            abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature)
+        );
+        return bytes4(data) == 0x1626ba7e;
+    }
+
     function _payRoyalties(
         address nftContractAddress,
         uint256 nftId,
