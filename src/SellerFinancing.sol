@@ -577,7 +577,8 @@ contract NiftyApesSellerFinancing is
     }
 
     function _transfer(address from, address to, uint256 tokenId) internal override {
-        _requireIsNotSanctioned(msg.sender);
+        _requireIsNotSanctioned(from);
+        _requireIsNotSanctioned(to);
         // if the token is a buyer seller financing ticket
         if (tokenId % 2 == 0) {
             // get underlying nft
