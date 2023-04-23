@@ -319,7 +319,7 @@ contract NiftyApesSellerFinancing is
         );
 
         // emit loan executed event
-        emit LoanExecuted(offer.nftContractAddress, offer.nftId, signature, loan);
+        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
     }
 
     /// @inheritdoc ISellerFinancing

@@ -197,6 +197,11 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
 
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
+
+        vm.expectEmit(true, true, false, false);
+        emit LoanExecuted(offer.nftContractAddress, nftId, offerSignature, loan);
+
         vm.startPrank(buyer1);
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
