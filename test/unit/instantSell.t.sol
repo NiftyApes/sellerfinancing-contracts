@@ -176,6 +176,84 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         _test_instantSell_loanClosed_simplest_case(fixedForSpeed);
     }
 
+    function _test_instantSell_loanClosed_multipleConsideration(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        uint256 buyer1BalanceBefore = address(buyer1).balance;
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        // set any minimum profit value
+        uint256 considerationAmount2 = 1 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = ((loan.remainingPrincipal + periodInterest + considerationAmount2) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            true
+        );
+        mintWeth(buyer2, bidPrice);
+
+        ISeaport.ConsiderationItem[] memory considItems = new ISeaport.ConsiderationItem[](3);
+        considItems[0] = order[0].parameters.consideration[0];
+        considItems[1] = order[0].parameters.consideration[1];
+        considItems[2] = ISeaport.ConsiderationItem({
+            itemType: ISeaport.ItemType.ERC20,
+            token: WETH_ADDRESS,
+            identifierOrCriteria: 0,
+            startAmount: considerationAmount2,
+            endAmount: considerationAmount2,
+            recipient: payable(buyer2)
+        });
+
+        order[0].parameters.consideration = new ISeaport.ConsiderationItem[](3);
+        order[0].parameters.consideration[0] = considItems[0];
+        order[0].parameters.consideration[1] = considItems[1];
+        order[0].parameters.consideration[2] = considItems[2];
+        order[0].parameters.totalOriginalConsiderationItems = 3;
+
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(WETH_ADDRESS).approve(SEAPORT_CONDUIT, bidPrice);
+        ISeaport(SEAPORT_ADDRESS).validate(order);
+        vm.stopPrank();
+
+        vm.startPrank(buyer1);
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            0,
+            abi.encode(order[0])
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer2);
+        assertEq(
+            address(buyer1).balance,
+            (buyer1BalanceBefore - offer.downPaymentAmount)
+        );
+    }
+
+    function test_fuzz_instantSell_loanClosed_multipleConsideration(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_loanClosed_multipleConsideration(fuzzed);
+    }
+
+    function test_unit_instantSell_loanClosed_multipleConsideration() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_loanClosed_multipleConsideration(fixedForSpeed);
+    }
+
     function _test_instantSell_loanClosed_withoutSeaportFee(
         FuzzedOfferFields memory fuzzed
     ) private {
