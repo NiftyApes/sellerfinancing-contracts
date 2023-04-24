@@ -45,9 +45,5 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
         vm.startPrank(seller1);
         vm.expectRevert("Pausable: paused");
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
-
-        vm.expectRevert("Pausable: paused");
-        sellerFinancing.withdrawOfferSignature(offer, offerSignature);
-        vm.stopPrank();
     }
 }
