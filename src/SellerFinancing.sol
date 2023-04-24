@@ -293,12 +293,19 @@ contract NiftyApesSellerFinancing is
         );
 
         // mint seller nft
-        uint256 sellerNftId = loanNftNonce;
+        // use loanNftNonce to prevent stack too deep error
+        _safeMint(seller, loanNftNonce);
         loanNftNonce++;
-        _safeMint(seller, sellerNftId);
 
         // create loan
-        _createLoan(loan, offer, sellerNftId, buyerNftId, (offer.price - offer.downPaymentAmount));
+        _createLoan(
+            loan,
+            offer,
+            nftId,
+            loanNftNonce - 1,
+            buyerNftId,
+            (offer.price - offer.downPaymentAmount)
+        );
 
         // transfer nft from seller to this contract, revert on failure
         _transferNft(offer.nftContractAddress, nftId, seller, address(this));
@@ -312,7 +319,7 @@ contract NiftyApesSellerFinancing is
         );
 
         // emit loan executed event
-        emit LoanExecuted(offer.nftContractAddress, offer.nftId, signature, loan);
+        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
     }
 
     /// @inheritdoc ISellerFinancing
@@ -531,10 +538,7 @@ contract NiftyApesSellerFinancing is
         IERC721Upgradeable(nftContractAddress).approve(seaportContractAddress, nftId);
 
         // decode seaport order data
-        (ISeaport.Order memory order) = abi.decode(
-            data,
-            (ISeaport.Order)
-        );
+        ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
 
         // validate order
         _validateSaleOrder(order, nftContractAddress, nftId);
@@ -578,7 +582,7 @@ contract NiftyApesSellerFinancing is
             revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
         }
     }
-    
+
     function _transfer(address from, address to, uint256 tokenId) internal override {
         // if the token is a buyer seller financing ticket
         if (tokenId % 2 == 0) {
@@ -686,14 +690,16 @@ contract NiftyApesSellerFinancing is
     }
 
     function _callERC1271isValidSignature(
-    address _addr,
-    bytes32 _hash,
-    bytes calldata _signature
-  ) private returns (bool) {
-    (, bytes memory data) = _addr.call(abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature));
-    return bytes4(data) == 0x1626ba7e;
-  }
-  
+        address _addr,
+        bytes32 _hash,
+        bytes calldata _signature
+    ) private returns (bool) {
+        (, bytes memory data) = _addr.call(
+            abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature)
+        );
+        return bytes4(data) == 0x1626ba7e;
+    }
+
     function _payRoyalties(
         address nftContractAddress,
         uint256 nftId,
@@ -764,6 +770,7 @@ contract NiftyApesSellerFinancing is
     function _createLoan(
         Loan storage loan,
         Offer memory offer,
+        uint256 nftId,
         uint256 sellerNftId,
         uint256 buyerNftId,
         uint256 amount
@@ -781,13 +788,13 @@ contract NiftyApesSellerFinancing is
         UnderlyingNft storage buyerUnderlyingNft = _getUnderlyingNft(buyerNftId);
         // set underlying nft values
         buyerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
-        buyerUnderlyingNft.nftId = offer.nftId;
+        buyerUnderlyingNft.nftId = nftId;
 
         // instantiate underlying nft pointer
         UnderlyingNft storage sellerUnderlyingNft = _getUnderlyingNft(sellerNftId);
         // set underlying nft values
         sellerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
-        sellerUnderlyingNft.nftId = offer.nftId;
+        sellerUnderlyingNft.nftId = nftId;
     }
 
     function _transferNft(
