@@ -347,9 +347,13 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             true
         );
 
+        vm.prank(owner);
+        sellerFinancing.pauseSanctions();
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
-
+        vm.prank(owner);
+        sellerFinancing.unpauseSanctions();
+        
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
