@@ -549,7 +549,7 @@ contract NiftyApesSellerFinancing is
         // calculate totalConsiderationAmount
         uint256 totalConsiderationAmount;
         for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
-            totalConsiderationAmount = order.parameters.consideration[i].endAmount;
+            totalConsiderationAmount += order.parameters.consideration[i].endAmount;
         }
 
         // set allowance for seaport to transferFrom this contract during .fulfillOrder()
