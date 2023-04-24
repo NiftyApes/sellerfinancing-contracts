@@ -66,7 +66,7 @@ So far, we have identified 4 major use cases for the NiftyApes Seller Financing 
 
 4. Sellers can offer short term loans in collections with high volume, sufficient bid depth, and positive price action, locking in a profitable trade via a price mark up each time a buyer fully closes their loan (whether the buyer makes a profit or not). Sellers are significantly hedged against default by the amount of down payment they require to service the loan and by a buyer's incentive to cut losses. Buyers can make more money by buying multiple short term loans for trades they would otherwise already be making. If a loan requires a 20% down payment and a 1% price mark up a buyer can buy 5 NFTs with the same capital they would have previously used to buy 1 NFT. If the price in this example goes up by 5% the buyer would make a 20% gain rather than a 5% gain made on the same capital previously.
 
-## Protocol Warnings
+## 🚨🚨🚨 Protocol Warnings 🚨🚨🚨
 
 #### Making Payments and Receving NFTs As A Contract
 
