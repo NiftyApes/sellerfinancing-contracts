@@ -72,6 +72,24 @@ So far, we have identified 4 major use cases for the NiftyApes Seller Financing 
 
 1. The NiftyApes Seller Financing protocol abides by the ERC721 `safeTransferFrom()` pattern. All contracts interacting with the system must implement `onERC721Receive()` in compliance with ERC721 if they expect to receive NFTS. If the buyer is a contract that has not implemented `onERC721Receive()` it will be able to make payments on a seller financing loan but will NOT be able to fully repay and receive the NFT at the close of the loan. This may result in a default and asset seizure by the seller.
 
+#### Privileged Roles and Ownership
+
+2. The owner of the Seller Financing contract has the ability to call these functions which modify some limited aspects of state and state addresses:
+
+   - updateRoyaltiesEngineContractAddress()
+   - updateDelegateRegistryContractAddress()
+   - updateSeaportContractAddress()
+   - updateWethContractAddress()
+   - pause(), unpause()
+   - pauseSanctions(), unpauseSanctions()
+
+3. The owner of any Marketplace Integration contract has the ability to call these functions which modify some limited aspects of state and state addresses:
+   - updateSellerFinancingContractAddress()
+   - updateMarketplaceFeeRecipient()
+   - updateMarketplaceFeeBps()
+   - pause(), unpause()
+   - pauseSanctions(), unpauseSanctions()
+
 ## Getting Started
 
 To run tests:
