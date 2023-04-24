@@ -50,6 +50,40 @@ contract TestGetUnderlyingNft is
         assertEq(underlyingSeller.nftId, offer.nftId);
     }
 
+    function test_unit_getUnderlyingNft_returns_underylingNftDetails_whenLoanActiveWithCollectionOffer() public {
+        Offer memory offer = offerStructFromFields(
+            defaultFixedFuzzedFieldsForFastUnitTesting,
+            defaultFixedOfferFields
+        );
+        uint256 nftId = offer.nftId;
+        offer.nftId = ~uint256(0);
+
+        vm.startPrank(seller1);
+        boredApeYachtClub.approve(address(sellerFinancing), nftId);
+        vm.stopPrank();
+
+        bytes memory signature =  signOffer(seller1_private_key, offer);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            signature,
+            buyer1,
+            nftId
+        );
+        vm.stopPrank();
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
+
+        UnderlyingNft memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.buyerNftId);
+        UnderlyingNft memory underlyingSeller = sellerFinancing.getUnderlyingNft(loan.sellerNftId);
+
+        assertEq(underlyingBuyer.nftContractAddress, offer.nftContractAddress);
+        assertEq(underlyingBuyer.nftId, nftId);
+        assertEq(underlyingSeller.nftContractAddress, offer.nftContractAddress);
+        assertEq(underlyingSeller.nftId, nftId);
+    }
+
     function test_unit_getUnderlyingNft_returns_Zeros_whenLoanClosed() public {
         Offer memory offer = offerStructFromFields(
             defaultFixedFuzzedFieldsForFastUnitTesting,

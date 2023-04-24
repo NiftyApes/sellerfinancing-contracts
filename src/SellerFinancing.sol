@@ -293,12 +293,19 @@ contract NiftyApesSellerFinancing is
         );
 
         // mint seller nft
-        uint256 sellerNftId = loanNftNonce;
+        // use loanNftNonce to prevent stack too deep error
+        _safeMint(seller, loanNftNonce);
         loanNftNonce++;
-        _safeMint(seller, sellerNftId);
 
         // create loan
-        _createLoan(loan, offer, sellerNftId, buyerNftId, (offer.price - offer.downPaymentAmount));
+        _createLoan(
+            loan,
+            offer,
+            nftId,
+            loanNftNonce - 1,
+            buyerNftId,
+            (offer.price - offer.downPaymentAmount)
+        );
 
         // transfer nft from seller to this contract, revert on failure
         _transferNft(offer.nftContractAddress, nftId, seller, address(this));
@@ -312,7 +319,7 @@ contract NiftyApesSellerFinancing is
         );
 
         // emit loan executed event
-        emit LoanExecuted(offer.nftContractAddress, offer.nftId, signature, loan);
+        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
     }
 
     /// @inheritdoc ISellerFinancing
@@ -577,6 +584,8 @@ contract NiftyApesSellerFinancing is
     }
 
     function _transfer(address from, address to, uint256 tokenId) internal override {
+        _requireIsNotSanctioned(from);
+        _requireIsNotSanctioned(to);
         // if the token is a buyer seller financing ticket
         if (tokenId % 2 == 0) {
             // get underlying nft
@@ -664,6 +673,9 @@ contract NiftyApesSellerFinancing is
         if (order.parameters.offer[0].token != wethContractAddress) {
             revert InvalidOffer0Token(order.parameters.offer[0].token, wethContractAddress);
         }
+        if (order.parameters.offer.length != 1) {
+            revert InvalidOfferLength(order.parameters.offer.length, 1);
+        }
         for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
             if (order.parameters.consideration[i].itemType != ISeaport.ItemType.ERC20) {
                 revert InvalidConsiderationItemType(
@@ -720,14 +732,33 @@ contract NiftyApesSellerFinancing is
             revert InsufficientBalance(amount, address(this).balance);
         }
 
-        (bool toSuccess, ) = to.call{ value: amount }("");
+        // check if to is sanctioned
+        bool isToSanctioned;
+        if (!_sanctionsPause) {
+            SanctionsList sanctionsList = SanctionsList(SANCTIONS_CONTRACT);
+            isToSanctioned = sanctionsList.isSanctioned(to);
+        }
 
-        if (!toSuccess) {
+        // if sanctioned, return value to from
+        if (isToSanctioned) {
             (bool fromSuccess, ) = from.call{ value: amount }("");
             // require ETH is successfully sent to either to or from
             // we do not want ETH hanging in contract.
             if (!fromSuccess) {
                 revert ConditionSendValueFailed(from, to, amount);
+            }
+        } else {
+            // attempt to send value to to
+            (bool toSuccess, ) = to.call{ value: amount }("");
+
+            // if send fails, return vale to from
+            if (!toSuccess) {
+                (bool fromSuccess, ) = from.call{ value: amount }("");
+                // require ETH is successfully sent to either to or from
+                // we do not want ETH hanging in contract.
+                if (!fromSuccess) {
+                    revert ConditionSendValueFailed(from, to, amount);
+                }
             }
         }
     }
@@ -763,6 +794,7 @@ contract NiftyApesSellerFinancing is
     function _createLoan(
         Loan storage loan,
         Offer memory offer,
+        uint256 nftId,
         uint256 sellerNftId,
         uint256 buyerNftId,
         uint256 amount
@@ -780,13 +812,13 @@ contract NiftyApesSellerFinancing is
         UnderlyingNft storage buyerUnderlyingNft = _getUnderlyingNft(buyerNftId);
         // set underlying nft values
         buyerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
-        buyerUnderlyingNft.nftId = offer.nftId;
+        buyerUnderlyingNft.nftId = nftId;
 
         // instantiate underlying nft pointer
         UnderlyingNft storage sellerUnderlyingNft = _getUnderlyingNft(sellerNftId);
         // set underlying nft values
         sellerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
-        sellerUnderlyingNft.nftId = offer.nftId;
+        sellerUnderlyingNft.nftId = nftId;
     }
 
     function _transferNft(
