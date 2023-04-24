@@ -952,6 +952,75 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         _test_instantSell_reverts_ifSaleAmountLessThanMinSaleAmountRequested(fixedForSpeed);
     }
 
+    function _test_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            true
+        );
+        order[0].parameters.offer = new ISeaport.OfferItem[](2);
+        order[0].parameters.offer[0] = ISeaport.OfferItem({
+            itemType: ISeaport.ItemType.ERC20,
+            token: WETH_ADDRESS,
+            identifierOrCriteria: 0,
+            startAmount: bidPrice,
+            endAmount: bidPrice
+        });
+        order[0].parameters.offer[1] = ISeaport.OfferItem({
+            itemType: ISeaport.ItemType.ERC20,
+            token: WETH_ADDRESS,
+            identifierOrCriteria: 0,
+            startAmount: bidPrice,
+            endAmount: bidPrice
+        });
+
+        vm.startPrank(buyer1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.InvalidOfferLength.selector,
+                2,
+                1
+            )
+        );
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            0,
+            abi.encode(order[0])
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(fuzzed);
+    }
+
+    function test_unit_instantSell_reverts_ifOrderOfferLengthNotEqualToOne() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(fixedForSpeed);
+    }
+
     function _createOrder(
         address nftContractAddress,
         uint256 nftId,

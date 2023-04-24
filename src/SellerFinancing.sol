@@ -671,6 +671,9 @@ contract NiftyApesSellerFinancing is
         if (order.parameters.offer[0].token != wethContractAddress) {
             revert InvalidOffer0Token(order.parameters.offer[0].token, wethContractAddress);
         }
+        if (order.parameters.offer.length != 1) {
+            revert InvalidOfferLength(order.parameters.offer.length, 1);
+        }
         for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
             if (order.parameters.consideration[i].itemType != ISeaport.ItemType.ERC20) {
                 revert InvalidConsiderationItemType(
