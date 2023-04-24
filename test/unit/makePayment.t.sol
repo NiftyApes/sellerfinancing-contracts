@@ -541,4 +541,71 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_makePayment_reverts_ifAmountReceivedLessThanReqMinPayment(fixedForSpeed);
     }
+
+    function _test_makePayment_returns_sellerValueIfSnactioned(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        vm.prank(owner);
+        sellerFinancing.pauseSanctions();
+
+        vm.prank(seller1);
+        IERC721Upgradeable(address(sellerFinancing)).transferFrom(seller1, SANCTIONED_ADDRESS, loan.sellerNftId);
+
+        vm.prank(owner);
+        sellerFinancing.unpauseSanctions();
+
+        (address payable[] memory recipients2, uint256[] memory amounts2) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(
+                offer.nftContractAddress,
+                offer.nftId,
+                (loan.remainingPrincipal + periodInterest)
+            );
+
+        // payout royalties
+        uint256 royaltiesPaidInMakePayment;
+        for (uint256 i = 0; i < recipients2.length; i++) {
+            royaltiesPaidInMakePayment += amounts2[i];
+        }
+
+        uint256 buyer1BalanceBeforePayment = address(buyer1).balance;
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + periodInterest)
+        }(offer.nftContractAddress, offer.nftId);
+        vm.stopPrank();
+        assertionsForClosedLoan(offer, buyer1);
+
+        uint256 buyer1BalanceAfterPayment = address(buyer1).balance;
+        assertEq(
+            buyer1BalanceAfterPayment,
+            (buyer1BalanceBeforePayment - (royaltiesPaidInMakePayment))
+        );
+    }
+
+    function test_fuzz_makePayment_returns_sellerValueIfSnactioned(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_returns_sellerValueIfSnactioned(fuzzed);
+    }
+
+    function test_unit_makePayment_returns_sellerValueIfSnactioned() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_returns_sellerValueIfSnactioned(fixedForSpeed);
+    }
 }

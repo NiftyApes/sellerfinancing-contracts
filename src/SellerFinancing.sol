@@ -732,14 +732,33 @@ contract NiftyApesSellerFinancing is
             revert InsufficientBalance(amount, address(this).balance);
         }
 
-        (bool toSuccess, ) = to.call{ value: amount }("");
+        // check if to is sanctioned
+        bool isToSanctioned;
+        if (!_sanctionsPause) {
+            SanctionsList sanctionsList = SanctionsList(SANCTIONS_CONTRACT);
+            isToSanctioned = sanctionsList.isSanctioned(to);
+        }
 
-        if (!toSuccess) {
+        // if sanctioned, return value to from
+        if (isToSanctioned) {
             (bool fromSuccess, ) = from.call{ value: amount }("");
             // require ETH is successfully sent to either to or from
             // we do not want ETH hanging in contract.
             if (!fromSuccess) {
                 revert ConditionSendValueFailed(from, to, amount);
+            }
+        } else {
+            // attempt to send value to to
+            (bool toSuccess, ) = to.call{ value: amount }("");
+
+            // if send fails, return vale to from
+            if (!toSuccess) {
+                (bool fromSuccess, ) = from.call{ value: amount }("");
+                // require ETH is successfully sent to either to or from
+                // we do not want ETH hanging in contract.
+                if (!fromSuccess) {
+                    revert ConditionSendValueFailed(from, to, amount);
+                }
             }
         }
     }
