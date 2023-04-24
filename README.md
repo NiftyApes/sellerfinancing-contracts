@@ -66,6 +66,12 @@ So far, we have identified 4 major use cases for the NiftyApes Seller Financing 
 
 4. Sellers can offer short term loans in collections with high volume, sufficient bid depth, and positive price action, locking in a profitable trade via a price mark up each time a buyer fully closes their loan (whether the buyer makes a profit or not). Sellers are significantly hedged against default by the amount of down payment they require to service the loan and by a buyer's incentive to cut losses. Buyers can make more money by buying multiple short term loans for trades they would otherwise already be making. If a loan requires a 20% down payment and a 1% price mark up a buyer can buy 5 NFTs with the same capital they would have previously used to buy 1 NFT. If the price in this example goes up by 5% the buyer would make a 20% gain rather than a 5% gain made on the same capital previously.
 
+## Protocol Warnings
+
+#### Making Payments and Receving NFTs As A Contract
+
+1. The NiftyApes Seller Financing protocol abides by the ERC721 `safeTransferFrom()` pattern. All contracts interacting with the system must implement `onERC721Receive()` in compliance with ERC721 if they expect to receive NFTS. If the buyer is a contract that has not implemented `onERC721Receive()` it will be able to make payments on a seller financing loan but will NOT be able to fully repay and receive the NFT at the close of the loan. This may result in a default and asset seizure by the seller.
+
 ## Getting Started
 
 To run tests:
