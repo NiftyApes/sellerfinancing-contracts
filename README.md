@@ -90,6 +90,10 @@ So far, we have identified 4 major use cases for the NiftyApes Seller Financing 
    - pause(), unpause()
    - pauseSanctions(), unpauseSanctions()
 
+#### Limited Protocol and Loan Time Horizon
+
+4. The NiftyApes Seller Financing Protocol v1.0 utilizes `uint32` timestamps throughout the protocol. This has been done to reduce the compile time contract size and runtime gas useage. This means that the protocol will cease to function and no loans can go beyond January 19, 2038 at 3:14:07 UTC, roughly 15 years from the time of writing. The intention is for this first version of the protocol to be phased out in the future in favor of a second version that does support loans beyond this January 19, 2038 at 3:14:07 UTC.
+
 ## Getting Started
 
 To run tests:
