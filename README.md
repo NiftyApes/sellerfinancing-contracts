@@ -66,15 +66,21 @@ So far, we have identified 4 major use cases for the NiftyApes Seller Financing 
 
 4. Sellers can offer short term loans in collections with high volume, sufficient bid depth, and positive price action, locking in a profitable trade via a price mark up each time a buyer fully closes their loan (whether the buyer makes a profit or not). Sellers are significantly hedged against default by the amount of down payment they require to service the loan and by a buyer's incentive to cut losses. Buyers can make more money by buying multiple short term loans for trades they would otherwise already be making. If a loan requires a 20% down payment and a 1% price mark up a buyer can buy 5 NFTs with the same capital they would have previously used to buy 1 NFT. If the price in this example goes up by 5% the buyer would make a 20% gain rather than a 5% gain made on the same capital previously.
 
-## Protocol Warnings
+## 🚨🚨🚨 Protocol Warnings 🚨🚨🚨
 
 #### Making Payments and Receving NFTs As A Contract
 
-1. The NiftyApes Seller Financing protocol abides by the ERC721 `safeTransferFrom()` pattern. All contracts interacting with the system must implement `onERC721Receive()` in compliance with ERC721 if they expect to receive NFTS. If the buyer is a contract that has not implemented `onERC721Receive()` it will be able to make payments on a seller financing loan but will NOT be able to fully repay and receive the NFT at the close of the loan. This may result in a default and asset seizure by the seller.
+1. The NiftyApes Seller Financing protocol abides by the ERC721 `safeTransferFrom()` pattern. All contracts interacting with the system must implement `onERC721Receive()` in compliance with ERC721 if they expect to receive NFTS. For example, if the buyer is a contract that has not implemented `onERC721Receive()` it will be able to call `makePayment()` and make payments on a seller financing loan but will NOT be able to fully repay and receive the NFT at the close of the loan. This may result in a default and asset seizure by the seller.
+
+#### Accepting Payments As A Contract
+
+2. Any contract holding a seller ticket and expecting to receive payments MUST be able to recieve ETH. If the holder of a seller ticket cannot receive ETH at the time of a loan they will be slashed for the value of the payment. All payment value sent will be deducted from the remaining loan principal, possibly closing the loan, no funds will be sent to the holder of the seller ticket (as the actor cannot recieve ETH), and all funds will be returned to the msg.sender.
+
+This dynamic prevents a nefarious seller from sending the seller ticket to a contract that cannot accept ETH, barring the buyer from making a payment in earnest, and forcing an eventual default whereby the seller could seize the underlying NFT.
 
 #### Privileged Roles and Ownership
 
-2. The owner of the Seller Financing contract has the ability to call these functions which modify some limited aspects of state and state addresses:
+3. The owner of the Seller Financing contract has the ability to call these functions which modify some limited aspects of state and state addresses:
 
    - updateRoyaltiesEngineContractAddress()
    - updateDelegateRegistryContractAddress()
@@ -83,7 +89,7 @@ So far, we have identified 4 major use cases for the NiftyApes Seller Financing 
    - pause(), unpause()
    - pauseSanctions(), unpauseSanctions()
 
-3. The owner of any Marketplace Integration contract has the ability to call these functions which modify some limited aspects of state and state addresses:
+4. The owner of any Marketplace Integration contract has the ability to call these functions which modify some limited aspects of state and state addresses:
    - updateSellerFinancingContractAddress()
    - updateMarketplaceFeeRecipient()
    - updateMarketplaceFeeBps()
@@ -92,7 +98,7 @@ So far, we have identified 4 major use cases for the NiftyApes Seller Financing 
 
 #### Limited Protocol and Loan Time Horizon
 
-4. The NiftyApes Seller Financing Protocol v1.0 utilizes `uint32` timestamps throughout the protocol. This has been done to reduce the compile time contract size and runtime gas useage. This means that the protocol will cease to function and no loans can go beyond January 19, 2038 at 3:14:07 UTC, roughly 15 years from the time of writing. The intention is for this first version of the protocol to be phased out in the future in favor of a second version that does support loans beyond this January 19, 2038 at 3:14:07 UTC.
+5. The NiftyApes Seller Financing Protocol v1.0 utilizes `uint32` timestamps throughout the protocol. This has been done to reduce the compile time contract size and runtime gas useage. This means that the protocol will cease to function and no loans can go beyond January 19, 2038 at 3:14:07 UTC, roughly 15 years from the time of writing. The intention is for this first version of the protocol to be phased out in the future in favor of a second version that does support loans beyond this January 19, 2038 at 3:14:07 UTC.
 
 ## Getting Started
 
