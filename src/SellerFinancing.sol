@@ -201,7 +201,7 @@ contract NiftyApesSellerFinancing is
     function withdrawOfferSignature(
         Offer memory offer,
         bytes memory signature
-    ) external whenNotPaused {
+    ) external {
         _requireAvailableSignature(signature);
         address signer = getOfferSigner(offer, signature);
         _requireSigner(signer, msg.sender);
