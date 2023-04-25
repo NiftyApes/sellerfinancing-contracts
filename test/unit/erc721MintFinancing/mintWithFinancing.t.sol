@@ -13,22 +13,22 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer) private {
+    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId) private {
         // sellerFinancing contract has NFT
-        assertEq(erc721MintFinancing.ownerOf(offer.nftId), address(sellerFinancing));
+        assertEq(erc721MintFinancing.ownerOf(nftId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
                 address(erc721MintFinancing),
-                offer.nftId
+                nftId
             ),
             true
         );
         // loan auction exists
         assertEq(
-            sellerFinancing.getLoan(address(erc721MintFinancing), offer.nftId).periodBeginTimestamp,
+            sellerFinancing.getLoan(address(erc721MintFinancing), nftId).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
@@ -36,7 +36,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
         assertEq(loan.buyerNftId, 0);
         assertEq(loan.sellerNftId, 1);
         assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
@@ -64,9 +64,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
             offerSignature
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer);
-
-        // assert newly minted nftId == 0
+        assertionsForExecutedLoan(offer, 0);
     }
 
     function test_fuzz_mintWithFinancing_simplest_case(
@@ -87,7 +85,11 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(erc721MintFinancing);
 
-        bytes memory offerSignature = seller1CreateOffer(offer);
+        vm.startPrank(seller1);
+        erc721MintFinancing.setApprovalForAll(address(sellerFinancing), true);
+        vm.stopPrank();
+
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
         vm.expectRevert(
