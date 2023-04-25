@@ -10,7 +10,7 @@ import "../../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
 import "../../common/BaseTest.sol";
 
-uint256 constant BPS_DENOMINATOR = 10_000;
+uint256 constant BASE_BPS = 10_000;
 uint256 constant MAX_FEE = 1_000;
 
 // Note: need "sign" function from BaseTest for signOffer below
