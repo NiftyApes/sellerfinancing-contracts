@@ -23,6 +23,15 @@ contract ERC721MintFinancing is ERC721, Ownable {
 
     error InsufficientMsgValue(uint256 given, uint256 expected);
 
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        address _sellerFinancingContractAddress
+    ) ERC721(_name, _symbol) {
+        _requireNonZeroAddress(_sellerFinancingContractAddress);
+        sellerFinancingContractAddress = _sellerFinancingContractAddress;
+    }
+
     /// @param newSellerFinancingContractAddress New address for SellerFinancing contract
     function updateSellerFinancingContractAddress(
         address newSellerFinancingContractAddress
@@ -50,7 +59,7 @@ contract ERC721MintFinancing is ERC721, Ownable {
         _tokenIdTracker.increment();
 
         // Execute loan
-        ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing(
+        ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{ value: msg.value }(
             offer,
             signature,
             msg.sender,

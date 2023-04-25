@@ -15,7 +15,7 @@ contract TestUpdateSellerFinancingContractAddress is Test, BaseTest, OffersLoans
     function test_unit_erc721MintFinancing_updateSellerFinancingContractAddress_nonZeroAddress()
         public
     {
-        vm.prank(owner);
+        vm.prank(seller1);
         erc721MintFinancing.updateSellerFinancingContractAddress(address(1));
         assertEq(erc721MintFinancing.sellerFinancingContractAddress(), address(1));
     }
@@ -24,7 +24,7 @@ contract TestUpdateSellerFinancingContractAddress is Test, BaseTest, OffersLoans
         public
     {
         vm.expectRevert(ERC721MintFinancing.ZeroAddress.selector);
-        vm.prank(owner);
+        vm.prank(seller1);
         erc721MintFinancing.updateSellerFinancingContractAddress(address(0));
     }
 }

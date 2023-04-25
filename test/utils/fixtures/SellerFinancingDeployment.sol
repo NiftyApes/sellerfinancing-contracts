@@ -72,10 +72,11 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         vm.startPrank(seller1);
 
         // deploy mint financing contracts
-        erc721MintFinancing = new ERC721MintFinancing("Minty mints", "MINT");
-
-        // associate seller financing contracts
-        erc721MintFinancing.updateSellerFinancingContractAddress(address(sellerFinancing));
+        erc721MintFinancing = new ERC721MintFinancing(
+            "Minty mints",
+            "MINT",
+            address(sellerFinancing)
+        );
 
         vm.stopPrank();
 

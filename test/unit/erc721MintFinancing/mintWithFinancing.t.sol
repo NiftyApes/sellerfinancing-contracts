@@ -15,20 +15,20 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
+        assertEq(erc721MintFinancing.ownerOf(offer.nftId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
-                address(boredApeYachtClub),
+                address(erc721MintFinancing),
                 offer.nftId
             ),
             true
         );
         // loan auction exists
         assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
+            sellerFinancing.getLoan(address(erc721MintFinancing), offer.nftId).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
@@ -50,8 +50,13 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function _test_mintWithFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
+        offer.nftContractAddress = address(erc721MintFinancing);
 
-        bytes memory offerSignature = seller1CreateOffer(offer);
+        vm.startPrank(seller1);
+        erc721MintFinancing.setApprovalForAll(address(sellerFinancing), true);
+        vm.stopPrank();
+
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
@@ -80,6 +85,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
+        offer.nftContractAddress = address(erc721MintFinancing);
 
         bytes memory offerSignature = seller1CreateOffer(offer);
 
