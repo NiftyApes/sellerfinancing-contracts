@@ -7,6 +7,7 @@ import "@openzeppelin-norm/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../../src/interfaces/sellerFinancing/ISellerFinancing.sol";
 import "../../../src/SellerFinancing.sol";
 import "../../../src/marketplaceIntegration/MarketplaceIntegration.sol";
+import "../../../src/erc721MintFinancing/ERC721MintFinancing.sol";
 import "./NFTFixtures.sol";
 
 import "forge-std/Test.sol";
@@ -20,6 +21,7 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
     ISellerFinancing sellerFinancing;
 
     MarketplaceIntegration marketplaceIntegration;
+    ERC721MintFinancing erc721MintFinancing;
 
     address SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
     address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
@@ -59,11 +61,21 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
             WETH_ADDRESS
         );
 
+        // deploy marketplace integration
         marketplaceIntegration = new MarketplaceIntegration(
             address(sellerFinancing),
             SUPERRARE_MARKETPLACE,
             SUPERRARE_MARKET_FEE_BPS
         );
+
+        vm.stopPrank();
+        vm.startPrank(seller1);
+
+        // deploy mint financing contracts
+        erc721MintFinancing = new ERC721MintFinancing("Minty mints", "MINT");
+
+        // associate seller financing contracts
+        erc721MintFinancing.updateSellerFinancingContractAddress(address(sellerFinancing));
 
         vm.stopPrank();
 
