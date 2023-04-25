@@ -104,6 +104,10 @@ This dynamic prevents a nefarious seller from sending the seller ticket to a con
 
 6. `withdrawOfferSignature()` is vulnerable to front-running. If a seller submits a transaction calling `withdrawOfferSignature()` to the mempool on an undesirable existing offer, a savvy witnesser could see this and buy the offer prior to the cancellation. This can result in sellers being forced to finance NFTs on Offers that they don't intend to keep or are no longer desirable due to market conditions. We suggest utilizing a short expiration for offers and resubmitting offers often as a way to mitigate market volatility and foster price discovery.
 
+#### Seller Cannot Make The Exact Same Offer Twice
+
+7. If an offer's signature gets used once or has been previously canceled, the seller will be unable to make the same offer again. We suggest simply incrementing the expiration timestamp by one second to mitigate this issue.
+
 ## Getting Started
 
 To run tests:
