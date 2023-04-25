@@ -41,7 +41,7 @@ contract NiftyApesSellerFinancing is
     address private constant SANCTIONS_CONTRACT = 0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 
     /// @notice The base value for fees in the protocol.
-    uint256 private constant MAX_BPS = 10_000;
+    uint256 private constant BPS_DENOMINATOR = 10_000;
 
     /// @dev Constant typeHash for EIP-712 hashing of Offer struct
     bytes32 private constant _OFFER_TYPEHASH =
@@ -631,7 +631,7 @@ contract NiftyApesSellerFinancing is
             // calculate % interest to be paid to seller
             if (loan.periodInterestRateBps != 0) {
                 periodInterest =
-                    ((loan.remainingPrincipal * loan.periodInterestRateBps) / MAX_BPS) *
+                    ((loan.remainingPrincipal * loan.periodInterestRateBps) / BPS_DENOMINATOR) *
                     numPeriodsPassed;
             }
 

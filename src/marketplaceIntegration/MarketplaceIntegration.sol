@@ -19,7 +19,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
     address private constant SANCTIONS_CONTRACT = 0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 
     /// @notice The base value for fees in the protocol.
-    uint256 private constant MAX_BPS = 10_000;
+    uint256 private constant BPS_DENOMINATOR = 10_000;
 
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
@@ -93,7 +93,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
-        uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / MAX_BPS;
+        uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / BPS_DENOMINATOR;
         if (msg.value < offer.downPaymentAmount + marketplaceFeeAmount) {
             revert InsufficientMsgValue(msg.value, offer.downPaymentAmount + marketplaceFeeAmount);
         }
