@@ -102,7 +102,8 @@ contract NiftyApesSellerFinancing is
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init("NiftyApes Seller Financing Tickets", "BANANAS");
-
+        ERC721URIStorageUpgradeable.__ERC721URIStorage_init();
+        
         royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
         seaportContractAddress = newSeaportContractAddress;
