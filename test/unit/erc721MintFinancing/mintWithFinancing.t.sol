@@ -116,4 +116,83 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_mintWithFinancing_reverts_ifValueSentLessThanDownpayment(fixedForSpeed);
     }
+
+    function _test_mintWithFinancing_reverts_ifOfferSignerIsNotOwner(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        offer.nftId = ~uint256(0);
+        offer.nftContractAddress = address(erc721MintFinancing);
+
+        vm.startPrank(seller1);
+        erc721MintFinancing.setApprovalForAll(address(sellerFinancing), true);
+        vm.stopPrank();
+
+        vm.startPrank(buyer1);
+
+        bytes memory offerSignature = signOffer(buyer1_private_key, offer);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ERC721MintFinancing.InvalidSigner.selector,
+                address(buyer1),
+                address(seller1)
+            )
+        );
+        erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_mintWithFinancing_reverts_ifOfferSignerIsNotOwner(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_mintWithFinancing_reverts_ifOfferSignerIsNotOwner(fuzzed);
+    }
+
+    function test_unit_mintWithFinancing_reverts_ifOfferSignerIsNotOwner() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_mintWithFinancing_reverts_ifOfferSignerIsNotOwner(fixedForSpeed);
+    }
+
+    function _test_mintWithFinancing_reverts_ifInvalidNftContractAddress(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        offer.nftId = ~uint256(0);
+        offer.nftContractAddress = address(0);
+
+        vm.startPrank(seller1);
+        erc721MintFinancing.setApprovalForAll(address(sellerFinancing), true);
+        vm.stopPrank();
+
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
+
+        vm.startPrank(buyer1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ERC721MintFinancing.InvalidNftContractAddress.selector,
+                address(0),
+                address(erc721MintFinancing)
+            )
+        );
+        erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_mintWithFinancing_reverts_ifInvalidNftContractAddress(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_mintWithFinancing_reverts_ifInvalidNftContractAddress(fuzzed);
+    }
+
+    function test_unit_mintWithFinancing_reverts_ifInvalidNftContractAddress() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_mintWithFinancing_reverts_ifInvalidNftContractAddress(fixedForSpeed);
+    }
 }

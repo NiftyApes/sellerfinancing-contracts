@@ -23,6 +23,10 @@ contract ERC721MintFinancing is ERC721, Ownable {
 
     error InsufficientMsgValue(uint256 given, uint256 expected);
 
+    error InvalidNftContractAddress(address given, address expected);
+
+    error InvalidSigner(address signer, address expected);
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -48,6 +52,19 @@ contract ERC721MintFinancing is ERC721, Ownable {
         ISellerFinancing.Offer memory offer,
         bytes calldata signature
     ) external payable {
+        address signer = ISellerFinancing(sellerFinancingContractAddress).getOfferSigner(
+            offer,
+            signature
+        );
+
+        // requireSignerIsOwner
+        if (signer != owner()) {
+            revert InvalidSigner(signer, owner());
+        }
+        // requireValidNftContractAddress
+        if (offer.nftContractAddress != address(this)) {
+            revert InvalidNftContractAddress(offer.nftContractAddress, address(this));
+        }
         // requireMsgValueGreaterThanOrEqualToOfferDownPaymentAmount
         if (msg.value < offer.downPaymentAmount) {
             revert InsufficientMsgValue(msg.value, offer.downPaymentAmount);
