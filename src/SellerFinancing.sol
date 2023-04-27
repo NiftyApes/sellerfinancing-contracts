@@ -87,6 +87,8 @@ contract NiftyApesSellerFinancing is
     /// variables without shifting storage.
     uint256[500] private __gap;
 
+    constructor () initializer {}
+
     /// @notice The initializer for the NiftyApes protocol.
     ///         NiftyApes is intended to be deployed behind a proxy and thus needs to initialize
     ///         its state outside of a constructor.

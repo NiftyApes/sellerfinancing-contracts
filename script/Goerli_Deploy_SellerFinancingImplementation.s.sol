@@ -24,12 +24,6 @@ contract DeploySellerFinancingScript is Script {
 
         // deploy and initialize implementation contracts
         sellerFinancing = new NiftyApesSellerFinancing();
-        sellerFinancing.initialize(
-            goerliRoyaltiesEngineAddress,
-            goerliDelegateRegistryAddress,
-            SEAPORT_ADDRESS,
-            GOERLI_WETH_ADDRESS
-        );
 
         // pauseSanctions for Goerli as Chainalysis contact doesnt exists there
         sellerFinancing.pauseSanctions();

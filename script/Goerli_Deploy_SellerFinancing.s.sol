@@ -28,7 +28,6 @@ contract DeploySellerFinancingScript is Script {
 
         // deploy and initialize implementation contracts
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(address(0), address(0), address(0), address(0));
 
         // deploy proxy admins
         sellerFinancingProxyAdmin = new ProxyAdmin();

@@ -36,7 +36,6 @@ contract SellerFinancingDeployment is Test, NFTFixtures {
         vm.startPrank(owner);
 
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(address(0), address(0), address(0), address(0));
 
         // deploy proxy admin
         sellerFinancingProxyAdmin = new ProxyAdmin();
