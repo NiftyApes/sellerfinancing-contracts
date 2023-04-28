@@ -253,7 +253,7 @@ contract NiftyApesSellerFinancing is
         if (offer.price <= offer.downPaymentAmount) {
             revert DownPaymentGreaterThanOrEqualToOfferPrice(offer.downPaymentAmount, offer.price);
         }
-        // requireMinimumPrincipalLessThanTotalPrincipal
+        // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
         if ((offer.price - offer.downPaymentAmount) < offer.minimumPrincipalPerPeriod) {
             revert InvalidMinimumPrincipalPerPeriod(
                 offer.minimumPrincipalPerPeriod,
