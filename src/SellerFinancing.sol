@@ -117,9 +117,7 @@ contract NiftyApesSellerFinancing is
     function updateRoyaltiesEngineContractAddress(
         address newRoyaltiesEngineContractAddress
     ) external onlyOwner {
-        if (newRoyaltiesEngineContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(newRoyaltiesEngineContractAddress);
         royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
     }
 
@@ -127,9 +125,7 @@ contract NiftyApesSellerFinancing is
     function updateDelegateRegistryContractAddress(
         address newDelegateRegistryContractAddress
     ) external onlyOwner {
-        if (newDelegateRegistryContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(newDelegateRegistryContractAddress);
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
     }
 
