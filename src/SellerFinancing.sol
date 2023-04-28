@@ -856,10 +856,10 @@ contract NiftyApesSellerFinancing is
     function _require721Owner(
         address nftContractAddress,
         uint256 nftId,
-        address owner
+        address nftOwner
     ) internal view {
-        if (IERC721Upgradeable(nftContractAddress).ownerOf(nftId) != owner) {
-            revert NotNftOwner(nftContractAddress, nftId, owner);
+        if (IERC721Upgradeable(nftContractAddress).ownerOf(nftId) != nftOwner) {
+            revert NotNftOwner(nftContractAddress, nftId, nftOwner);
         }
     }
 
