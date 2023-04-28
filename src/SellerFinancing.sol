@@ -87,7 +87,8 @@ contract NiftyApesSellerFinancing is
     /// variables without shifting storage.
     uint256[500] private __gap;
 
-    constructor () initializer {}
+    /// @dev Empty constructor ensures no 3rd party can call initialize before the NiftyApes team on the implementation contract.
+    constructor() initializer {}
 
     /// @notice The initializer for the NiftyApes protocol.
     ///         NiftyApes is intended to be deployed behind a proxy and thus needs to initialize
@@ -105,7 +106,7 @@ contract NiftyApesSellerFinancing is
         ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init("NiftyApes Seller Financing Tickets", "BANANAS");
         ERC721URIStorageUpgradeable.__ERC721URIStorage_init();
-        
+
         royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
         seaportContractAddress = newSeaportContractAddress;
