@@ -117,9 +117,7 @@ contract NiftyApesSellerFinancing is
     function updateRoyaltiesEngineContractAddress(
         address newRoyaltiesEngineContractAddress
     ) external onlyOwner {
-        if (newRoyaltiesEngineContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(newRoyaltiesEngineContractAddress);
         royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
     }
 
@@ -127,9 +125,7 @@ contract NiftyApesSellerFinancing is
     function updateDelegateRegistryContractAddress(
         address newDelegateRegistryContractAddress
     ) external onlyOwner {
-        if (newDelegateRegistryContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(newDelegateRegistryContractAddress);
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
     }
 
@@ -257,7 +253,7 @@ contract NiftyApesSellerFinancing is
         if (offer.price <= offer.downPaymentAmount) {
             revert DownPaymentGreaterThanOrEqualToOfferPrice(offer.downPaymentAmount, offer.price);
         }
-        // requireMinimumPrincipalLessThanTotalPrincipal
+        // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
         if ((offer.price - offer.downPaymentAmount) < offer.minimumPrincipalPerPeriod) {
             revert InvalidMinimumPrincipalPerPeriod(
                 offer.minimumPrincipalPerPeriod,
@@ -860,10 +856,10 @@ contract NiftyApesSellerFinancing is
     function _require721Owner(
         address nftContractAddress,
         uint256 nftId,
-        address owner
+        address nftOwner
     ) internal view {
-        if (IERC721Upgradeable(nftContractAddress).ownerOf(nftId) != owner) {
-            revert NotNftOwner(nftContractAddress, nftId, owner);
+        if (IERC721Upgradeable(nftContractAddress).ownerOf(nftId) != nftOwner) {
+            revert NotNftOwner(nftContractAddress, nftId, nftOwner);
         }
     }
 
