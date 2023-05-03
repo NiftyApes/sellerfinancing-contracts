@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
@@ -56,7 +56,7 @@ contract TestSeizeAndSellNft is Test, OffersLoansFixtures {
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function assertionsForClosedLoan(Offer memory offer, uint256 nftId, address expectedNftOwner) private {
+    function assertionsForClosedLoan(uint256 nftId, address expectedNftOwner) private {
         // expected address has NFT
         assertEq(boredApeYachtClub.ownerOf(nftId), expectedNftOwner);
 
@@ -147,7 +147,7 @@ contract TestSeizeAndSellNft is Test, OffersLoansFixtures {
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer, offer.nftId, seller2);
+        assertionsForClosedLoan(offer.nftId, seller2);
 
         assertEq(address(maker).balance, makerBalanceBefore);
     }
