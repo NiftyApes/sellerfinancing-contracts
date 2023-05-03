@@ -10,6 +10,8 @@ import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 /// @custom:version 1.0
 /// @author captnseagraves (captnseagraves.eth)
 
+// TODO add nonreentrant
+
 contract ERC721MintFinancing is ERC721, Ownable {
     using Counters for Counters.Counter;
 
@@ -32,6 +34,8 @@ contract ERC721MintFinancing is ERC721, Ownable {
     error InvalidNftContractAddress(address given, address expected);
 
     error InvalidSigner(address signer, address expected);
+
+    error ReturnValueFailed();
 
     constructor(
         string memory _name,
@@ -58,6 +62,7 @@ contract ERC721MintFinancing is ERC721, Ownable {
     /// @dev   The count must be greater than 0.
     ///        If the count increments the collectionOfferLimit counter up to the collectionOffer limit
     ///        all NFTs will be minted up to the limit.
+    ///        If the first NFT of a collection is minted with finance the collection tokenIds will begin at index
     function mintWithFinancing(
         ISellerFinancing.Offer memory offer,
         bytes calldata signature,
@@ -73,7 +78,9 @@ contract ERC721MintFinancing is ERC721, Ownable {
 
         tokenIds = new uint256[](count);
         uint256 firstTokenId = _tokenIdTracker.current() + 1;
+        // set maxCount to enable graceful loop stop
         uint256 maxCount = count;
+        uint256 valueUsed;
 
         // requireSignerIsOwner
         if (signer != owner()) {
@@ -99,7 +106,7 @@ contract ERC721MintFinancing is ERC721, Ownable {
         // loop through number of count
         for (uint i; i < count; ) {
             // if collectionOfferLimit not reached
-            if (collectionOfferLimitCount < offer.collectionOfferLimit) {
+            if (collectionOfferLimitCount <= offer.collectionOfferLimit) {
                 // mint nft
                 _safeMint(owner(), firstTokenId + i);
                 // append new nftId to returned tokensIds
@@ -112,6 +119,9 @@ contract ERC721MintFinancing is ERC721, Ownable {
                     value: (msg.value / count)
                 }(offer, signature, msg.sender, firstTokenId + i);
 
+                // add valueUsed
+                valueUsed += msg.value / count;
+
                 // increment loop
                 unchecked {
                     ++i;
@@ -119,8 +129,16 @@ contract ERC721MintFinancing is ERC721, Ownable {
             }
             // else if collectionOfferLimit reached
             else {
+                // need to send back any unused value back to msg.sender
                 // exit loop without revert so user doesnt have to enter perfect count
                 count = maxCount;
+
+                (bool success, ) = msg.sender.call{ value: msg.value - valueUsed }("");
+                // require ETH is successfully sent to either to or from
+                // we do not want ETH hanging in contract.
+                if (!success) {
+                    revert ReturnValueFailed();
+                }
             }
         }
     }
