@@ -61,7 +61,8 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.startPrank(buyer1);
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
             offer,
-            offerSignature
+            offerSignature,
+            1
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer, 0);
@@ -101,7 +102,8 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         );
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount - 1 }(
             offer,
-            offerSignature
+            offerSignature,
+            1
         );
         vm.stopPrank();
     }
@@ -141,7 +143,8 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         );
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
             offer,
-            offerSignature
+            offerSignature,
+            1
         );
         vm.stopPrank();
     }
@@ -180,7 +183,8 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         );
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
             offer,
-            offerSignature
+            offerSignature,
+            1
         );
         vm.stopPrank();
     }
