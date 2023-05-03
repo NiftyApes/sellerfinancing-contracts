@@ -3,6 +3,8 @@ pragma solidity 0.8.13;
 
 import "@openzeppelin-norm/contracts/utils/math/Math.sol";
 import "@openzeppelin-norm/contracts/access/Ownable.sol";
+import "@openzeppelin-norm/contracts/security/ReentrancyGuard.sol";
+
 import "@openzeppelin-norm/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-norm/contracts/utils/Counters.sol";
 import "../interfaces/sellerFinancing/ISellerFinancing.sol";
@@ -13,13 +15,11 @@ import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 
 // TODO add nonreentrant
 
-contract ERC721MintFinancing is ERC721, Ownable {
+contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
 
     /// @dev Token ID Tracker
     Counters.Counter private _tokenIdTracker;
-
-    // TODO Do we need to provide a mint limit as part of the contract? Should look at manifold contracts to see pattern.
 
     /// @dev The stored address for the seller financing contract
     address public sellerFinancingContractAddress;
@@ -68,7 +68,7 @@ contract ERC721MintFinancing is ERC721, Ownable {
         ISellerFinancing.Offer memory offer,
         bytes calldata signature,
         uint256 count
-    ) external payable returns (uint256[] memory tokenIds) {
+    ) external payable nonReentrant returns (uint256[] memory tokenIds) {
         address signer = ISellerFinancing(sellerFinancingContractAddress).getOfferSigner(
             offer,
             signature
@@ -112,7 +112,7 @@ contract ERC721MintFinancing is ERC721, Ownable {
             (bool success, ) = address(msg.sender).call{
                 value: msg.value - (offer.downPaymentAmount * (count - nftsToMint))
             }("");
-            // require ETH is successfully sent to either to or from
+            // require ETH is successfully sent to msg.sender
             // we do not want ETH hanging in contract.
             if (!success) {
                 revert ReturnValueFailed();
