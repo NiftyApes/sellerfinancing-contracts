@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "../seaport/ISeaport.sol";
 
@@ -30,6 +30,7 @@ interface ISellerFinancingErrors {
     error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
 
     error InvalidOffer0Token(address given, address expected);
+    error InvalidOfferLength(uint256 given, uint256 expected);
 
     error InvalidConsideration0Identifier(uint256 given, uint256 expected);
 

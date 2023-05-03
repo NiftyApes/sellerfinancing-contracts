@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
@@ -154,7 +154,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
 
@@ -174,6 +174,84 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function test_unit_instantSell_loanClosed_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_instantSell_loanClosed_simplest_case(fixedForSpeed);
+    }
+
+    function _test_instantSell_loanClosed_multipleConsideration(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        uint256 buyer1BalanceBefore = address(buyer1).balance;
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        // set any minimum profit value
+        uint256 considerationAmount2 = 1 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = ((loan.remainingPrincipal + periodInterest + considerationAmount2) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            true
+        );
+        mintWeth(buyer2, bidPrice);
+
+        ISeaport.ConsiderationItem[] memory considItems = new ISeaport.ConsiderationItem[](3);
+        considItems[0] = order[0].parameters.consideration[0];
+        considItems[1] = order[0].parameters.consideration[1];
+        considItems[2] = ISeaport.ConsiderationItem({
+            itemType: ISeaport.ItemType.ERC20,
+            token: WETH_ADDRESS,
+            identifierOrCriteria: 0,
+            startAmount: considerationAmount2,
+            endAmount: considerationAmount2,
+            recipient: payable(buyer2)
+        });
+
+        order[0].parameters.consideration = new ISeaport.ConsiderationItem[](3);
+        order[0].parameters.consideration[0] = considItems[0];
+        order[0].parameters.consideration[1] = considItems[1];
+        order[0].parameters.consideration[2] = considItems[2];
+        order[0].parameters.totalOriginalConsiderationItems = 3;
+
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(WETH_ADDRESS).approve(SEAPORT_CONDUIT, bidPrice);
+        ISeaport(SEAPORT_ADDRESS).validate(order);
+        vm.stopPrank();
+
+        vm.startPrank(buyer1);
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            0,
+            abi.encode(order[0])
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer2);
+        assertEq(
+            address(buyer1).balance,
+            (buyer1BalanceBefore - offer.downPaymentAmount)
+        );
+    }
+
+    function test_fuzz_instantSell_loanClosed_multipleConsideration(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_loanClosed_multipleConsideration(fuzzed);
+    }
+
+    function test_unit_instantSell_loanClosed_multipleConsideration() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_loanClosed_multipleConsideration(fixedForSpeed);
     }
 
     function _test_instantSell_loanClosed_withoutSeaportFee(
@@ -237,7 +315,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
 
@@ -300,7 +378,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -316,26 +394,21 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         _test_instantSell_reverts_post_grace_period(fixedForSpeed);
     }
 
-    function _test_instantSell_reverts_ifCallerSanctioned(
-        FuzzedOfferFields memory fuzzed
-    ) private {
+    function _test_instantSell_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
-            minProfitAmount) *
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -347,9 +420,19 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             true
         );
 
-        vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+        vm.prank(owner);
+        sellerFinancing.pauseSanctions();
 
+        vm.prank(buyer1);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(
+            buyer1,
+            SANCTIONED_ADDRESS,
+            loan.buyerNftId
+        );
+
+        vm.prank(owner);
+        sellerFinancing.unpauseSanctions();
+        
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -361,7 +444,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -377,26 +460,21 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         _test_instantSell_reverts_ifCallerSanctioned(fixedForSpeed);
     }
 
-    function _test_instantSell_reverts_ifCallerIsNotBuyer(
-        FuzzedOfferFields memory fuzzed
-    ) private {
+    function _test_instantSell_reverts_ifCallerIsNotBuyer(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
-            minProfitAmount) *
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -410,17 +488,13 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(buyer2);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidCaller.selector,
-                buyer2,
-                buyer1
-            )
+            abi.encodeWithSelector(ISellerFinancingErrors.InvalidCaller.selector, buyer2, buyer1)
         );
         sellerFinancing.instantSell(
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -440,15 +514,13 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         vm.warp(loan.periodEndTimestamp + loan.periodDuration + 1);
 
@@ -456,8 +528,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
-            minProfitAmount) *
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -475,7 +546,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -495,19 +566,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
-        
+
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
-            40 +
-            38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -527,12 +594,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 ISeaport.ItemType.ERC721
             )
         );
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0], bytes32(0))
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -551,19 +613,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
-        
+
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
-            40 +
-            38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -583,12 +641,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 offer.nftContractAddress
             )
         );
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0], bytes32(0))
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -607,19 +660,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
-        
+
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
-            40 +
-            38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -638,12 +687,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 offer.nftId
             )
         );
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0], bytes32(0))
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -662,19 +706,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
-        
+
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
-            40 +
-            38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -693,12 +733,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 ISeaport.ItemType.ERC20
             )
         );
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0], bytes32(0))
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -717,19 +752,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
-        
+
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
-            40 +
-            38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -748,12 +779,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 WETH_ADDRESS
             )
         );
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0], bytes32(0))
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -772,19 +798,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
-        
+
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
-            40 +
-            38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -804,12 +826,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 ISeaport.ItemType.ERC20
             )
         );
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0], bytes32(0))
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -828,19 +845,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+
         createOfferAndBuyWithFinancing(offer);
-        
+
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
-            40 +
-            38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -860,12 +873,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 WETH_ADDRESS
             )
         );
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0], bytes32(0))
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -883,29 +891,20 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifSaleAmountLessThanMinSaleAmountRequested(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(
-            fuzzed,
-            defaultFixedOfferFields
-        );
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) +
-            minProfitAmount) *
+        uint256 bidPrice = (((loan.remainingPrincipal + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -928,14 +927,14 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             abi.encodeWithSelector(
                 ISellerFinancingErrors.InsufficientAmountReceivedFromSale.selector,
                 loan.remainingPrincipal + totalInterest + minProfitAmount,
-                loan.remainingPrincipal + totalInterest + minProfitAmount+1
+                loan.remainingPrincipal + totalInterest + minProfitAmount + 1
             )
         );
         sellerFinancing.instantSell(
             offer.nftContractAddress,
             offer.nftId,
             minProfitAmount + 1,
-            abi.encode(order[0], bytes32(0))
+            abi.encode(order[0])
         );
         vm.stopPrank();
     }
@@ -947,9 +946,77 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function test_unit_instantSell_reverts_ifSaleAmountLessThanMinSaleAmountRequested() public {
-        FuzzedOfferFields
-            memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_instantSell_reverts_ifSaleAmountLessThanMinSaleAmountRequested(fixedForSpeed);
+    }
+
+    function _test_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+       
+        createOfferAndBuyWithFinancing(offer);
+        
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+            loan
+        );
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            true
+        );
+        order[0].parameters.offer = new ISeaport.OfferItem[](2);
+        order[0].parameters.offer[0] = ISeaport.OfferItem({
+            itemType: ISeaport.ItemType.ERC20,
+            token: WETH_ADDRESS,
+            identifierOrCriteria: 0,
+            startAmount: bidPrice,
+            endAmount: bidPrice
+        });
+        order[0].parameters.offer[1] = ISeaport.OfferItem({
+            itemType: ISeaport.ItemType.ERC20,
+            token: WETH_ADDRESS,
+            identifierOrCriteria: 0,
+            startAmount: bidPrice,
+            endAmount: bidPrice
+        });
+
+        vm.startPrank(buyer1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.InvalidOfferLength.selector,
+                2,
+                1
+            )
+        );
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            0,
+            abi.encode(order[0])
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(fuzzed);
+    }
+
+    function test_unit_instantSell_reverts_ifOrderOfferLengthNotEqualToOne() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(fixedForSpeed);
     }
 
     function _createOrder(

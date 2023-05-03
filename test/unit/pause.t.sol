@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "forge-std/Test.sol";
 
@@ -45,9 +45,5 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
         vm.startPrank(seller1);
         vm.expectRevert("Pausable: paused");
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
-
-        vm.expectRevert("Pausable: paused");
-        sellerFinancing.withdrawOfferSignature(offer, offerSignature);
-        vm.stopPrank();
     }
 }

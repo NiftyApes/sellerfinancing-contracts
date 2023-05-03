@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
@@ -146,5 +146,62 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
             ),
             true
         );
+    }
+
+    function test_unit_safeTranferFrom_reverts_if_anyTransactingPartiesAreSanctioned() public {
+        Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
+
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        vm.prank(buyer1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SanctionedAddress.selector,
+                SANCTIONED_ADDRESS
+            )
+        );
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+
+        vm.prank(owner);
+        sellerFinancing.pauseSanctions();
+
+        vm.prank(buyer1);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+
+        assertEq(
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
+                address(boredApeYachtClub),
+                offer.nftId
+            ),
+            false
+        );
+
+        assertEq(
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                SANCTIONED_ADDRESS,
+                address(sellerFinancing),
+                address(boredApeYachtClub),
+                offer.nftId
+            ),
+            true
+        );
+
+        vm.prank(owner);
+        sellerFinancing.unpauseSanctions();
+
+
+        vm.prank(SANCTIONED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISellerFinancingErrors.SanctionedAddress.selector,
+                SANCTIONED_ADDRESS
+            )
+        );
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(SANCTIONED_ADDRESS, buyer1, loan.buyerNftId);
     }
 }

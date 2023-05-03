@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
@@ -171,12 +171,18 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
         vm.warp(loan.periodEndTimestamp + 1);
 
+        vm.prank(owner);
+        sellerFinancing.pauseSanctions();
+
         vm.prank(seller1);
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(
             seller1,
             SANCTIONED_ADDRESS,
             loan.sellerNftId
         );
+
+        vm.prank(owner);
+        sellerFinancing.unpauseSanctions();
 
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(

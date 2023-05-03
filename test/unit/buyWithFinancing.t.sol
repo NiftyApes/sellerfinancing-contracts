@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
@@ -196,6 +196,11 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
+
+        vm.expectEmit(true, true, false, false);
+        emit LoanExecuted(offer.nftContractAddress, nftId, offerSignature, loan);
 
         vm.startPrank(buyer1);
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(

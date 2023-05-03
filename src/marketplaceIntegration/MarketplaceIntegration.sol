@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "@openzeppelin-norm/contracts/access/Ownable.sol";
 import "@openzeppelin-norm/contracts/security/Pausable.sol";
@@ -19,7 +19,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
     address private constant SANCTIONS_CONTRACT = 0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 
     /// @notice The base value for fees in the protocol.
-    uint256 private constant MAX_BPS = 10_000;
+    uint256 private constant BASE_BPS = 10_000;
 
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
@@ -93,7 +93,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
-        uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / MAX_BPS;
+        uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / BASE_BPS;
         if (msg.value < offer.downPaymentAmount + marketplaceFeeAmount) {
             revert InsufficientMsgValue(msg.value, offer.downPaymentAmount + marketplaceFeeAmount);
         }

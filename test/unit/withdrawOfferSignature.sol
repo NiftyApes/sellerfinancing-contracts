@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "forge-std/Test.sol";
 
@@ -39,6 +39,31 @@ contract TestWithdrawOfferSignature is
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
 
         bytes memory signature = sign(SIGNER_PRIVATE_KEY_1, offerHash);
+
+        vm.startPrank(address(SIGNER_1));
+        sellerFinancing.withdrawOfferSignature(offer, signature);
+        vm.stopPrank();
+    }
+
+    function test_unit_withdrawOfferSignature_works_whenPaused() public {
+        Offer memory offer = Offer({
+            creator: seller1,
+            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
+            nftId: 1,
+            price: 1 ether,
+            downPaymentAmount: 0.3 ether,
+            minimumPrincipalPerPeriod: 0.07 ether,
+            periodInterestRateBps: 25,
+            periodDuration: 30 days,
+            expiration: uint32(1657217355),
+            collectionOfferLimit: 1
+        });
+
+        bytes32 offerHash = sellerFinancing.getOfferHash(offer);
+
+        bytes memory signature = sign(SIGNER_PRIVATE_KEY_1, offerHash);
+        vm.prank(owner);
+        sellerFinancing.pause();
 
         vm.startPrank(address(SIGNER_1));
         sellerFinancing.withdrawOfferSignature(offer, signature);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
@@ -10,7 +10,7 @@ import "../../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
 import "../../common/BaseTest.sol";
 
-uint256 constant MAX_BPS = 10_000;
+uint256 constant BASE_BPS = 10_000;
 uint256 constant MAX_FEE = 1_000;
 
 // Note: need "sign" function from BaseTest for signOffer below
