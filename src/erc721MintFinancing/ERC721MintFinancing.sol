@@ -106,7 +106,7 @@ contract ERC721MintFinancing is ERC721, Ownable {
         // loop through number of count
         for (uint i; i < count; ) {
             // if collectionOfferLimit not reached
-            if (collectionOfferLimitCount <= offer.collectionOfferLimit) {
+            if (collectionOfferLimitCount < offer.collectionOfferLimit) {
                 // mint nft
                 _safeMint(owner(), firstTokenId + i);
                 // append new nftId to returned tokensIds
@@ -125,6 +125,7 @@ contract ERC721MintFinancing is ERC721, Ownable {
                 // increment loop
                 unchecked {
                     ++i;
+                    ++collectionOfferLimitCount;
                 }
             }
             // else if collectionOfferLimit reached
