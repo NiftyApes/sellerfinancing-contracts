@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
+import "@openzeppelin-norm/contracts/utils/math/Math.sol";
 import "@openzeppelin-norm/contracts/access/Ownable.sol";
 import "@openzeppelin-norm/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-norm/contracts/utils/Counters.sol";
@@ -58,11 +59,11 @@ contract ERC721MintFinancing is ERC721, Ownable {
     /// @dev The Mint Financing Offer must come from the owner of this contract
     /// @param offer The seller financing offer made by this contract owner
     /// @param signature The signed seller financing offer made by this contract owner,
-    /// @param count The number of NFTs to mint
+    /// @param count The number of NFTs requested to mint
     /// @dev   The count must be greater than 0.
-    ///        If the count increments the collectionOfferLimit counter up to the collectionOffer limit
-    ///        all NFTs will be minted up to the limit.
-    ///        If the first NFT of a collection is minted with finance the collection tokenIds will begin at index
+    ///        If the count increments the sellerfinancing.collectionOfferLimit counter up to the collectionOffer limit
+    ///        all NFTs will be minted up to the limit and excess funds will be returned.
+    ///        If the first NFT of a collection is minted with finance the collection tokenIds will begin at index 1
     function mintWithFinancing(
         ISellerFinancing.Offer memory offer,
         bytes calldata signature,
@@ -78,9 +79,6 @@ contract ERC721MintFinancing is ERC721, Ownable {
 
         tokenIds = new uint256[](count);
         uint256 firstTokenId = _tokenIdTracker.current() + 1;
-        // set maxCount to enable graceful loop stop
-        uint256 maxCount = count;
-        uint256 valueUsed;
 
         // requireSignerIsOwner
         if (signer != owner()) {
@@ -103,44 +101,36 @@ contract ERC721MintFinancing is ERC721, Ownable {
             revert CollectionOfferLimitReached();
         }
 
-        // loop through number of count
-        for (uint i; i < count; ) {
-            // if collectionOfferLimit not reached
-            if (collectionOfferLimitCount < offer.collectionOfferLimit) {
-                // mint nft
-                _safeMint(owner(), firstTokenId + i);
-                // append new nftId to returned tokensIds
-                tokenIds[i] = firstTokenId + i;
-                // increment nftid tracker
-                _tokenIdTracker.increment();
+        // calculate number of nfts to mint
+        uint256 nftsToMint = Math.min(
+            count,
+            (offer.collectionOfferLimit - collectionOfferLimitCount)
+        );
 
-                // Execute loan
-                ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
-                    value: (msg.value / count)
-                }(offer, signature, msg.sender, firstTokenId + i);
-
-                // add valueUsed
-                valueUsed += msg.value / count;
-
-                // increment loop
-                unchecked {
-                    ++i;
-                    ++collectionOfferLimitCount;
-                }
+        // if there is a greater number of NFTs requested than available return value
+        if (nftsToMint < count) {
+            (bool success, ) = address(msg.sender).call{
+                value: msg.value - (offer.downPaymentAmount * (count - nftsToMint))
+            }("");
+            // require ETH is successfully sent to either to or from
+            // we do not want ETH hanging in contract.
+            if (!success) {
+                revert ReturnValueFailed();
             }
-            // else if collectionOfferLimit reached
-            else {
-                // need to send back any unused value back to msg.sender
-                // exit loop without revert so user doesnt have to enter perfect count
-                count = maxCount;
+        }
 
-                (bool success, ) = msg.sender.call{ value: msg.value - valueUsed }("");
-                // require ETH is successfully sent to either to or from
-                // we do not want ETH hanging in contract.
-                if (!success) {
-                    revert ReturnValueFailed();
-                }
-            }
+        for (uint i; i < nftsToMint; ++i) {
+            // mint nft
+            _safeMint(owner(), firstTokenId + i);
+            // append new nftId to returned tokensIds
+            tokenIds[i] = firstTokenId + i;
+            // increment nftid tracker
+            _tokenIdTracker.increment();
+
+            // Execute loan
+            ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
+                value: (msg.value / count)
+            }(offer, signature, msg.sender, firstTokenId + i);
         }
     }
 
