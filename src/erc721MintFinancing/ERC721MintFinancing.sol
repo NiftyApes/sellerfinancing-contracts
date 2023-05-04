@@ -78,7 +78,6 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             .getCollectionOfferCount(signature);
 
         tokenIds = new uint256[](count);
-        uint256 firstTokenId = _tokenIdTracker.current() + 1;
 
         // requireSignerIsOwner
         if (signer != owner()) {
@@ -107,30 +106,31 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             (offer.collectionOfferLimit - collectionOfferLimitCount)
         );
 
+        // loop through and mint nfts
+        for (uint i; i < nftsToMint; ++i) {
+            // increment nftid tracker
+            _tokenIdTracker.increment();
+            // mint nft
+            _safeMint(owner(), _tokenIdTracker.current());
+            // append new nftId to returned tokensIds
+            tokenIds[i] = _tokenIdTracker.current();
+
+            // Execute loan
+            ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
+                value: offer.downPaymentAmount
+            }(offer, signature, msg.sender, _tokenIdTracker.current());
+        }
+
         // if there is a greater number of NFTs requested than available return value
         if (nftsToMint < count) {
             (bool success, ) = address(msg.sender).call{
-                value: msg.value - (offer.downPaymentAmount * (count - nftsToMint))
+                value: msg.value - (offer.downPaymentAmount * nftsToMint)
             }("");
             // require ETH is successfully sent to msg.sender
             // we do not want ETH hanging in contract.
             if (!success) {
                 revert ReturnValueFailed();
             }
-        }
-
-        for (uint i; i < nftsToMint; ++i) {
-            // mint nft
-            _safeMint(owner(), firstTokenId + i);
-            // append new nftId to returned tokensIds
-            tokenIds[i] = firstTokenId + i;
-            // increment nftid tracker
-            _tokenIdTracker.increment();
-
-            // Execute loan
-            ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
-                value: (msg.value / count)
-            }(offer, signature, msg.sender, firstTokenId + i);
         }
     }
 
