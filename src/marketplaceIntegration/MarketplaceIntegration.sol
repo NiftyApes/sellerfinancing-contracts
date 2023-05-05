@@ -36,6 +36,10 @@ contract MarketplaceIntegration is Ownable, Pausable {
 
     error SanctionedAddress(address account);
 
+    error InvalidInputLength();
+
+    error BuyWithFinancingCallRevertedAt(uint256 index);
+
     constructor(
         address _sellerFinancingContractAddress,
         address _marketplaceFeeRecipient,
@@ -103,6 +107,54 @@ contract MarketplaceIntegration is Ownable, Pausable {
             value: msg.value - marketplaceFeeAmount
         }(offer, signature, buyer, nftId);
     }
+
+    function buyWithFinancingBatch(
+        ISellerFinancing.Offer[] memory offers,
+        bytes[] calldata signatures,
+        address buyer,
+        uint256[] calldata nftIds,
+        bool partialExecution
+    ) external payable whenNotPaused {
+        _requireIsNotSanctioned(msg.sender);
+        _requireIsNotSanctioned(buyer);
+
+        if(offers.length != signatures.length || offers.length != nftIds.length) {
+            revert InvalidInputLength();
+        }
+
+        uint256 marketplaceFeeAccumulated;
+        uint256 valueConsumed;
+        for (uint256 i = 0; i < offers.length; ++i) {
+            ISellerFinancing.Offer memory offer = offers[i];
+            uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / BASE_BPS;
+            // check if value remained not enough for executing current offer
+            // and if not, then break for partialExecution else revert
+            if (msg.value - valueConsumed < offer.downPaymentAmount + marketplaceFeeAmount + marketplaceFeeAccumulated) {
+                if (partialExecution) {
+                    break;
+                } else {
+                    revert InsufficientMsgValue(msg.value, valueConsumed + offer.downPaymentAmount + marketplaceFeeAmount + marketplaceFeeAccumulated);
+                }
+            }
+            // try executing current offer and update `marketplaceFeeAccumulated` and `valueConsumed`
+            // if failed, then then revert if partial execution is not allowed.
+            try ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
+                value: offer.downPaymentAmount
+            } (offer, signatures[i], buyer, nftIds[i]) {
+                marketplaceFeeAccumulated = marketplaceFeeAccumulated + marketplaceFeeAmount;
+                valueConsumed = valueConsumed + offer.downPaymentAmount;
+            } catch {
+                if(!partialExecution) {
+                    revert BuyWithFinancingCallRevertedAt(i);
+                }
+            }
+        }
+        marketplaceFeeRecipient.sendValue(marketplaceFeeAccumulated);
+        if (msg.value - valueConsumed - marketplaceFeeAccumulated > 0) {
+            payable(msg.sender).sendValue(msg.value - valueConsumed - marketplaceFeeAccumulated);
+        }
+    }
+
 
     function _requireNonZeroAddress(address given) internal pure {
         if (given == address(0)) {
