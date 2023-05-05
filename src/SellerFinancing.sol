@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.18;
 
 import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
@@ -87,6 +87,9 @@ contract NiftyApesSellerFinancing is
     /// variables without shifting storage.
     uint256[500] private __gap;
 
+    /// @dev Empty constructor ensures no 3rd party can call initialize before the NiftyApes team on the implementation contract.
+    constructor() initializer {}
+
     /// @notice The initializer for the NiftyApes protocol.
     ///         NiftyApes is intended to be deployed behind a proxy and thus needs to initialize
     ///         its state outside of a constructor.
@@ -103,7 +106,7 @@ contract NiftyApesSellerFinancing is
         ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init("NiftyApes Seller Financing Tickets", "BANANAS");
         ERC721URIStorageUpgradeable.__ERC721URIStorage_init();
-        
+
         royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
         seaportContractAddress = newSeaportContractAddress;
@@ -114,9 +117,7 @@ contract NiftyApesSellerFinancing is
     function updateRoyaltiesEngineContractAddress(
         address newRoyaltiesEngineContractAddress
     ) external onlyOwner {
-        if (newRoyaltiesEngineContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(newRoyaltiesEngineContractAddress);
         royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
     }
 
@@ -124,9 +125,7 @@ contract NiftyApesSellerFinancing is
     function updateDelegateRegistryContractAddress(
         address newDelegateRegistryContractAddress
     ) external onlyOwner {
-        if (newDelegateRegistryContractAddress == address(0)) {
-            revert ZeroAddress();
-        }
+        _requireNonZeroAddress(newDelegateRegistryContractAddress);
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
     }
 
@@ -254,7 +253,7 @@ contract NiftyApesSellerFinancing is
         if (offer.price <= offer.downPaymentAmount) {
             revert DownPaymentGreaterThanOrEqualToOfferPrice(offer.downPaymentAmount, offer.price);
         }
-        // requireMinimumPrincipalLessThanTotalPrincipal
+        // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
         if ((offer.price - offer.downPaymentAmount) < offer.minimumPrincipalPerPeriod) {
             revert InvalidMinimumPrincipalPerPeriod(
                 offer.minimumPrincipalPerPeriod,
@@ -857,10 +856,10 @@ contract NiftyApesSellerFinancing is
     function _require721Owner(
         address nftContractAddress,
         uint256 nftId,
-        address owner
+        address nftOwner
     ) internal view {
-        if (IERC721Upgradeable(nftContractAddress).ownerOf(nftId) != owner) {
-            revert NotNftOwner(nftContractAddress, nftId, owner);
+        if (IERC721Upgradeable(nftContractAddress).ownerOf(nftId) != nftOwner) {
+            revert NotNftOwner(nftContractAddress, nftId, nftOwner);
         }
     }
 

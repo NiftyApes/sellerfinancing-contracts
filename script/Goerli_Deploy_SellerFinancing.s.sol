@@ -1,4 +1,4 @@
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 import "forge-std/Script.sol";
 
@@ -28,7 +28,6 @@ contract DeploySellerFinancingScript is Script {
 
         // deploy and initialize implementation contracts
         sellerFinancingImplementation = new NiftyApesSellerFinancing();
-        sellerFinancingImplementation.initialize(address(0), address(0), address(0), address(0));
 
         // deploy proxy admins
         sellerFinancingProxyAdmin = new ProxyAdmin();

@@ -74,7 +74,7 @@ So far, we have identified 4 major use cases for the NiftyApes Seller Financing 
 
 #### Accepting Payments As A Contract
 
-2. Any contract holding a seller ticket and expecting to receive payments MUST be able to recieve ETH. If the holder of a seller ticket cannot receive ETH at the time of a loan they will be slashed for the value of the payment. All payment value sent will be deducted from the remaining loan principal, possibly closing the loan, no funds will be sent to the holder of the seller ticket (as the actor cannot recieve ETH), and all funds will be returned to the msg.sender.
+2. Any contract holding a seller ticket and expecting to receive payments MUST be able to recieve ETH. If the holder of a seller ticket cannot receive ETH at the time of a loan payment by a buyer they will be slashed for the value of the payment. All payment value sent will be deducted from the remaining loan principal, possibly closing the loan, no funds will be sent to the holder of the seller ticket (as the actor cannot recieve ETH), and all funds will be returned to the msg.sender.
 
 This dynamic prevents a nefarious seller from sending the seller ticket to a contract that cannot accept ETH, barring the buyer from making a payment in earnest, and forcing an eventual default whereby the seller could seize the underlying NFT.
 
@@ -102,7 +102,7 @@ This dynamic prevents a nefarious seller from sending the seller ticket to a con
 
 #### `withdrawOfferSignature()` Vulnerable to Front-Running
 
-6. `withdrawOfferSignature()` is vulnerable to front-running. If a seller submits a transaction calling `withdrawOfferSignature()` to the mempool on an undesirable existing offer, a savvy witnesser could see this and buy the offer prior to the cancellation. This can result in sellers being forced to finance NFTs on Offers that they don't intend to keep or are no longer desirable due to market conditions. We suggest utilizing a short expiration for offers and resubmitting offers often as a way to mitigate market volatility and foster price discovery.
+6. `withdrawOfferSignature()` is vulnerable to front-running. If a seller submits a transaction calling `withdrawOfferSignature()` to the mempool on an undesirable existing offer, a savvy witnesser could see this and buy the offer prior to the cancellation. This can result in sellers being forced to finance NFTs on Offers that they don't intend to keep or are no longer desirable due to market conditions. We suggest utilizing a short expiration for offers and resubmitting offers often or submitting a `withdrawOfferSignature()` transaction via a service such as Flashbots as a way to mitigate this issue as well as market volatility and foster price discovery.
 
 #### Seller Cannot Make The Exact Same Offer Twice
 
@@ -111,6 +111,10 @@ This dynamic prevents a nefarious seller from sending the seller ticket to a con
 #### Excessive Ether Funds are Refunded to the Buyer Rather than Msg.sender
 
 8. In `buyWithFinancing()`, if `msg.value` exceeds `offer.downPaymentAmount()`, the refund is issued to the buyer ticket holder rather than the `msg.sender`. This is done so that buyers receive their refund for purchases made through the MarketplaceIntegration contract, which is deployed by a 3rd party and collects a marketplace fee before making an external call to SellerFinancing.buyWithFinancing(). Users interacting directly with the SellerFinancing contract should be aware that excessive payments are sent directly to the buyer ticket holder.
+
+#### Purchase of Defaulted Buyer Tickets
+
+9. Buyer and seller tickets are transferable at any time, even after a loan is in default. A purchaser of a buyer ticket should be aware of the state of the debt obligation they are purchasing before executing any transaction, as it may be in default and open to immeadiate asset seizure.
 
 ## Getting Started
 
