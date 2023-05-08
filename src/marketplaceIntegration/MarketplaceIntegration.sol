@@ -114,10 +114,10 @@ contract MarketplaceIntegration is Ownable, Pausable {
     }
 
     /// @notice Execute loan offers in batch for buyer
-    /// @param offers The details of the financing offer
-    /// @param signatures Signature from the offer creator
+    /// @param offers The list of the offers to execute
+    /// @param signatures The list of corresponding signatures from the offer creators
     /// @param buyer The address of the buyer
-    /// @param nftIds The nftId of the nft the buyer intends to buy
+    /// @param nftIds The nftIds of the nfts the buyer intends to buy
     /// @param partialExecution If set to true, will continue to execute offers even if one fails,
     ///        reverts otherwise
     function buyWithFinancingBatch(
