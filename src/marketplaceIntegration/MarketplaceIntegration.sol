@@ -88,6 +88,11 @@ contract MarketplaceIntegration is Ownable, Pausable {
         _sanctionsPause = false;
     }
 
+    /// @notice Start a loan as buyer using a signed offer.
+    /// @param offer The details of the financing offer
+    /// @param signature Signature from the offer creator
+    /// @param buyer The address of the buyer
+    /// @param nftId The nftId of the nft the buyer intends to buy
     function buyWithFinancing(
         ISellerFinancing.Offer memory offer,
         bytes calldata signature,
@@ -108,6 +113,13 @@ contract MarketplaceIntegration is Ownable, Pausable {
         }(offer, signature, buyer, nftId);
     }
 
+    /// @notice Execute loan offers in batch for buyer
+    /// @param offers The details of the financing offer
+    /// @param signatures Signature from the offer creator
+    /// @param buyer The address of the buyer
+    /// @param nftIds The nftId of the nft the buyer intends to buy
+    /// @param partialExecution If set to true, will continue to execute offers even if one fails,
+    ///        reverts otherwise
     function buyWithFinancingBatch(
         ISellerFinancing.Offer[] memory offers,
         bytes[] calldata signatures,
@@ -115,9 +127,11 @@ contract MarketplaceIntegration is Ownable, Pausable {
         uint256[] calldata nftIds,
         bool partialExecution
     ) external payable whenNotPaused {
+        // requireMsgSenderAndBuyerNotSanctioned
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
+        // requireLengthOfAllInputArraysAreEqual
         if(offers.length != signatures.length || offers.length != nftIds.length) {
             revert InvalidInputLength();
         }
@@ -126,32 +140,36 @@ contract MarketplaceIntegration is Ownable, Pausable {
         uint256 valueConsumed;
         for (uint256 i = 0; i < offers.length; ++i) {
             ISellerFinancing.Offer memory offer = offers[i];
+            // calculate marketplace fee for ith offer
             uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / BASE_BPS;
             // check if value remained not enough for executing current offer
             // and if not, then break for partialExecution else revert
-            if (msg.value - valueConsumed < offer.downPaymentAmount + marketplaceFeeAmount + marketplaceFeeAccumulated) {
+            if (msg.value - valueConsumed < offer.downPaymentAmount + marketplaceFeeAmount) {
                 if (partialExecution) {
                     break;
                 } else {
-                    revert InsufficientMsgValue(msg.value, valueConsumed + offer.downPaymentAmount + marketplaceFeeAmount + marketplaceFeeAccumulated);
+                    revert InsufficientMsgValue(msg.value, valueConsumed + offer.downPaymentAmount + marketplaceFeeAmount);
                 }
             }
-            // try executing current offer and update `marketplaceFeeAccumulated` and `valueConsumed`
-            // if failed, then then revert if partial execution is not allowed.
+            // try executing current offer, 
             try ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
                 value: offer.downPaymentAmount
             } (offer, signatures[i], buyer, nftIds[i]) {
-                marketplaceFeeAccumulated = marketplaceFeeAccumulated + marketplaceFeeAmount;
-                valueConsumed = valueConsumed + offer.downPaymentAmount;
+            // If successful, update `marketplaceFeeAccumulated` and `valueConsumed`
+                marketplaceFeeAccumulated += marketplaceFeeAmount;
+                valueConsumed += offer.downPaymentAmount + marketplaceFeeAmount;
             } catch {
+            // if failed, then revert if partialExecution is not true.
                 if(!partialExecution) {
                     revert BuyWithFinancingCallRevertedAt(i);
                 }
             }
         }
+        // send total marketplace fee accumulated to `marketplaceFeeRecepient`
         marketplaceFeeRecipient.sendValue(marketplaceFeeAccumulated);
-        if (msg.value - valueConsumed - marketplaceFeeAccumulated > 0) {
-            payable(msg.sender).sendValue(msg.value - valueConsumed - marketplaceFeeAccumulated);
+        // send any unused value back to the msg.sender
+        if (msg.value - valueConsumed > 0) {
+            payable(msg.sender).sendValue(msg.value - valueConsumed);
         }
     }
 
