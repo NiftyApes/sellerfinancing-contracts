@@ -131,14 +131,15 @@ contract MarketplaceIntegration is Ownable, Pausable {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
+        uint256 offersLength = offers.length;
         // requireLengthOfAllInputArraysAreEqual
-        if(offers.length != signatures.length || offers.length != nftIds.length) {
+        if(offersLength != signatures.length || offersLength != nftIds.length) {
             revert InvalidInputLength();
         }
 
         uint256 marketplaceFeeAccumulated;
         uint256 valueConsumed;
-        for (uint256 i = 0; i < offers.length; ++i) {
+        for (uint256 i; i < offersLength; ++i) {
             ISellerFinancing.Offer memory offer = offers[i];
             // calculate marketplace fee for ith offer
             uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / BASE_BPS;
