@@ -195,7 +195,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         boredApeYachtClub.approve(address(sellerFinancing), nftId);
         vm.stopPrank();
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
 
@@ -237,10 +237,12 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_buyWithFinancing_collection_offer(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(FuzzedOfferFields memory fuzzed) private {
+    function _test_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
+        FuzzedOfferFields memory fuzzed
+    ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.NftIdsMustMatch.selector);
@@ -259,12 +261,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer() public {
+    function test_unit_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer()
+        public
+    {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(fixedForSpeed);
+        _test_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
+            fixedForSpeed
+        );
     }
 
-    function _test_buyWithFinancing_collection_offer_reverts_if_limitReached(FuzzedOfferFields memory fuzzed) private {
+    function _test_buyWithFinancing_collection_offer_reverts_if_limitReached(
+        FuzzedOfferFields memory fuzzed
+    ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 nftId = offer.nftId;
         offer.nftId = ~uint256(0);
@@ -273,7 +281,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         boredApeYachtClub.approve(address(sellerFinancing), nftId);
         vm.stopPrank();
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
@@ -288,7 +296,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.CollectionOfferLimitReached.selector);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount}(
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -387,7 +395,6 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             buyer1,
             offer.nftId
         );
-        vm.stopPrank();
     }
 
     function test_fuzz_buyWithFinancing_reverts_if_signatureAlreadyUsed(
