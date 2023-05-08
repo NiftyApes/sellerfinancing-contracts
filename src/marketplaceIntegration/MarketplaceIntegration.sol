@@ -4,15 +4,18 @@ pragma solidity 0.8.18;
 import "@openzeppelin-norm/contracts/access/Ownable.sol";
 import "@openzeppelin-norm/contracts/security/Pausable.sol";
 import "@openzeppelin-norm/contracts/utils/Address.sol";
+import "@openzeppelin-norm/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin-norm/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 import "../interfaces/sanctions/SanctionsList.sol";
+
 
 /// @title MarketplaceIntegration
 /// @custom:version 1.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
 
-contract MarketplaceIntegration is Ownable, Pausable {
+contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     using Address for address payable;
 
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
@@ -35,6 +38,8 @@ contract MarketplaceIntegration is Ownable, Pausable {
     error InsufficientMsgValue(uint256 given, uint256 expected);
 
     error SanctionedAddress(address account);
+
+    error InvalidInputLength();
 
     constructor(
         address _sellerFinancingContractAddress,
@@ -104,6 +109,40 @@ contract MarketplaceIntegration is Ownable, Pausable {
         }(offer, signature, buyer, nftId);
     }
 
+    function instantSellBatch(
+        address[] memory nftContractAddresses,
+        uint256[] memory nftIds,
+        uint256[] memory minProfitAmounts,
+        bytes[] calldata data
+    ) external whenNotPaused {
+        _requireIsNotSanctioned(msg.sender);
+
+        uint256 executionCount = nftContractAddresses.length;
+        // requireLengthOfAllInputArraysAreEqual
+        if(nftIds.length != executionCount || minProfitAmounts.length != executionCount || data.length != executionCount) {
+            revert InvalidInputLength();
+        }
+        
+        uint256 contractBalanceBefore = address(this).balance;
+        for (uint256 i; i < executionCount; ++i) {
+            address nftContractAddress = nftContractAddresses[i];
+            uint256 nftId = nftIds[i];
+            // fetech active loan details
+            ISellerFinancing.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
+            // transfer buyerNft from caller to this contract.
+            // this call also ensures that loan exists and caller is the current buyer
+            IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.buyerNftId);
+            // call instantSell to close the loan
+            ISellerFinancing(sellerFinancingContractAddress).instantSell(nftContractAddress, nftId, minProfitAmounts[i], data[i]);
+        }
+        // accumulate value received
+        uint256 valueReceived = address(this).balance - contractBalanceBefore;
+        // send all the amount received to the caller
+        if( valueReceived > 0) {
+            payable(msg.sender).sendValue(valueReceived);
+        }
+    }
+
     function _requireNonZeroAddress(address given) internal pure {
         if (given == address(0)) {
             revert ZeroAddress();
@@ -119,4 +158,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
             }
         }
     }
+
+    /// @notice This contract needs to accept ETH from `instantSell` calls
+    receive() external payable {}
 }
