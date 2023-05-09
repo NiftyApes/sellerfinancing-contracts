@@ -109,6 +109,11 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         }(offer, signature, buyer, nftId);
     }
 
+    /// @notice Execute instantSell on all the NFTs in the provided input
+    /// @param nftContractAddresses The list of all the nft contract addresses
+    /// @param nftIds The list of all the nft IDs
+    /// @param minProfitAmounts List of minProfitAmount for each `instantSell` call
+    /// @param data The list of data to be passed to each `instantSell` call
     function instantSellBatch(
         address[] memory nftContractAddresses,
         uint256[] memory nftIds,
@@ -125,6 +130,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         
         uint256 contractBalanceBefore = address(this).balance;
         for (uint256 i; i < executionCount; ++i) {
+            // intantiate NFT details
             address nftContractAddress = nftContractAddresses[i];
             uint256 nftId = nftIds[i];
             // fetech active loan details
