@@ -62,14 +62,13 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
 
         uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
-        uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
-
         Offer[] memory offers = new Offer[](1);
         offers[0] = offer;
         bytes[] memory offerSignatures = new bytes[](1);
         offerSignatures[0] = offerSignature;
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = offer.nftId;
+        uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         vm.startPrank(buyer1);
         marketplaceIntegration.buyWithFinancingBatch{ value: offer.downPaymentAmount + marketplaceFee }(
             offers,
@@ -155,7 +154,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         _test_buyWithFinancingMarketplaceBatch_simplest_case_withTwoOffers(fixedForSpeed);
     }
 
-    function _test_buyWithFinancingMarketplaceBatch_partialExecution_withOneInvalidOffer(
+    function _test_buyWithFinancingMarketplaceBatch_partialExecution_withSecondOfferInvalid(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -211,15 +210,81 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.downPaymentAmount - marketplaceFee));
     }
 
-    function test_fuzz_buyWithFinancingMarketplaceBatch_partialExecution_withOneInvalidOffer(
+    function test_fuzz_buyWithFinancingMarketplaceBatch_partialExecution_withSecondOfferInvalid(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancingMarketplaceBatch_partialExecution_withOneInvalidOffer(fuzzed);
+        _test_buyWithFinancingMarketplaceBatch_partialExecution_withSecondOfferInvalid(fuzzed);
     }
 
-    function test_unit_buyWithFinancingMarketplaceBatch_partialExecution_withOneInvalidOffer() public {
+    function test_unit_buyWithFinancingMarketplaceBatch_partialExecution_withSecondOfferInvalid() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancingMarketplaceBatch_partialExecution_withOneInvalidOffer(fixedForSpeed);
+        _test_buyWithFinancingMarketplaceBatch_partialExecution_withSecondOfferInvalid(fixedForSpeed);
+    }
+
+    function _test_buyWithFinancingMarketplaceBatch_partialExecution_withFirstOfferInvalid(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        offer.nftId = ~uint256(0);
+        offer.collectionOfferLimit = 2;
+
+        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+
+        vm.prank(SANCTIONED_ADDRESS);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
+
+        vm.startPrank(seller1);
+        boredApeYachtClub.approve(address(sellerFinancing), 6974);
+        vm.stopPrank();
+
+        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+
+        uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
+        uint256 buyer1BalanceBefore = address(buyer1).balance;
+
+        Offer[] memory offers = new Offer[](2);
+        offers[0] = offer;
+        offers[1] = offer;
+        bytes[] memory offerSignatures = new bytes[](2);
+        offerSignatures[0] = offerSignature;
+        offerSignatures[1] = offerSignature;
+        uint256[] memory nftIds = new uint256[](2);
+        nftIds[0] = 8661;
+        nftIds[1] = 6974;
+        vm.startPrank(buyer1);
+        marketplaceIntegration.buyWithFinancingBatch{ value: 2 * offer.downPaymentAmount + 2 * marketplaceFee }(
+            offers,
+            offerSignatures,
+            buyer1,
+            nftIds,
+            true
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer, nftIds[1]);
+        // assert nftIds[0] is still owned by seller1, because it didn't approve the NFT
+        assertEq(boredApeYachtClub.ownerOf(nftIds[0]), address(seller1));
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[0]);
+        assertEq(loan.remainingPrincipal, 0);
+
+        uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
+        uint256 buyer1BalanceAfter = address(buyer1).balance;
+
+        // assert marketplace has gained fee for only one execution
+        assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
+
+        // assert buyer balance is deduced from one execution
+        assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.downPaymentAmount - marketplaceFee));
+    }
+
+    function test_fuzz_buyWithFinancingMarketplaceBatch_partialExecution_withFirstOfferInvalid(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithFinancingMarketplaceBatch_partialExecution_withFirstOfferInvalid(fuzzed);
+    }
+
+    function test_unit_buyWithFinancingMarketplaceBatch_partialExecution_withFirstOfferInvalid() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithFinancingMarketplaceBatch_partialExecution_withFirstOfferInvalid(fixedForSpeed);
     }
 
     function _test_buyWithFinancingMarketplaceBatch_partialExecution_withLessValueSentThanRequired(
@@ -289,7 +354,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         _test_buyWithFinancingMarketplaceBatch_partialExecution_withLessValueSentThanRequired(fixedForSpeed);
     }
 
-    function _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifAnyOneBuyWithFinancingCallFails(
+    function _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_if_anyOne_BuyWithFinancingCallFails(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -334,15 +399,15 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifAnyOneBuyWithFinancingCallFails(
+    function test_fuzz_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_if_anyOne_BuyWithFinancingCallFails(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifAnyOneBuyWithFinancingCallFails(fuzzed);
+        _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_if_anyOne_BuyWithFinancingCallFails(fuzzed);
     }
 
-    function test_unit_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifAnyOneBuyWithFinancingCallFails() public {
+    function test_unit_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_if_anyOne_BuyWithFinancingCallFails() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifAnyOneBuyWithFinancingCallFails(fixedForSpeed);
+        _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_if_anyOne_BuyWithFinancingCallFails(fixedForSpeed);
     }
 
     function _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifInsufficientValueSent(
@@ -402,7 +467,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifInsufficientValueSent(fixedForSpeed);
     }
 
-    function _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
+     function _test_buyWithFinancingMarketplaceBatch_reverts_ifInvalidInputLengths(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -410,21 +475,19 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
 
         uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MarketplaceIntegration.InsufficientMsgValue.selector,
-                offer.downPaymentAmount + marketplaceFee - 1,
-                offer.downPaymentAmount + marketplaceFee
-            )
-        );
-        Offer[] memory offers = new Offer[](1);
+        Offer[] memory offers = new Offer[](2);
         offers[0] = offer;
-        bytes[] memory offerSignatures = new bytes[](1);
+        offers[1] = offer;
+        bytes[] memory offerSignatures = new bytes[](2);
         offerSignatures[0] = offerSignature;
+        offerSignatures[1] = offerSignature;
+        // invalid nftIds.length
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = offer.nftId;
+
         vm.startPrank(buyer1);
-        marketplaceIntegration.buyWithFinancingBatch{ value: offer.downPaymentAmount + marketplaceFee - 1}(
+        vm.expectRevert(MarketplaceIntegration.InvalidInputLength.selector);
+        marketplaceIntegration.buyWithFinancingBatch{ value: offer.downPaymentAmount * 2 + marketplaceFee * 2}(
             offers,
             offerSignatures,
             buyer1,
@@ -434,19 +497,19 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
+    function test_fuzz_buyWithFinancingMarketplaceBatch_reverts_ifInvalidInputLengths(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
+        _test_buyWithFinancingMarketplaceBatch_reverts_ifInvalidInputLengths(
             fuzzed
         );
     }
 
-    function test_unit_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifValueSentLessThanDownpaymentPlusMarketFee()
+    function test_unit_buyWithFinancingMarketplaceBatch_reverts_ifInvalidInputLengths()
         public
     {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancingMarketplaceBatch_nonPartialExecution_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
+        _test_buyWithFinancingMarketplaceBatch_reverts_ifInvalidInputLengths(
             fixedForSpeed
         );
     }
