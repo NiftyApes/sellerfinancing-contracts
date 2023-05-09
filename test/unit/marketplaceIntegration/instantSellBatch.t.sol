@@ -281,6 +281,180 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_instantSellBatch_executes_two_loan_case(fixedForSpeed);
     }
 
+    function _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        offer.nftId = ~uint256(0);
+        offer.collectionOfferLimit = 2;
+
+        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+
+        vm.prank(SANCTIONED_ADDRESS);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
+
+        vm.startPrank(seller1);
+        boredApeYachtClub.approve(address(sellerFinancing), 8661);
+        boredApeYachtClub.approve(address(sellerFinancing), 6974);
+        vm.stopPrank();
+
+        uint256[] memory nftIds = new uint256[](2);
+        nftIds[0] = 8661;
+        nftIds[1] = 6974;
+        vm.startPrank(buyer1);
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature,
+            buyer1,
+            nftIds[0]
+        );
+        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+            offer,
+            offerSignature,
+            buyer1,
+            nftIds[1]
+        );
+        vm.stopPrank();
+
+        assertionsForExecutedLoan(offer, nftIds[0]);
+        assertionsForExecutedLoan(offer, nftIds[1]);
+
+        Loan memory loan0 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[0]);
+        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[1]);
+
+        (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loan0);
+        (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loan1);
+
+        address[] memory nftContractAddresses = new address[](2);
+        nftContractAddresses[0] = offer.nftContractAddress;
+        nftContractAddresses[1] = offer.nftContractAddress;
+
+        uint256[] memory minProfitAmounts = new uint256[](2);
+        minProfitAmounts[0] = 1 ether;
+        minProfitAmounts[1] = 2 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal + periodInterestLoan0 + minProfitAmounts[0]) *
+            40 +
+            38) / 39;
+        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal + periodInterestLoan1 + minProfitAmounts[1]) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory orderForClosingLoan0 = _createOrder(
+            nftContractAddresses[0],
+            nftIds[0],
+            bidPriceLoan0,
+            buyer2,
+            true
+        );
+        ISeaport.Order[] memory orderForClosingLoan1 = _createOrder(
+            nftContractAddresses[1],
+            nftIds[1],
+            bidPriceLoan1,
+            buyer2,
+            true
+        );
+        mintWeth(buyer2, bidPriceLoan0 + bidPriceLoan1);
+
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(WETH_ADDRESS).approve(SEAPORT_CONDUIT, bidPriceLoan0 + bidPriceLoan1);
+        ISeaport(SEAPORT_ADDRESS).validate(orderForClosingLoan0);
+        ISeaport(SEAPORT_ADDRESS).validate(orderForClosingLoan1);
+        vm.stopPrank();
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encode(orderForClosingLoan0[0]);
+        data[1] = abi.encode(orderForClosingLoan1[0]);
+
+        vm.startPrank(buyer1);
+        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.buyerNftId);        
+        // not approving loan1 buyer ticket and expecting the call to fail
+    
+        vm.expectRevert("ERC721: caller is not token owner or approved");
+        marketplaceIntegration.instantSellBatch(
+            nftContractAddresses,
+            nftIds,
+            minProfitAmounts,
+            data
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(fuzzed);
+    }
+
+    function test_unit_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(fixedForSpeed);
+    }
+
+    function _test_instantSellBatch_reverts_if_invalidInputLengths(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.nftId);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        address[] memory nftContractAddresses = new address[](2);
+        nftContractAddresses[0] = offer.nftContractAddress;
+        nftContractAddresses[1] = offer.nftContractAddress;
+
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = offer.nftId;
+
+        uint256[] memory minProfitAmounts = new uint256[](1);
+        minProfitAmounts[0] = 1 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = ((loan.remainingPrincipal + periodInterest + minProfitAmounts[0]) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            nftContractAddresses[0],
+            nftIds[0],
+            bidPrice,
+            buyer2,
+            true
+        );
+        mintWeth(buyer2, bidPrice);
+
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(WETH_ADDRESS).approve(SEAPORT_CONDUIT, bidPrice);
+        ISeaport(SEAPORT_ADDRESS).validate(order);
+        vm.stopPrank();
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encode(order[0]);
+
+        vm.startPrank(buyer1);
+        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan.buyerNftId);
+        vm.expectRevert(MarketplaceIntegration.InvalidInputLength.selector);
+        marketplaceIntegration.instantSellBatch(
+            nftContractAddresses,
+            nftIds,
+            minProfitAmounts,
+            data
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_instantSellBatch_reverts_if_invalidInputLengths(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSellBatch_reverts_if_invalidInputLengths(fuzzed);
+    }
+
+    function test_unit_instantSellBatch_reverts_if_invalidInputLengths() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSellBatch_reverts_if_invalidInputLengths(fixedForSpeed);
+    }
+
     function _createOrder(
         address nftContractAddress,
         uint256 nftId,
