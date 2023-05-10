@@ -124,8 +124,8 @@ contract MarketplaceIntegration is Ownable, Pausable {
     /// @param signatures The list of corresponding signatures from the offer creators
     /// @param buyer The address of the buyer
     /// @param nftIds The nftIds of the nfts the buyer intends to buy
-    /// @param partialExecution If set to true, will execute offers up to failed execution
-    ///        reverts otherwise
+    /// @param partialExecution If set to true, will continue to attempt transaction executions regardless
+    ///        if previous transactions have failed or had insufficient value available
     function buyWithFinancingBatch(
         ISellerFinancing.Offer[] memory offers,
         bytes[] calldata signatures,
