@@ -156,9 +156,9 @@ contract MarketplaceIntegration is Ownable, Pausable {
 
             // if remaining value is not sufficient to execute ith offer
             if (msg.value - valueConsumed < offer.downPaymentAmount + marketplaceFeeAmount) {
-                // if partial execution is allowed exit the loop
+                // if partial execution is allowed then move to next offer
                 if (partialExecution) {
-                    break;
+                    continue;
                 }
                 // else revert
                 else {
