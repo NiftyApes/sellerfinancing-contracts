@@ -13,8 +13,6 @@ import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 /// @custom:version 1.0
 /// @author captnseagraves (captnseagraves.eth)
 
-// TODO add nonreentrant
-
 contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
 
