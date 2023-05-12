@@ -151,10 +151,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
                     if (!partialExecution) {
                         revert InstantSellCallRevertedAt(i);
                     } else {
-                        try IERC721(sellerFinancingContractAddress).safeTransferFrom(address(this), msg.sender, loan.buyerNftId) {}
-                        catch {
-                            revert BuyerTicketTransferRevertedAt(i, address(this), msg.sender);
-                        }
+                        IERC721(sellerFinancingContractAddress).safeTransferFrom(address(this), msg.sender, loan.buyerNftId);
                     }
                 }
             } catch {
