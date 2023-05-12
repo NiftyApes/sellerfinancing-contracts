@@ -41,6 +41,10 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
 
     error InvalidInputLength();
 
+    error InstantSellCallRevertedAt(uint256 index);
+
+    error BuyerTicketTransferRevertedAt(uint256 index, address from, address to);
+
     constructor(
         address _sellerFinancingContractAddress,
         address _marketplaceFeeRecipient,
@@ -114,11 +118,14 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param nftIds The list of all the nft IDs
     /// @param minProfitAmounts List of minProfitAmount for each `instantSell` call
     /// @param data The list of data to be passed to each `instantSell` call
+    /// @param partialExecution If set to true, will continue to attempt next request in the loop
+    ///        when one `instantSell` or transfer ticket call fails
     function instantSellBatch(
         address[] memory nftContractAddresses,
         uint256[] memory nftIds,
         uint256[] memory minProfitAmounts,
-        bytes[] calldata data
+        bytes[] calldata data,
+        bool partialExecution
     ) external whenNotPaused {
         _requireIsNotSanctioned(msg.sender);
 
@@ -137,9 +144,25 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             ISellerFinancing.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
             // transfer buyerNft from caller to this contract.
             // this call also ensures that loan exists and caller is the current buyer
-            IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.buyerNftId);
-            // call instantSell to close the loan
-            ISellerFinancing(sellerFinancingContractAddress).instantSell(nftContractAddress, nftId, minProfitAmounts[i], data[i]);
+            try IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.buyerNftId) {
+                // call instantSell to close the loan
+                try ISellerFinancing(sellerFinancingContractAddress).instantSell(nftContractAddress, nftId, minProfitAmounts[i], data[i]) {} 
+                catch {
+                    if (!partialExecution) {
+                        revert InstantSellCallRevertedAt(i);
+                    } else {
+                        try IERC721(sellerFinancingContractAddress).safeTransferFrom(address(this), msg.sender, loan.buyerNftId) {}
+                        catch {
+                            revert BuyerTicketTransferRevertedAt(i, address(this), msg.sender);
+                        }
+                    }
+                }
+            } catch {
+                if (!partialExecution) {
+                    revert BuyerTicketTransferRevertedAt(i, msg.sender, address(this));
+                }
+            }
+            
         }
         // accumulate value received
         uint256 valueReceived = address(this).balance - contractBalanceBefore;
