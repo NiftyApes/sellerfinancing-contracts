@@ -93,6 +93,15 @@ interface ISeaport {
         returns (bool isValidated, bool isCancelled, uint256 totalFilled, uint256 totalSize);
 
     /**
+     * @notice Retrieve the order hash for a given order.
+     *
+     * @param order The components of the order.
+     *
+     * @return orderHash The order hash.
+     */
+    function getOrderHash(OrderComponents calldata order) external view returns (bytes32 orderHash);
+
+    /**
      * @dev An order contains eleven components: an offerer, a zone (or account that
      *      can cancel the order or restrict who can fulfill the order depending on
      *      the type), the order type (specifying partial fill support as well as
@@ -115,15 +124,6 @@ interface ISeaport {
         bytes32 conduitKey;
         uint256 counter;
     }
-
-    /**
-     * @notice Retrieve the order hash for a given order.
-     *
-     * @param order The components of the order.
-     *
-     * @return orderHash The order hash.
-     */
-    function getOrderHash(OrderComponents calldata order) external view returns (bytes32 orderHash);
 
     /**
      * @dev The full set of order components, with the exception of the counter,
