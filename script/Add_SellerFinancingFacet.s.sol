@@ -48,7 +48,7 @@ contract DeploySellerFinancingFacet is Script {
         allSellerFinancingSelectors[6] = ISellerFinancing.seizeAsset.selector;
         allSellerFinancingSelectors[7] = ISellerFinancing.seaportContractAddress.selector;
         allSellerFinancingSelectors[8] = ISellerFinancingAdmin.updateSeaportContractAddress.selector;
-        allSellerFinancingSelectors[8] = ISellerFinancingAdmin.wethContractAddress.selector;
+        allSellerFinancingSelectors[8] = ISellerFinancing.wethContractAddress.selector;
 
         IDiamondCut.FacetCut[] memory diamondCut = new IDiamondCut.FacetCut[](1);
         diamondCut[0] = IDiamondCut.FacetCut(sellerFinancingAddress, IDiamondCut.FacetCutAction.Replace, allSellerFinancingSelectors);
