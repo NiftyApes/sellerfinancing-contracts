@@ -29,6 +29,37 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allfacetAddresses[3], address(sellerFinancingFacet));
     }
 
+    function test_facets_must_return_all_four_facets_addresses_with_their_functionSelectors() public {
+        IDiamondLoupe.Facet[] memory allFacets = diamondLoupe.facets();
+        assertEq(allFacets.length, 4);
+        assertEq(allFacets[0].facetAddress, address(diamondCutFacet));
+        assertEq(allFacets[1].facetAddress, address(diamondLoupeFacet));
+        assertEq(allFacets[2].facetAddress, address(ownershipFacet));
+        assertEq(allFacets[3].facetAddress, address(sellerFinancingFacet));
+
+        assertEq(allFacets[0].functionSelectors.length, 1);
+        assertEq(allFacets[0].functionSelectors[0], diamondCutFacet.diamondCut.selector);
+
+        assertEq(allFacets[1].functionSelectors.length, 5);
+        assertEq(allFacets[1].functionSelectors[0], diamondLoupeFacet.facets.selector);
+        assertEq(allFacets[1].functionSelectors[1], diamondLoupeFacet.facetFunctionSelectors.selector);
+        assertEq(allFacets[1].functionSelectors[2], diamondLoupeFacet.facetAddresses.selector);
+        assertEq(allFacets[1].functionSelectors[3], diamondLoupeFacet.facetAddress.selector);
+        assertEq(allFacets[1].functionSelectors[4], diamondLoupeFacet.supportsInterface.selector);
+
+        assertEq(allFacets[2].functionSelectors.length, 2);
+        assertEq(allFacets[2].functionSelectors[0], ownershipFacet.transferOwnership.selector);
+        assertEq(allFacets[2].functionSelectors[1], ownershipFacet.owner.selector);
+
+        assertEq(allFacets[3].functionSelectors.length, 30);
+        assertEq(allFacets[3].functionSelectors[0], sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector);
+        assertEq(allFacets[3].functionSelectors[1], sellerFinancingFacet.updateDelegateRegistryContractAddress.selector);
+        assertEq(allFacets[3].functionSelectors[2], sellerFinancingFacet.updateSeaportContractAddress.selector);
+        assertEq(allFacets[3].functionSelectors[10], sellerFinancingFacet.pauseSanctions.selector);
+        assertEq(allFacets[3].functionSelectors[20], sellerFinancingFacet.instantSell.selector);
+        assertEq(allFacets[3].functionSelectors[29], sellerFinancingFacet.onERC721Received.selector);
+    }
+
     function test_facetFunctionSelectors_must_return_all_added_selectors_for_each_facet() public {
         bytes4[] memory facetFunctionSelectors;
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(diamondCutFacet));
@@ -63,5 +94,32 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(diamondLoupe.facetAddress(diamondLoupeFacet.facets.selector), address(diamondLoupeFacet));
         assertEq(diamondLoupe.facetAddress(ownershipFacet.transferOwnership.selector), address(ownershipFacet));
         assertEq(diamondLoupe.facetAddress(sellerFinancing.buyWithFinancing.selector), address(sellerFinancingFacet));
+    }
+
+    function test_supportsInterface_must_be_true_for_all_supported_intrerface() public {
+        assertEq(IERC165(address(diamond)).supportsInterface(type(IERC165).interfaceId), true);
+        assertEq(IERC165(address(diamond)).supportsInterface(type(IDiamondCut).interfaceId), true);
+        assertEq(IERC165(address(diamond)).supportsInterface(type(IDiamondLoupe).interfaceId), true);
+        assertEq(IERC165(address(diamond)).supportsInterface(type(IERC173).interfaceId), true);
+        assertEq(IERC165(address(diamond)).supportsInterface(type(IERC721Upgradeable).interfaceId), true);
+        assertEq(IERC165(address(diamond)).supportsInterface(type(IERC721MetadataUpgradeable).interfaceId), true);
+    }
+
+    function test_owner_must_return_the_current_owner() public {
+        assertEq(diamondOwnership.owner(), owner);
+    }
+
+    function test_transferOwnership_transfers_ownsership_if_called_by_owner() public {
+        assertEq(diamondOwnership.owner(), owner);
+        vm.prank(owner);
+        diamondOwnership.transferOwnership(address(seller1));
+        assertEq(diamondOwnership.owner(), seller1);
+    }
+
+    function test_transferOwnership_reverts_if_called_by_nonOwner() public {
+        assertEq(diamondOwnership.owner(), owner);
+        vm.prank(seller1);
+        vm.expectRevert("LibDiamond: Must be contract owner");
+        diamondOwnership.transferOwnership(address(seller1));
     }
 }
