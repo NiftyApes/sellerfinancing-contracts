@@ -10,14 +10,8 @@ import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 
 contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
-    IDiamondCut diamondCut;
-    IDiamondLoupe diamondLoupe;
-    IERC173 diamondOwnership;
     function setUp() public override {
         super.setUp();
-        diamondCut = IDiamondCut(address(diamond));
-        diamondLoupe = IDiamondLoupe(address(diamond));
-        diamondOwnership = IERC173(address(diamond));
     }
 
     function test_facetAddresses_must_return_all_four_facets_addresses() public {

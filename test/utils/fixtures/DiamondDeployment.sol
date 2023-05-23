@@ -18,6 +18,10 @@ contract DiamondDeployment is Test, NFTFixtures {
     Diamond diamond;
     DiamondInit diamondInit;
 
+    IDiamondCut diamondCut;
+    IDiamondLoupe diamondLoupe;
+    IERC173 diamondOwnership;
+
     function setUp() public virtual override {
         super.setUp();
         
@@ -45,12 +49,17 @@ contract DiamondDeployment is Test, NFTFixtures {
         allOwnershipSelectors[0] = ownershipFacet.transferOwnership.selector;
         allOwnershipSelectors[1] = ownershipFacet.owner.selector;
 
-        IDiamondCut.FacetCut[] memory diamondCut = new IDiamondCut.FacetCut[](2);
-        diamondCut[0] = IDiamondCut.FacetCut(address(diamondLoupeFacet), IDiamondCut.FacetCutAction.Add, allLoupeSelectors);
-        diamondCut[1] = IDiamondCut.FacetCut(address(ownershipFacet), IDiamondCut.FacetCutAction.Add, allOwnershipSelectors);
+        IDiamondCut.FacetCut[] memory facetsCut = new IDiamondCut.FacetCut[](2);
+        facetsCut[0] = IDiamondCut.FacetCut(address(diamondLoupeFacet), IDiamondCut.FacetCutAction.Add, allLoupeSelectors);
+        facetsCut[1] = IDiamondCut.FacetCut(address(ownershipFacet), IDiamondCut.FacetCutAction.Add, allOwnershipSelectors);
 
-        IDiamondCut(address(diamond)).diamondCut(diamondCut, address(diamondInit), abi.encode(diamondInit.init.selector));
-        IERC173(address(diamond)).transferOwnership(owner);
+        // set facets to the diamond addresses
+        diamondCut = IDiamondCut(address(diamond));
+        diamondLoupe = IDiamondLoupe(address(diamond));
+        diamondOwnership = IERC173(address(diamond));
+
+        diamondCut.diamondCut(facetsCut, address(diamondInit), abi.encode(diamondInit.init.selector));
+        diamondOwnership.transferOwnership(owner);
         vm.stopPrank();
     }
 }
