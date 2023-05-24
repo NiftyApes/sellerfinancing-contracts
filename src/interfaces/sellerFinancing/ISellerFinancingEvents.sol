@@ -10,10 +10,22 @@ interface ISellerFinancingEvents {
     /// @param nftId The nft id, this field can be meaningless if the offer is a floor term offer
     /// @param offer The offer details
     /// @param signature The signature that has been revoked
-    event OfferSignatureUsed(
+    event SellerFinancingOfferSignatureUsed(
         address indexed nftContractAddress,
         uint256 indexed nftId,
-        ISellerFinancingStructs.Offer offer,
+        ISellerFinancingStructs.SellerFinancingOffer offer,
+        bytes signature
+    );
+
+    /// @notice Emitted when a offer signature gets has been used
+    /// @param nftContractAddress The nft contract address
+    /// @param nftId The nft id, this field can be meaningless if the offer is a floor term offer
+    /// @param offer The offer details
+    /// @param signature The signature that has been revoked
+    event SellerFinancingOfferSignatureUsed(
+        address indexed nftContractAddress,
+        uint256 indexed nftId,
+        ISellerFinancingStructs.LendingOffer offer,
         bytes signature
     );
 

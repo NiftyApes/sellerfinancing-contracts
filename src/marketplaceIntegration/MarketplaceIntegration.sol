@@ -9,7 +9,6 @@ import "@openzeppelin-norm/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "../interfaces/sellerFinancing/ISellerFinancing.sol";
 import "../interfaces/sanctions/SanctionsList.sol";
 
-
 /// @title MarketplaceIntegration
 /// @custom:version 1.0
 /// @author zishansami102 (zishansami.eth)
@@ -101,7 +100,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param buyer The address of the buyer
     /// @param nftId The nftId of the nft the buyer intends to buy
     function buyWithFinancing(
-        ISellerFinancing.Offer memory offer,
+        ISellerFinancing.SellerFinancingOffer memory offer,
         bytes calldata signature,
         address buyer,
         uint256 nftId
@@ -134,7 +133,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param partialExecution If set to true, will continue to attempt transaction executions regardless
     ///        if previous transactions have failed or had insufficient value available
     function buyWithFinancingBatch(
-        ISellerFinancing.Offer[] memory offers,
+        ISellerFinancing.SellerFinancingOffer[] memory offers,
         bytes[] calldata signatures,
         address buyer,
         uint256[] calldata nftIds,
@@ -156,7 +155,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         // loop through list of offers to execute
         for (uint256 i; i < offersLength; ++i) {
             // instantiate ith offer
-            ISellerFinancing.Offer memory offer = offers[i];
+            ISellerFinancing.SellerFinancingOffer memory offer = offers[i];
 
             // calculate marketplace fee for ith offer
             uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / BASE_BPS;
@@ -203,7 +202,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             payable(msg.sender).sendValue(msg.value - valueConsumed);
         }
     }
-    
+
     /// @notice Execute instantSell on all the NFTs in the provided input
     /// @param nftContractAddresses The list of all the nft contract addresses
     /// @param nftIds The list of all the nft IDs
@@ -222,27 +221,48 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
 
         uint256 executionCount = nftContractAddresses.length;
         // requireLengthOfAllInputArraysAreEqual
-        if(nftIds.length != executionCount || minProfitAmounts.length != executionCount || data.length != executionCount) {
+        if (
+            nftIds.length != executionCount ||
+            minProfitAmounts.length != executionCount ||
+            data.length != executionCount
+        ) {
             revert InvalidInputLength();
         }
-        
+
         uint256 contractBalanceBefore = address(this).balance;
         for (uint256 i; i < executionCount; ++i) {
             // intantiate NFT details
             address nftContractAddress = nftContractAddresses[i];
             uint256 nftId = nftIds[i];
             // fetech active loan details
-            ISellerFinancing.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
+            ISellerFinancing.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress)
+                .getLoan(nftContractAddress, nftId);
             // transfer buyerNft from caller to this contract.
             // this call also ensures that loan exists and caller is the current buyer
-            try IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.buyerNftId) {
+            try
+                IERC721(sellerFinancingContractAddress).safeTransferFrom(
+                    msg.sender,
+                    address(this),
+                    loan.buyerNftId
+                )
+            {
                 // call instantSell to close the loan
-                try ISellerFinancing(sellerFinancingContractAddress).instantSell(nftContractAddress, nftId, minProfitAmounts[i], data[i]) {} 
-                catch {
+                try
+                    ISellerFinancing(sellerFinancingContractAddress).instantSell(
+                        nftContractAddress,
+                        nftId,
+                        minProfitAmounts[i],
+                        data[i]
+                    )
+                {} catch {
                     if (!partialExecution) {
                         revert InstantSellCallRevertedAt(i);
                     } else {
-                        IERC721(sellerFinancingContractAddress).safeTransferFrom(address(this), msg.sender, loan.buyerNftId);
+                        IERC721(sellerFinancingContractAddress).safeTransferFrom(
+                            address(this),
+                            msg.sender,
+                            loan.buyerNftId
+                        );
                     }
                 }
             } catch {
@@ -250,12 +270,11 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
                     revert BuyerTicketTransferRevertedAt(i, msg.sender, address(this));
                 }
             }
-            
         }
         // accumulate value received
         uint256 valueReceived = address(this).balance - contractBalanceBefore;
         // send all the amount received to the caller
-        if( valueReceived > 0) {
+        if (valueReceived > 0) {
             payable(msg.sender).sendValue(valueReceived);
         }
     }

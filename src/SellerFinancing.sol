@@ -43,10 +43,16 @@ contract NiftyApesSellerFinancing is
     /// @notice The base value for fees in the protocol.
     uint256 private constant BASE_BPS = 10_000;
 
-    /// @dev Constant typeHash for EIP-712 hashing of Offer struct
-    bytes32 private constant _OFFER_TYPEHASH =
+    /// @dev Constant typeHash for EIP-712 hashing of SellerFinancingOffer struct
+    bytes32 private constant SELLER_FINANCING_OFFER_TYPEHASH =
         keccak256(
             "Offer(uint128 price,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,uint64 collectionOfferLimit)"
+        );
+
+    /// @dev Constant typeHash for EIP-712 hashing of LendingOffer struct
+    bytes32 private constant LENDING_OFFER_TYPEHASH =
+        keccak256(
+            "Offer(uint128 amount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,uint64 collectionOfferLimit)"
         );
 
     // increments by two for each loan, once for buyerNftId, once for sellerNftId
@@ -158,12 +164,14 @@ contract NiftyApesSellerFinancing is
     }
 
     /// @inheritdoc ISellerFinancing
-    function getOfferHash(Offer memory offer) public view returns (bytes32) {
+    function getSellerFinancingOfferHash(
+        SellerFinancingOffer memory offer
+    ) public view returns (bytes32) {
         return
             _hashTypedDataV4(
                 keccak256(
                     abi.encode(
-                        _OFFER_TYPEHASH,
+                        SELLER_FINANCING_OFFER_TYPEHASH,
                         offer.price,
                         offer.downPaymentAmount,
                         offer.minimumPrincipalPerPeriod,
@@ -180,8 +188,8 @@ contract NiftyApesSellerFinancing is
     }
 
     /// @inheritdoc ISellerFinancing
-    function getOfferSigner(
-        Offer memory offer,
+    function getSellerFinancingOfferSigner(
+        SellerFinancingOffer memory offer,
         bytes memory signature
     ) public view override returns (address) {
         return ECDSABridge.recover(getOfferHash(offer), signature);
@@ -198,7 +206,10 @@ contract NiftyApesSellerFinancing is
     }
 
     /// @inheritdoc ISellerFinancing
-    function withdrawOfferSignature(Offer memory offer, bytes memory signature) external {
+    function withdrawSellerFinancingOfferSignature(
+        SellerFinancingOffer memory offer,
+        bytes memory signature
+    ) external {
         _requireAvailableSignature(signature);
         address signer = getOfferSigner(offer, signature);
         _requireSigner(signer, msg.sender);
@@ -207,7 +218,7 @@ contract NiftyApesSellerFinancing is
 
     /// @inheritdoc ISellerFinancing
     function buyWithFinancing(
-        Offer memory offer,
+        SellerFinancingOffer memory offer,
         bytes calldata signature,
         address buyer,
         uint256 nftId
@@ -790,7 +801,7 @@ contract NiftyApesSellerFinancing is
 
     function _createLoan(
         Loan storage loan,
-        Offer memory offer,
+        SellerFinancingOffer memory offer,
         uint256 nftId,
         uint256 sellerNftId,
         uint256 buyerNftId,
@@ -847,7 +858,7 @@ contract NiftyApesSellerFinancing is
         }
     }
 
-    function _requireOfferNotExpired(Offer memory offer) internal view {
+    function _requireOfferNotExpired(SellerFinancingOffer memory offer) internal view {
         if (offer.expiration <= SafeCastUpgradeable.toUint32(block.timestamp)) {
             revert OfferExpired();
         }
@@ -887,14 +898,171 @@ contract NiftyApesSellerFinancing is
         }
     }
 
-    function _markSignatureUsed(Offer memory offer, bytes memory signature) internal {
+    function _markSignatureUsed(
+        SellerFinancingOffer memory offer,
+        bytes memory signature
+    ) internal {
         _cancelledOrFinalized[signature] = true;
 
-        emit OfferSignatureUsed(offer.nftContractAddress, offer.nftId, offer, signature);
+        emit SellerFinancingOfferSignatureUsed(
+            offer.nftContractAddress,
+            offer.nftId,
+            offer,
+            signature
+        );
     }
 
     function renounceOwnership() public override onlyOwner {}
 
     /// @notice This contract needs to accept ETH from NFT Sale
     receive() external payable {}
+
+    function _markSignatureUsed(LendingOffer memory offer, bytes memory signature) internal {
+        _cancelledOrFinalized[signature] = true;
+
+        emit LendingOfferSignatureUsed(offer.nftContractAddress, offer.nftId, offer, signature);
+    }
+
+    function _requireOfferNotExpired(LendingOffer memory offer) internal view {
+        if (offer.expiration <= SafeCastUpgradeable.toUint32(block.timestamp)) {
+            revert OfferExpired();
+        }
+    }
+
+    function getLendingOfferHash(LendingOffer memory offer) public view returns (bytes32) {
+        return
+            _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        Lending_OFFER_TYPEHASH,
+                        offer.amount,
+                        offer.minimumPrincipalPerPeriod,
+                        offer.nftId,
+                        offer.nftContractAddress,
+                        offer.creator,
+                        offer.periodInterestRateBps,
+                        offer.periodDuration,
+                        offer.expiration,
+                        offer.collectionOfferLimit
+                    )
+                )
+            );
+    }
+
+    function getLendingOfferSigner(
+        LendingOffer memory offer,
+        bytes memory signature
+    ) public view override returns (address) {
+        return ECDSABridge.recover(getOfferHash(offer), signature);
+    }
+
+    function withdrawLendingOfferSignature(
+        LendingOffer memory offer,
+        bytes memory signature
+    ) external {
+        _requireAvailableSignature(signature);
+        address signer = getOfferSigner(offer, signature);
+        _requireSigner(signer, msg.sender);
+        _markSignatureUsed(offer, signature);
+    }
+
+    function executeLoan(
+        LendingOffer memory offer,
+        bytes calldata signature,
+        address borrower,
+        uint256 nftId
+    ) external payable whenNotPaused nonReentrant returns (uint256 conversionAmountReceived) {
+        // check for collection offer
+        if (offer.nftId != ~uint256(0)) {
+            if (nftId != offer.nftId) {
+                revert NftIdsMustMatch();
+            }
+            _requireAvailableSignature(signature);
+            // mark signature as used
+            _markSignatureUsed(offer, signature);
+        } else {
+            if (getCollectionOfferCount(signature) >= offer.collectionOfferLimit) {
+                revert CollectionOfferLimitReached();
+            }
+            _collectionOfferCounters[signature] += 1;
+        }
+        // instantiate loan
+        Loan storage loan = _getLoan(offer.nftContractAddress, nftId);
+        // get lender
+        address lender = getOfferSigner(offer, signature);
+        if (_callERC1271isValidSignature(offer.creator, getOfferHash(offer), signature)) {
+            lender = offer.creator;
+        }
+
+        _require721Owner(offer.nftContractAddress, nftId, lender);
+        _requireIsNotSanctioned(lender);
+        _requireIsNotSanctioned(borrower);
+        _requireIsNotSanctioned(msg.sender);
+        _requireOfferNotExpired(offer);
+        // requireOfferisValid
+        _requireNonZeroAddress(offer.nftContractAddress);
+        // require1MinsMinimumDuration
+        if (offer.periodDuration < 1 minutes) {
+            revert InvalidPeriodDuration();
+        }
+        // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
+        if (offer.principalAmount < offer.minimumPrincipalPerPeriod) {
+            revert InvalidMinimumPrincipalPerPeriod(
+                offer.minimumPrincipalPerPeriod,
+                offer.principalAmount
+            );
+        }
+        // requireNotSellerFinancingTicket
+        if (offer.nftContractAddress == address(this)) {
+            revert CannotBuySellerFinancingTicket();
+        }
+
+        // cache this contract eth balance before the weth conversion
+        uint256 contractBalanceBefore = address(this).balance;
+
+        // convert weth to eth
+        (bool success, ) = wethContractAddress.call(
+            abi.encodeWithSignature("withdraw(uint256)", offer.principalAmount)
+        );
+        if (!success) {
+            revert WethConversionFailed();
+        }
+
+        // calculate conversionAmountReceived
+        conversionAmountReceived = address(this).balance - contractBalanceBefore;
+
+        // payout borrower
+        payable(borrower).sendValue(conversionAmountReceived);
+
+        // mint borrower nft
+        uint256 borrowerNftId = loanNftNonce;
+        loanNftNonce++;
+        _safeMint(borrower, borrowerNftId);
+        _setTokenURI(
+            borrowerNftId,
+            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
+        );
+
+        // mint lender nft
+        // use loanNftNonce to prevent stack too deep error
+        _safeMint(lender, loanNftNonce);
+        loanNftNonce++;
+
+        // create loan
+        _createLoan(loan, offer, nftId, loanNftNonce - 1, borrowerNftId, offer.principalAmount);
+
+        // transfer nft from borrower to this contract, revert on failure
+        _transferNft(offer.nftContractAddress, nftId, borrower, address(this));
+
+        // add borrower delegate.cash delegation
+        IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
+            borrower,
+            offer.nftContractAddress,
+            nftId,
+            true
+        );
+
+        // emit loan executed event
+        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
+    }
 }

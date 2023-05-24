@@ -2,7 +2,7 @@
 pragma solidity 0.8.18;
 
 interface ISellerFinancingStructs {
-    struct Offer {
+    struct SellerFinancingOffer {
         // SLOT 0
         // Full price of NFT
         uint128 price;
@@ -15,6 +15,30 @@ interface ISellerFinancingStructs {
         // Offer NFT ID
         uint256 nftId;
         // SLOT 3 - 32 remaining
+        // Offer NFT contract address
+        address nftContractAddress;
+        // Offer creator
+        address creator;
+        // Interest rate basis points to be paid against remainingPrincipal per period
+        uint32 periodInterestRateBps;
+        // Number of seconds per period
+        uint32 periodDuration;
+        // Timestamp of offer expiration
+        uint32 expiration;
+        // collection offer usage limit, ignored if nftId is not ~uint256(0)
+        uint64 collectionOfferLimit;
+    }
+
+    struct LendingOffer {
+        // SLOT 0
+        // Loan offer amount in WETH, to be converted to ETH in executeLoan
+        uint128 amount;
+        // Minimum amount of total principal to be paid each period
+        uint128 minimumPrincipalPerPeriod;
+        // SLOT 1
+        // Offer NFT ID
+        uint256 nftId;
+        // SLOT 2 - 32 remaining
         // Offer NFT contract address
         address nftContractAddress;
         // Offer creator
