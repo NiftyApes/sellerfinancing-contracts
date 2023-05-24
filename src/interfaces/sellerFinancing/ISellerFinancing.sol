@@ -85,7 +85,7 @@ interface ISellerFinancing is
     /// @param signature A signed offerHash
     /// @param buyer The address of the buyer
     /// @dev   buyer provided as param to allow for 3rd party marketplace integrations
-    function buyWithFinancing(
+    function buyWithSellerFinancing(
         SellerFinancingOffer calldata offer,
         bytes memory signature,
         address buyer,

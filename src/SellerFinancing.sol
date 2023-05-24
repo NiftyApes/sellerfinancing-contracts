@@ -217,7 +217,7 @@ contract NiftyApesSellerFinancing is
     }
 
     /// @inheritdoc ISellerFinancing
-    function buyWithFinancing(
+    function buyWithSellerFinancing(
         SellerFinancingOffer memory offer,
         bytes calldata signature,
         address buyer,
@@ -1000,7 +1000,7 @@ contract NiftyApesSellerFinancing is
             lender = offer.creator;
         }
 
-        _require721Owner(offer.nftContractAddress, nftId, lender);
+        _require721Owner(offer.nftContractAddress, nftId, borrower);
         _requireIsNotSanctioned(lender);
         _requireIsNotSanctioned(borrower);
         _requireIsNotSanctioned(msg.sender);
@@ -1025,6 +1025,13 @@ contract NiftyApesSellerFinancing is
 
         // cache this contract eth balance before the weth conversion
         uint256 contractBalanceBefore = address(this).balance;
+
+        // transferFrom weth from lender
+        IERC20Upgradeable(wethContractAddress).safeTransferFrom(
+            lender,
+            address(this),
+            offer.principalAmount
+        );
 
         // convert weth to eth
         (bool success, ) = wethContractAddress.call(
@@ -1055,7 +1062,7 @@ contract NiftyApesSellerFinancing is
         loanNftNonce++;
 
         // create loan
-        _createLoan(loan, offer, nftId, loanNftNonce - 2, loanNftNonce - 1, offer.principalAmount);
+        _createLoan(loan, offer, nftId, loanNftNonce - 2, loanNftNonce - 1);
 
         // transfer nft from borrower to this contract, revert on failure
         _transferNft(offer.nftContractAddress, nftId, borrower, address(this));
@@ -1072,17 +1079,127 @@ contract NiftyApesSellerFinancing is
         emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
     }
 
+    function buyWith3rdPartyFinancing(
+        LendingOffer memory offer,
+        bytes calldata signature,
+        address buyer,
+        uint256 nftId,
+        bytes calldata data
+    ) external payable whenNotPaused nonReentrant {
+        // check for collection offer
+        if (offer.nftId != ~uint256(0)) {
+            if (nftId != offer.nftId) {
+                revert NftIdsMustMatch();
+            }
+            _requireAvailableSignature(signature);
+            // mark signature as used
+            _markSignatureUsed(offer, signature);
+        } else {
+            if (getCollectionOfferCount(signature) >= offer.collectionOfferLimit) {
+                revert CollectionOfferLimitReached();
+            }
+            _collectionOfferCounters[signature] += 1;
+        }
+        // instantiate loan
+        Loan storage loan = _getLoan(offer.nftContractAddress, nftId);
+        // get lender
+        address lender = getLendingOfferSigner(offer, signature);
+        if (_callERC1271isValidSignature(offer.creator, getLendingOfferHash(offer), signature)) {
+            lender = offer.creator;
+        }
+
+        _requireIsNotSanctioned(lender);
+        _requireIsNotSanctioned(buyer);
+        _requireIsNotSanctioned(msg.sender);
+        _requireOfferNotExpired(offer);
+        // requireOfferisValid
+        _requireNonZeroAddress(offer.nftContractAddress);
+        // require1MinsMinimumDuration
+        if (offer.periodDuration < 1 minutes) {
+            revert InvalidPeriodDuration();
+        }
+        // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
+        if (offer.principalAmount < offer.minimumPrincipalPerPeriod) {
+            revert InvalidMinimumPrincipalPerPeriod(
+                offer.minimumPrincipalPerPeriod,
+                offer.principalAmount
+            );
+        }
+        // requireNotSellerFinancingTicket
+        if (offer.nftContractAddress == address(this)) {
+            revert CannotBuySellerFinancingTicket();
+        }
+
+        // decode seaport order data
+        ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
+
+        // instantiate weth
+        IERC20Upgradeable asset = IERC20Upgradeable(wethContractAddress);
+
+        // calculate totalConsiderationAmount
+        uint256 totalConsiderationAmount;
+        for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
+            totalConsiderationAmount += order.parameters.consideration[i].endAmount;
+        }
+
+        // transferFrom weth from lender
+        asset.safeTransferFrom(lender, address(this), offer.principalAmount);
+
+        // transferFrom downPayment from buyer
+        asset.safeTransferFrom(
+            lender,
+            address(this),
+            totalConsiderationAmount - offer.principalAmount
+        );
+
+        // set allowance for seaport to transferFrom this contract during .fulfillOrder()
+        asset.approve(seaportContractAddress, totalConsiderationAmount);
+
+        // execute sale on Seaport
+        if (!ISeaport(seaportContractAddress).fulfillOrder(order, bytes32(0))) {
+            revert SeaportOrderNotFulfilled();
+        }
+
+        // mint buyer nft
+        _safeMint(buyer, loanNftNonce);
+        loanNftNonce++;
+        _setTokenURI(
+            loanNftNonce - 1,
+            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
+        );
+
+        // mint lender nft
+        _safeMint(lender, loanNftNonce);
+        loanNftNonce++;
+
+        // create loan
+        _createLoan(loan, offer, nftId, loanNftNonce - 2, loanNftNonce - 1);
+
+        // transfer nft from buyer to this contract, revert on failure
+        _transferNft(offer.nftContractAddress, nftId, buyer, address(this));
+
+        // add buyer delegate.cash delegation
+        IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
+            buyer,
+            offer.nftContractAddress,
+            nftId,
+            true
+        );
+
+        // emit loan executed event
+        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
+    }
+
     function _createLoan(
         Loan storage loan,
         LendingOffer memory offer,
         uint256 nftId,
         uint256 sellerNftId,
-        uint256 buyerNftId,
-        uint256 amount
+        uint256 buyerNftId
     ) internal {
         loan.sellerNftId = sellerNftId;
         loan.buyerNftId = buyerNftId;
-        loan.remainingPrincipal = uint128(amount);
+        loan.remainingPrincipal = uint128(offer.principalAmount);
         loan.periodEndTimestamp = _currentTimestamp32() + offer.periodDuration;
         loan.periodBeginTimestamp = _currentTimestamp32();
         loan.minimumPrincipalPerPeriod = offer.minimumPrincipalPerPeriod;

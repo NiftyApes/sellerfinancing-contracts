@@ -113,11 +113,11 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
         return signOffer(seller1_private_key, offer);
     }
 
-    function createOfferAndBuyWithFinancing(SellerFinancingOffer memory offer) internal {
+    function createOfferAndBuyWithSellerFinancing(SellerFinancingOffer memory offer) internal {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,

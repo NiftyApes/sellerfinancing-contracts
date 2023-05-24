@@ -59,24 +59,18 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         vm.expectRevert("Pausable: paused");
-        marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
-            offer,
-            offerSignature,
-            buyer1,
-            offer.nftId
-        );
+        marketplaceIntegration.buyWithSellerFinancing{
+            value: offer.downPaymentAmount + marketplaceFee
+        }(offer, offerSignature, buyer1, offer.nftId);
         vm.stopPrank();
 
         vm.prank(owner);
         marketplaceIntegration.unpause();
 
         vm.startPrank(buyer1);
-        marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
-            offer,
-            offerSignature,
-            buyer1,
-            offer.nftId
-        );
+        marketplaceIntegration.buyWithSellerFinancing{
+            value: offer.downPaymentAmount + marketplaceFee
+        }(offer, offerSignature, buyer1, offer.nftId);
         vm.stopPrank();
 
         assertionsForExecutedLoan(offer);

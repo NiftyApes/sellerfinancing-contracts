@@ -68,7 +68,7 @@ contract TestUnpause is Test, BaseTest, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         vm.expectRevert("Pausable: paused");
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -80,7 +80,7 @@ contract TestUnpause is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.unpause();
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,

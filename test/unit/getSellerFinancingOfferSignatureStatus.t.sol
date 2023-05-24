@@ -56,7 +56,7 @@ contract TestGetOfferSignatureStatus is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             signature,
             buyer1,

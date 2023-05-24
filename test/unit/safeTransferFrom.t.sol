@@ -57,7 +57,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
             defaultFixedOfferFields
         );
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -96,7 +96,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
             defaultFixedOfferFields
         );
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -136,7 +136,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
             defaultFixedOfferFields
         );
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -171,7 +171,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
             defaultFixedOfferFields
         );
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);

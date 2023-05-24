@@ -40,7 +40,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
 
     error InvalidInputLength();
 
-    error BuyWithFinancingCallRevertedAt(uint256 index);
+    error BuyWithSellerFinancingCallRevertedAt(uint256 index);
 
     error InstantSellCallRevertedAt(uint256 index);
 
@@ -99,7 +99,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param signature Signature from the offer creator
     /// @param buyer The address of the buyer
     /// @param nftId The nftId of the nft the buyer intends to buy
-    function buyWithFinancing(
+    function buyWithSellerFinancing(
         ISellerFinancing.SellerFinancingOffer memory offer,
         bytes calldata signature,
         address buyer,
@@ -119,8 +119,8 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         // send marketplace fee to marketplace fee recipient
         marketplaceFeeRecipient.sendValue(marketplaceFeeAmount);
 
-        // execute buyWithFinancing
-        ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
+        // execute buyWithSellerFinancing
+        ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
             value: msg.value - marketplaceFeeAmount
         }(offer, signature, buyer, nftId);
     }
@@ -132,7 +132,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param nftIds The nftIds of the nfts the buyer intends to buy
     /// @param partialExecution If set to true, will continue to attempt transaction executions regardless
     ///        if previous transactions have failed or had insufficient value available
-    function buyWithFinancingBatch(
+    function buyWithSellerFinancingBatch(
         ISellerFinancing.SellerFinancingOffer[] memory offers,
         bytes[] calldata signatures,
         address buyer,
@@ -176,7 +176,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             }
             // try executing current offer,
             try
-                ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
+                ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
                     value: offer.downPaymentAmount
                 }(offer, signatures[i], buyer, nftIds[i])
             {
@@ -189,7 +189,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
                 // if failed
                 // if partial execution is not allowed, revert
                 if (!partialExecution) {
-                    revert BuyWithFinancingCallRevertedAt(i);
+                    revert BuyWithSellerFinancingCallRevertedAt(i);
                 }
             }
         }

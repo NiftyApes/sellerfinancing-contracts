@@ -79,7 +79,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
     function _test_seizeAsset_simplest_case(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -110,7 +110,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
     function _test_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         vm.startPrank(seller1);
@@ -132,7 +132,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
     function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -168,7 +168,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_seizeAsset_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -212,7 +212,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_seizeAsset_reverts_ifCallerNotSeller(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);

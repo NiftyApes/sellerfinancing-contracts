@@ -96,7 +96,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         }
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -185,7 +185,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -268,7 +268,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         }
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -338,7 +338,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_post_grace_period(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -394,7 +394,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -460,7 +460,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifCallerIsNotBuyer(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -512,7 +512,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -564,7 +564,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -611,7 +611,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -658,7 +658,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -704,7 +704,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -750,7 +750,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -796,7 +796,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -843,7 +843,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -890,7 +890,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -952,7 +952,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 

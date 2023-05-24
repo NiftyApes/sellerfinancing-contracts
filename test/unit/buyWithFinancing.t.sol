@@ -11,7 +11,7 @@ import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
 
-contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents {
+contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function setUp() public override {
         super.setUp();
     }
@@ -58,7 +58,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function _test_buyWithFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
+    function _test_buyWithSellerFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
@@ -75,7 +75,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         uint256 sellerBalanceBefore = address(seller1).balance;
         uint256 royaltiesBalanceBefore = address(recipients1[0]).balance;
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer, offer.nftId);
 
         uint256 sellerBalanceAfter = address(seller1).balance;
@@ -91,18 +91,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
     }
 
-    function test_fuzz_buyWithFinancing_simplest_case(
+    function test_fuzz_buyWithSellerFinancing_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_simplest_case(fuzzed);
+        _test_buyWithSellerFinancing_simplest_case(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_simplest_case() public {
+    function test_unit_buyWithSellerFinancing_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_simplest_case(fixedForSpeed);
+        _test_buyWithSellerFinancing_simplest_case(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_returnsExtraAmountMoreThanDownpayment(
+    function _test_buyWithSellerFinancing_returnsExtraAmountMoreThanDownpayment(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -112,7 +112,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         uint256 extraAmount = 1234567890;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount + extraAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount + extraAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -125,18 +125,20 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         assertEq(buyer1BalanceAfter, buyer1BalanceBefore - offer.downPaymentAmount);
     }
 
-    function test_fuzz_buyWithFinancing_returnsExtraAmountMoreThanDownpayment(
+    function test_fuzz_buyWithSellerFinancing_returnsExtraAmountMoreThanDownpayment(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_returnsExtraAmountMoreThanDownpayment(fuzzed);
+        _test_buyWithSellerFinancing_returnsExtraAmountMoreThanDownpayment(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_returnsExtraAmountMoreThanDownpayment() public {
+    function test_unit_buyWithSellerFinancing_returnsExtraAmountMoreThanDownpayment() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_returnsExtraAmountMoreThanDownpayment(fixedForSpeed);
+        _test_buyWithSellerFinancing_returnsExtraAmountMoreThanDownpayment(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_emitsExpectedEvents(FuzzedOfferFields memory fuzzed) private {
+    function _test_buyWithSellerFinancing_emitsExpectedEvents(
+        FuzzedOfferFields memory fuzzed
+    ) private {
         ISellerFinancingStructs.SellerFinancingOffer memory offer = offerStructFromFields(
             fuzzed,
             defaultFixedOfferFields
@@ -157,7 +159,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         emit LoanExecuted(offer.nftContractAddress, offer.nftId, offerSignature, loan);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -166,18 +168,20 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_emitsExpectedEvents(
+    function test_fuzz_buyWithSellerFinancing_emitsExpectedEvents(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_emitsExpectedEvents(fuzzed);
+        _test_buyWithSellerFinancing_emitsExpectedEvents(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_emitsExpectedEvents() public {
+    function test_unit_buyWithSellerFinancing_emitsExpectedEvents() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_emitsExpectedEvents(fixedForSpeed);
+        _test_buyWithSellerFinancing_emitsExpectedEvents(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_collection_offer(FuzzedOfferFields memory fuzzed) private {
+    function _test_buyWithSellerFinancing_collection_offer(
+        FuzzedOfferFields memory fuzzed
+    ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 nftId = offer.nftId;
         offer.nftId = ~uint256(0);
@@ -208,7 +212,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         emit LoanExecuted(offer.nftContractAddress, nftId, offerSignature, loan);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -231,18 +235,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
     }
 
-    function test_fuzz_buyWithFinancing_collection_offer(
+    function test_fuzz_buyWithSellerFinancing_collection_offer(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_collection_offer(fuzzed);
+        _test_buyWithSellerFinancing_collection_offer(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_collection_offer() public {
+    function test_unit_buyWithSellerFinancing_collection_offer() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_collection_offer(fixedForSpeed);
+        _test_buyWithSellerFinancing_collection_offer(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
+    function _test_buyWithSellerFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -251,7 +255,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.NftIdsMustMatch.selector);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -260,22 +264,24 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
+            fuzzed
+        );
     }
 
-    function test_unit_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer()
+    function test_unit_buyWithSellerFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer()
         public
     {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
+        _test_buyWithSellerFinancing_reverts_if_nftIdNotEqualToOfferNftId_for_nonCollectionOffer(
             fixedForSpeed
         );
     }
 
-    function _test_buyWithFinancing_collection_offer_reverts_if_limitReached(
+    function _test_buyWithSellerFinancing_collection_offer_reverts_if_limitReached(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -289,7 +295,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -301,7 +307,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.CollectionOfferLimitReached.selector);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -310,18 +316,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_collection_offer_reverts_if_limitReached(
+    function test_fuzz_buyWithSellerFinancing_collection_offer_reverts_if_limitReached(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_collection_offer_reverts_if_limitReached(fuzzed);
+        _test_buyWithSellerFinancing_collection_offer_reverts_if_limitReached(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_collection_offer_reverts_if_limitReached() public {
+    function test_unit_buyWithSellerFinancing_collection_offer_reverts_if_limitReached() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_collection_offer_reverts_if_limitReached(fixedForSpeed);
+        _test_buyWithSellerFinancing_collection_offer_reverts_if_limitReached(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_offerSignerNotOwner(
+    function _test_buyWithSellerFinancing_reverts_if_offerSignerNotOwner(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -343,7 +349,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
                 seller1
             )
         );
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -352,25 +358,25 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_offerSignerNotOwner(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_offerSignerNotOwner(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_offerSignerNotOwner(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_offerSignerNotOwner(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_offerSignerNotOwner() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_offerSignerNotOwner() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_offerSignerNotOwner(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_offerSignerNotOwner(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_signatureAlreadyUsed(
+    function _test_buyWithSellerFinancing_reverts_if_signatureAlreadyUsed(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -394,7 +400,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
                 offerSignature
             )
         );
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -402,18 +408,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         );
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_signatureAlreadyUsed(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_signatureAlreadyUsed(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_signatureAlreadyUsed(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_signatureAlreadyUsed(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_signatureAlreadyUsed() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_signatureAlreadyUsed() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_signatureAlreadyUsed(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_signatureAlreadyUsed(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_offerExpired(
+    function _test_buyWithSellerFinancing_reverts_if_offerExpired(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -423,7 +429,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.OfferExpired.selector);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -432,18 +438,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_offerExpired(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_offerExpired(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_offerExpired(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_offerExpired(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_offerExpired() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_offerExpired() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_offerExpired(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_offerExpired(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_invalidPeriodDuration(
+    function _test_buyWithSellerFinancing_reverts_if_invalidPeriodDuration(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -452,7 +458,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.InvalidPeriodDuration.selector);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -461,18 +467,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_invalidPeriodDuration(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_invalidPeriodDuration(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_invalidPeriodDuration(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_invalidPeriodDuration(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_invalidPeriodDuration() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_invalidPeriodDuration() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_invalidPeriodDuration(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_invalidPeriodDuration(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(
+    function _test_buyWithSellerFinancing_reverts_if_invalidDownpaymentValue(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -486,7 +492,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
                 offer.downPaymentAmount
             )
         );
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount - 1 }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount - 1 }(
             offer,
             offerSignature,
             buyer1,
@@ -495,18 +501,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_invalidDownpaymentValue(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_invalidDownpaymentValue(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_invalidDownpaymentValue(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_invalidDownpaymentValue() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_invalidDownpaymentValue() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_invalidDownpaymentValue(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(
+    function _test_buyWithSellerFinancing_reverts_if_offerPriceLessThanDownpayment(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -521,7 +527,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
                 offer.price
             )
         );
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -530,18 +536,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_offerPriceLessThanDownpayment(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_offerPriceLessThanDownpayment(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_offerPriceLessThanDownpayment() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_offerPriceLessThanDownpayment(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(
+    function _test_buyWithSellerFinancing_reverts_if_invalidMinPrincipalPerPeriod(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -556,7 +562,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
                 offer.price - offer.downPaymentAmount
             )
         );
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -565,18 +571,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_invalidMinPrincipalPerPeriod(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_invalidMinPrincipalPerPeriod(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_invalidMinPrincipalPerPeriod() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_invalidMinPrincipalPerPeriod(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_buyerSanctioned(
+    function _test_buyWithSellerFinancing_reverts_if_buyerSanctioned(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -589,7 +595,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
@@ -598,18 +604,18 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_buyerSanctioned(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_buyerSanctioned(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_buyerSanctioned(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_buyerSanctioned(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_buyerSanctioned() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_buyerSanctioned() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_buyerSanctioned(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_buyerSanctioned(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_callerSanctioned(
+    function _test_buyWithSellerFinancing_reverts_if_callerSanctioned(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
@@ -622,7 +628,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -631,25 +637,25 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_callerSanctioned(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_callerSanctioned(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_callerSanctioned(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_callerSanctioned(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_callerSanctioned() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_callerSanctioned() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_callerSanctioned(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_callerSanctioned(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(
+    function _test_buyWithSellerFinancing_reverts_if_offerForSellerFinancingTicket(
         FuzzedOfferFields memory fuzzed
     ) private {
         SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -666,7 +672,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(ISellerFinancingErrors.CannotBuySellerFinancingTicket.selector);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature2,
             buyer1,
@@ -675,14 +681,14 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(
+    function test_fuzz_buyWithSellerFinancing_reverts_if_offerForSellerFinancingTicket(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(fuzzed);
+        _test_buyWithSellerFinancing_reverts_if_offerForSellerFinancingTicket(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_offerForSellerFinancingTicket() public {
+    function test_unit_buyWithSellerFinancing_reverts_if_offerForSellerFinancingTicket() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_offerForSellerFinancingTicket(fixedForSpeed);
+        _test_buyWithSellerFinancing_reverts_if_offerForSellerFinancingTicket(fixedForSpeed);
     }
 }

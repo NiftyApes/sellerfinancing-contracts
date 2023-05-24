@@ -16,7 +16,7 @@ The flow and main actions of the system are described as:
 
 #### Execute A Purchase
 
-2. When a buyer executes a sale by supplying the signed financing offer to the `buyWithFinancing()` function the NFT is entered into escrow in the NiftyApes Seller Financing contract and a loan is initiated.
+2. When a buyer executes a sale by supplying the signed financing offer to the `buyWithSellerFinancing()` function the NFT is entered into escrow in the NiftyApes Seller Financing contract and a loan is initiated.
 
 #### Utilize The Purchased NFT
 
@@ -44,7 +44,7 @@ The flow and main actions of the system are described as:
 
 ## Marketplace Integration
 
-The intention is for the main usage of the NiftyApes Seller Financing protocol to be through the NiftyApes SDK. This SDK will be integrated with 3rd party marketplace dapps. In order to serve this use case we have provided a `MarketplaceIntegration` contract in addition to the core Seller Financing protocol. The integration contract allows an owner to specify a `marketplaceFeeBps` and `marketplaceFeeRecipient`, and allows a user to call the `buyWithFinancing()` function which passes the calculated marketplace fee to the `marketplaceFeeRecipient` upon execution.
+The intention is for the main usage of the NiftyApes Seller Financing protocol to be through the NiftyApes SDK. This SDK will be integrated with 3rd party marketplace dapps. In order to serve this use case we have provided a `MarketplaceIntegration` contract in addition to the core Seller Financing protocol. The integration contract allows an owner to specify a `marketplaceFeeBps` and `marketplaceFeeRecipient`, and allows a user to call the `buyWithSellerFinancing()` function which passes the calculated marketplace fee to the `marketplaceFeeRecipient` upon execution.
 
 ## Use Cases
 
@@ -110,7 +110,7 @@ This dynamic prevents a nefarious seller from sending the seller ticket to a con
 
 #### Excessive Ether Funds are Refunded to the Buyer Rather than Msg.sender
 
-8. In `buyWithFinancing()`, if `msg.value` exceeds `offer.downPaymentAmount()`, the refund is issued to the buyer ticket holder rather than the `msg.sender`. This is done so that buyers receive their refund for purchases made through the MarketplaceIntegration contract, which is deployed by a 3rd party and collects a marketplace fee before making an external call to SellerFinancing.buyWithFinancing(). Users interacting directly with the SellerFinancing contract should be aware that excessive payments are sent directly to the buyer ticket holder.
+8. In `buyWithSellerFinancing()`, if `msg.value` exceeds `offer.downPaymentAmount()`, the refund is issued to the buyer ticket holder rather than the `msg.sender`. This is done so that buyers receive their refund for purchases made through the MarketplaceIntegration contract, which is deployed by a 3rd party and collects a marketplace fee before making an external call to SellerFinancing.buyWithSellerFinancing(). Users interacting directly with the SellerFinancing contract should be aware that excessive payments are sent directly to the buyer ticket holder.
 
 #### Purchase of Defaulted Buyer Tickets
 
