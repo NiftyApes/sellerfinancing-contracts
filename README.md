@@ -100,9 +100,9 @@ This dynamic prevents a nefarious seller from sending the seller ticket to a con
 
 5. The NiftyApes Seller Financing Protocol v1.0 utilizes `uint32` timestamps throughout the protocol. This has been done to reduce the compile time contract size and runtime gas useage. This means that the protocol will cease to function and no loans can go beyond January 19, 2038 at 3:14:07 UTC, roughly 15 years from the time of writing. The intention is for this first version of the protocol to be phased out in the future in favor of a second version that does support loans beyond this January 19, 2038 at 3:14:07 UTC.
 
-#### `withdrawOfferSignature()` Vulnerable to Front-Running
+#### `withdrawSellerFinancingOfferSignature()` Vulnerable to Front-Running
 
-6. `withdrawOfferSignature()` is vulnerable to front-running. If a seller submits a transaction calling `withdrawOfferSignature()` to the mempool on an undesirable existing offer, a savvy witnesser could see this and buy the offer prior to the cancellation. This can result in sellers being forced to finance NFTs on Offers that they don't intend to keep or are no longer desirable due to market conditions. We suggest utilizing a short expiration for offers and resubmitting offers often or submitting a `withdrawOfferSignature()` transaction via a service such as Flashbots as a way to mitigate this issue as well as market volatility and foster price discovery.
+6. `withdrawSellerFinancingOfferSignature()` is vulnerable to front-running. If a seller submits a transaction calling `withdrawSellerFinancingOfferSignature()` to the mempool on an undesirable existing offer, a savvy witnesser could see this and buy the offer prior to the cancellation. This can result in sellers being forced to finance NFTs on Offers that they don't intend to keep or are no longer desirable due to market conditions. We suggest utilizing a short expiration for offers and resubmitting offers often or submitting a `withdrawSellerFinancingOfferSignature()` transaction via a service such as Flashbots as a way to mitigate this issue as well as market volatility and foster price discovery.
 
 #### Seller Cannot Make The Exact Same Offer Twice
 

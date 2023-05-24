@@ -14,7 +14,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer) private {
+    function assertionsForExecutedLoan(SellerFinancingOffer memory offer) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
@@ -48,7 +48,10 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function assertionsForClosedLoan(Offer memory offer, address expectedNftOwner) private {
+    function assertionsForClosedLoan(
+        SellerFinancingOffer memory offer,
+        address expectedNftOwner
+    ) private {
         // expected address has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), expectedNftOwner);
         // require delegate.cash buyer delegation has been revoked
@@ -75,7 +78,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_seizeAsset_simplest_case(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
@@ -106,7 +109,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
@@ -128,7 +131,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
@@ -163,7 +166,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_seizeAsset_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
@@ -207,7 +210,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_seizeAsset_reverts_ifCallerNotSeller(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);

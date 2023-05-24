@@ -8,7 +8,7 @@ import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
 
-contract TestWithdrawOfferSignature is
+contract TestwithdrawSellerFinancingOfferSignature is
     Test,
     BaseTest,
     ISellerFinancingStructs,
@@ -22,8 +22,8 @@ contract TestWithdrawOfferSignature is
         super.setUp();
     }
 
-    function test_unit_withdrawOfferSignature_works() public {
-        Offer memory offer = Offer({
+    function test_unit_withdrawSellerFinancingOfferSignature_works() public {
+        SellerFinancingOffer memory offer = SellerFinancingOffer({
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
@@ -36,17 +36,17 @@ contract TestWithdrawOfferSignature is
             collectionOfferLimit: 1
         });
 
-        bytes32 offerHash = sellerFinancing.getOfferHash(offer);
+        bytes32 offerHash = sellerFinancing.getSellerFinancingOfferHash(offer);
 
         bytes memory signature = sign(SIGNER_PRIVATE_KEY_1, offerHash);
 
         vm.startPrank(address(SIGNER_1));
-        sellerFinancing.withdrawOfferSignature(offer, signature);
+        sellerFinancing.withdrawSellerFinancingOfferSignature(offer, signature);
         vm.stopPrank();
     }
 
-    function test_unit_withdrawOfferSignature_works_whenPaused() public {
-        Offer memory offer = Offer({
+    function test_unit_withdrawSellerFinancingOfferSignature_works_whenPaused() public {
+        SellerFinancingOffer memory offer = SellerFinancingOffer({
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
@@ -59,19 +59,19 @@ contract TestWithdrawOfferSignature is
             collectionOfferLimit: 1
         });
 
-        bytes32 offerHash = sellerFinancing.getOfferHash(offer);
+        bytes32 offerHash = sellerFinancing.getSellerFinancingOfferHash(offer);
 
         bytes memory signature = sign(SIGNER_PRIVATE_KEY_1, offerHash);
         vm.prank(owner);
         sellerFinancing.pause();
 
         vm.startPrank(address(SIGNER_1));
-        sellerFinancing.withdrawOfferSignature(offer, signature);
+        sellerFinancing.withdrawSellerFinancingOfferSignature(offer, signature);
         vm.stopPrank();
     }
 
-    function test_unit_cannot_withdrawOfferSignature_not_signer() public {
-        Offer memory offer = Offer({
+    function test_unit_cannot_withdrawSellerFinancingOfferSignature_not_signer() public {
+        SellerFinancingOffer memory offer = SellerFinancingOffer({
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
@@ -84,7 +84,7 @@ contract TestWithdrawOfferSignature is
             collectionOfferLimit: 1
         });
 
-        bytes32 offerHash = sellerFinancing.getOfferHash(offer);
+        bytes32 offerHash = sellerFinancing.getSellerFinancingOfferHash(offer);
 
         bytes memory signature = sign(seller1_private_key, offerHash);
 
@@ -92,7 +92,7 @@ contract TestWithdrawOfferSignature is
         vm.expectRevert(
             abi.encodeWithSelector(ISellerFinancingErrors.InvalidSigner.selector, seller1, seller2)
         );
-        sellerFinancing.withdrawOfferSignature(offer, signature);
+        sellerFinancing.withdrawSellerFinancingOfferSignature(offer, signature);
         vm.stopPrank();
     }
 }

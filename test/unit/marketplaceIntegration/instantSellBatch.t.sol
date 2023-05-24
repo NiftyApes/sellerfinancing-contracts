@@ -16,7 +16,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId) private {
+    function assertionsForExecutedLoan(SellerFinancingOffer memory offer, uint256 nftId) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
         // loan auction exists
@@ -57,7 +57,11 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function assertionsForClosedLoan(uint256 nftId, address expectedNftOwner, uint256 buyerNftId) private {
+    function assertionsForClosedLoan(
+        uint256 nftId,
+        address expectedNftOwner,
+        uint256 buyerNftId
+    ) private {
         // expected address has NFT
         assertEq(boredApeYachtClub.ownerOf(nftId), expectedNftOwner);
 
@@ -74,20 +78,19 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
 
         // loan doesn't exist anymore
         Loan memory loan = sellerFinancing.getLoan(address(boredApeYachtClub), nftId);
-        assertEq(
-            loan.periodBeginTimestamp,
-            0
-        );
+        assertEq(loan.periodBeginTimestamp, 0);
         // buyer NFT burned
         vm.expectRevert("ERC721: invalid token ID");
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(buyerNftId), address(0));
         // seller NFT burned
         vm.expectRevert("ERC721: invalid token ID");
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(buyerNftId+1), address(0));
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(buyerNftId + 1), address(0));
     }
 
-    function _test_instantSellBatch_simplest_one_loan_case(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSellBatch_simplest_one_loan_case(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         createOfferAndBuyWithFinancing(offer);
@@ -129,8 +132,11 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         data[0] = abi.encode(order[0]);
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan.buyerNftId);
-        
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan.buyerNftId
+        );
+
         vm.expectEmit(true, true, false, false);
         emit InstantSell(nftContractAddresses[0], nftIds[0], 0);
         marketplaceIntegration.instantSellBatch(
@@ -160,15 +166,17 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_instantSellBatch_simplest_one_loan_case(fixedForSpeed);
     }
 
-    function _test_instantSellBatch_executes_two_loan_case(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSellBatch_executes_two_loan_case(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.collectionOfferLimit = 2;
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, 6974);
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), 8661);
@@ -212,13 +220,21 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         minProfitAmounts[0] = 1 ether;
         minProfitAmounts[1] = 2 ether;
 
-        uint256 expectedBuyer1BalanceAfterLoanIsClosed = (buyer1BalanceBefore - 2 * offer.downPaymentAmount + minProfitAmounts[0] + minProfitAmounts[1]);
+        uint256 expectedBuyer1BalanceAfterLoanIsClosed = (buyer1BalanceBefore -
+            2 *
+            offer.downPaymentAmount +
+            minProfitAmounts[0] +
+            minProfitAmounts[1]);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal +
+            periodInterestLoan0 +
+            minProfitAmounts[0]) *
             40 +
             38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal +
+            periodInterestLoan1 +
+            minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -249,9 +265,15 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         data[1] = abi.encode(orderForClosingLoan1[0]);
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.buyerNftId);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan1.buyerNftId);
-        
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan0.buyerNftId
+        );
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan1.buyerNftId
+        );
+
         vm.expectEmit(true, true, false, false);
         emit InstantSell(nftContractAddresses[0], nftIds[0], 0);
         vm.expectEmit(true, true, false, false);
@@ -266,11 +288,8 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
 
         assertionsForClosedLoan(nftIds[0], buyer2, loan0.buyerNftId);
-        assertionsForClosedLoan( nftIds[1], buyer2, loan1.buyerNftId);
-        assertEq(
-            address(buyer1).balance,
-            expectedBuyer1BalanceAfterLoanIsClosed
-        );
+        assertionsForClosedLoan(nftIds[1], buyer2, loan1.buyerNftId);
+        assertEq(address(buyer1).balance, expectedBuyer1BalanceAfterLoanIsClosed);
     }
 
     function test_fuzz_instantSellBatch_executes_two_loan_case(
@@ -284,15 +303,17 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_instantSellBatch_executes_two_loan_case(fixedForSpeed);
     }
 
-    function _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.collectionOfferLimit = 2;
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, 6974);
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), 8661);
@@ -335,10 +356,14 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         minProfitAmounts[1] = 2 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal +
+            periodInterestLoan0 +
+            minProfitAmounts[0]) *
             40 +
             38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal +
+            periodInterestLoan1 +
+            minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -371,7 +396,10 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         uint256 buyer1BalanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan1.buyerNftId);        
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan1.buyerNftId
+        );
         // not approving loan0 buyer ticket and expecting the call to not fail and only execute second transaction
         vm.expectEmit(true, true, false, false);
         emit InstantSell(nftContractAddresses[1], nftIds[1], 0);
@@ -384,37 +412,45 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan( nftIds[1], buyer2, loan1.buyerNftId);
-        assertEq(
-            address(buyer1).balance,
-            (buyer1BalanceBefore + minProfitAmounts[1])
-        );
+        assertionsForClosedLoan(nftIds[1], buyer2, loan1.buyerNftId);
+        assertEq(address(buyer1).balance, (buyer1BalanceBefore + minProfitAmounts[1]));
 
         assertEq(boredApeYachtClub.ownerOf(nftIds[0]), address(sellerFinancing));
         // buyer1 still owns loan0.buyerNftId
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan0.buyerNftId), address(buyer1));
+        assertEq(
+            IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan0.buyerNftId),
+            address(buyer1)
+        );
     }
 
     function test_fuzz_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(fuzzed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(
+            fuzzed
+        );
     }
 
-    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails() public {
+    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails()
+        public
+    {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(fixedForSpeed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(
+            fixedForSpeed
+        );
     }
 
-    function _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.collectionOfferLimit = 2;
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, 6974);
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), 8661);
@@ -457,10 +493,14 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         minProfitAmounts[1] = 2 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal +
+            periodInterestLoan0 +
+            minProfitAmounts[0]) *
             40 +
             38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal +
+            periodInterestLoan1 +
+            minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -493,7 +533,10 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         uint256 buyer1BalanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.buyerNftId);        
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan0.buyerNftId
+        );
         // not approving loan1 buyer ticket and expecting the call to not fail and only execute first transaction
         vm.expectEmit(true, true, false, false);
         emit InstantSell(nftContractAddresses[0], nftIds[0], 0);
@@ -506,37 +549,45 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan( nftIds[0], buyer2, loan0.buyerNftId);
-        assertEq(
-            address(buyer1).balance,
-            (buyer1BalanceBefore + minProfitAmounts[0])
-        );
+        assertionsForClosedLoan(nftIds[0], buyer2, loan0.buyerNftId);
+        assertEq(address(buyer1).balance, (buyer1BalanceBefore + minProfitAmounts[0]));
 
         assertEq(boredApeYachtClub.ownerOf(nftIds[1]), address(sellerFinancing));
         // buyer1 still owns loan1.buyerNftId
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan1.buyerNftId), address(buyer1));
+        assertEq(
+            IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan1.buyerNftId),
+            address(buyer1)
+        );
     }
 
     function test_fuzz_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(fuzzed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(
+            fuzzed
+        );
     }
 
-    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails() public {
+    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails()
+        public
+    {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(fixedForSpeed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(
+            fixedForSpeed
+        );
     }
 
-    function _test_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.collectionOfferLimit = 2;
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, 6974);
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), 8661);
@@ -577,7 +628,9 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         minProfitAmounts[0] = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal +
+            periodInterestLoan0 +
+            minProfitAmounts[0]) *
             40 +
             38) / 39;
 
@@ -588,7 +641,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
             buyer2,
             true
         );
-    
+
         mintWeth(buyer2, bidPriceLoan0);
 
         vm.startPrank(buyer2);
@@ -604,8 +657,14 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         uint256 buyer1BalanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.buyerNftId);  
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan1.buyerNftId);        
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan0.buyerNftId
+        );
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan1.buyerNftId
+        );
 
         vm.expectEmit(true, true, false, false);
         emit InstantSell(nftContractAddresses[0], nftIds[0], 0);
@@ -618,15 +677,15 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan( nftIds[0], buyer2, loan0.buyerNftId);
-        assertEq(
-            address(buyer1).balance,
-            (buyer1BalanceBefore + minProfitAmounts[0])
-        );
+        assertionsForClosedLoan(nftIds[0], buyer2, loan0.buyerNftId);
+        assertEq(address(buyer1).balance, (buyer1BalanceBefore + minProfitAmounts[0]));
 
         assertEq(boredApeYachtClub.ownerOf(nftIds[1]), address(sellerFinancing));
         // buyer1 still owns loan1.buyerNftId
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan1.buyerNftId), address(buyer1));
+        assertEq(
+            IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan1.buyerNftId),
+            address(buyer1)
+        );
     }
 
     function test_fuzz_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails(
@@ -635,20 +694,26 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails(fuzzed);
     }
 
-    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails() public {
+    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails()
+        public
+    {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails(fixedForSpeed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails(
+            fixedForSpeed
+        );
     }
 
-     function _test_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.collectionOfferLimit = 2;
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, 6974);
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), 8661);
@@ -689,7 +754,9 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         minProfitAmounts[1] = 2 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal +
+            periodInterestLoan1 +
+            minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -700,7 +767,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
             buyer2,
             true
         );
-    
+
         mintWeth(buyer2, bidPriceLoan1);
 
         vm.startPrank(buyer2);
@@ -716,8 +783,14 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         uint256 buyer1BalanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.buyerNftId);  
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan1.buyerNftId);        
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan0.buyerNftId
+        );
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan1.buyerNftId
+        );
 
         vm.expectEmit(true, true, false, false);
         emit InstantSell(nftContractAddresses[1], nftIds[1], 0);
@@ -730,15 +803,15 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan( nftIds[1], buyer2, loan1.buyerNftId);
-        assertEq(
-            address(buyer1).balance,
-            (buyer1BalanceBefore + minProfitAmounts[1])
-        );
+        assertionsForClosedLoan(nftIds[1], buyer2, loan1.buyerNftId);
+        assertEq(address(buyer1).balance, (buyer1BalanceBefore + minProfitAmounts[1]));
 
         assertEq(boredApeYachtClub.ownerOf(nftIds[0]), address(sellerFinancing));
         // buyer1 still owns loan0.buyerNftId
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan0.buyerNftId), address(buyer1));
+        assertEq(
+            IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan0.buyerNftId),
+            address(buyer1)
+        );
     }
 
     function test_fuzz_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails(
@@ -747,20 +820,26 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails(fuzzed);
     }
 
-    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails() public {
+    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails()
+        public
+    {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails(fixedForSpeed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails(
+            fixedForSpeed
+        );
     }
 
-    function _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.collectionOfferLimit = 2;
 
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, 6974);
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), 8661);
@@ -803,10 +882,14 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         minProfitAmounts[1] = 2 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.remainingPrincipal +
+            periodInterestLoan0 +
+            minProfitAmounts[0]) *
             40 +
             38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.remainingPrincipal +
+            periodInterestLoan1 +
+            minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -837,9 +920,12 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         data[1] = abi.encode(orderForClosingLoan1[0]);
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.buyerNftId);        
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan0.buyerNftId
+        );
         // not approving loan1 buyer ticket and expecting the call to fail
-    
+
         vm.expectRevert(
             abi.encodeWithSelector(
                 MarketplaceIntegration.BuyerTicketTransferRevertedAt.selector,
@@ -869,8 +955,10 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(fixedForSpeed);
     }
 
-    function _test_instantSellBatch_reverts_if_invalidInputLengths(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSellBatch_reverts_if_invalidInputLengths(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer, offer.nftId);
@@ -912,7 +1000,10 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         data[0] = abi.encode(order[0]);
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).approve(
+            address(marketplaceIntegration),
+            loan.buyerNftId
+        );
         vm.expectRevert(MarketplaceIntegration.InvalidInputLength.selector);
         marketplaceIntegration.instantSellBatch(
             nftContractAddresses,

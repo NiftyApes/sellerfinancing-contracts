@@ -32,7 +32,7 @@ interface ISellerFinancingStructs {
     struct LendingOffer {
         // SLOT 0
         // Loan offer amount in WETH, to be converted to ETH in executeLoan
-        uint128 amount;
+        uint128 principalAmount;
         // Minimum amount of total principal to be paid each period
         uint128 minimumPrincipalPerPeriod;
         // SLOT 1

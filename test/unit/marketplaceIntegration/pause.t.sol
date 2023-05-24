@@ -12,7 +12,7 @@ contract TestPauseMarketplace is Test, BaseTest, OffersLoansFixtures {
     }
 
     function test_unit_pause_Marketplace_simple_case() public {
-        Offer memory offer = offerStructFromFields(
+        SellerFinancingOffer memory offer = offerStructFromFields(
             defaultFixedFuzzedFieldsForFastUnitTesting,
             defaultFixedOfferFields
         );

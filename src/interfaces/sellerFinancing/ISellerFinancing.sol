@@ -6,7 +6,7 @@ import "./ISellerFinancingEvents.sol";
 import "./ISellerFinancingStructs.sol";
 import "./ISellerFinancingErrors.sol";
 
-/// @title The SellerFinancing interface for NiftyApes
+/// @title The Lending interface for NiftyApes
 interface ISellerFinancing is
     ISellerFinancingAdmin,
     ISellerFinancingEvents,
@@ -28,11 +28,22 @@ interface ISellerFinancing is
         bytes memory signature
     ) external returns (address);
 
+    /// @notice Returns an EIP712 standard compatible hash for a given offer.
+    /// @dev    This hash can be signed to create a valid offer.
+    /// @param offer The offer to compute the hash for
+    function getLendingOfferHash(LendingOffer memory offer) external view returns (bytes32);
+
+    /// @notice Returns the signer of an offer or throws an error.
+    /// @param offer The offer to use for retrieving the signer
+    /// @param signature The signature to use for retrieving the signer
+    function getLendingOfferSigner(
+        LendingOffer memory offer,
+        bytes memory signature
+    ) external returns (address);
+
     /// @notice Returns true if a given signature has been revoked otherwise false
     /// @param signature The signature to check
-    function getSellerFinancingOfferSignatureStatus(
-        bytes calldata signature
-    ) external view returns (bool status);
+    function getOfferSignatureStatus(bytes calldata signature) external view returns (bool status);
 
     /// @notice Returns the usage count of a given signature
     ///         Only increments for collection offers
@@ -57,6 +68,15 @@ interface ISellerFinancing is
     /// @param signature The signature of the offer
     function withdrawSellerFinancingOfferSignature(
         SellerFinancingOffer memory offer,
+        bytes calldata signature
+    ) external;
+
+    /// @notice Withdraw a given offer
+    /// @dev    Calling this method allows users to withdraw a given offer by cancelling their signature on chain
+    /// @param offer The offer to withdraw
+    /// @param signature The signature of the offer
+    function withdrawLendingOfferSignature(
+        LendingOffer memory offer,
         bytes calldata signature
     ) external;
 

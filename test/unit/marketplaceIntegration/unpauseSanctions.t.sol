@@ -12,7 +12,10 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, address expectedBuyer) private {
+    function assertionsForExecutedLoan(
+        SellerFinancingOffer memory offer,
+        address expectedBuyer
+    ) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
@@ -47,7 +50,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
     }
 
     function test_unit_unpauseSanctions_Marketplace_simple_case() public {
-        Offer memory offer = offerStructFromFields(
+        SellerFinancingOffer memory offer = offerStructFromFields(
             defaultFixedFuzzedFieldsForFastUnitTesting,
             defaultFixedOfferFields
         );

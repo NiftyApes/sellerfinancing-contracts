@@ -13,7 +13,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId) private {
+    function assertionsForExecutedLoan(SellerFinancingOffer memory offer, uint256 nftId) private {
         // sellerFinancing contract has NFT
         assertEq(erc721MintFinancing.ownerOf(nftId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
@@ -48,7 +48,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     }
 
     function _test_mintWithFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(erc721MintFinancing);
 
@@ -79,7 +79,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     }
 
     function _test_mintWithFinancing_3_count(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
@@ -115,7 +115,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function _test_mintWithFinancing_reverts_ifValueSentLessThanDownpaymentTimesCount(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
@@ -154,7 +154,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function _test_mintWithFinancing_reverts_ifOfferSignerIsNotOwner(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(erc721MintFinancing);
 
@@ -195,7 +195,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function _test_mintWithFinancing_reverts_ifInvalidNftContractAddress(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(0);
 
@@ -233,7 +233,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     }
 
     function _test_mintWithFinancing_reverts_ifCountIs0(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(erc721MintFinancing);
 
@@ -267,7 +267,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function _test_mintWithFinancing_collectionOfferReachedLimitDuringMint(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
@@ -317,7 +317,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function _test_mintWithFinancing_collectionOfferLimitAlreadyReached(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.nftId = ~uint256(0);
         offer.nftContractAddress = address(erc721MintFinancing);
         offer.collectionOfferLimit = 0;

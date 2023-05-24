@@ -22,7 +22,7 @@ interface ISellerFinancingEvents {
     /// @param nftId The nft id, this field can be meaningless if the offer is a floor term offer
     /// @param offer The offer details
     /// @param signature The signature that has been revoked
-    event SellerFinancingOfferSignatureUsed(
+    event LendingOfferSignatureUsed(
         address indexed nftContractAddress,
         uint256 indexed nftId,
         ISellerFinancingStructs.LendingOffer offer,

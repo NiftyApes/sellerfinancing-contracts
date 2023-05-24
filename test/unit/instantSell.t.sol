@@ -16,7 +16,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer) private {
+    function assertionsForExecutedLoan(SellerFinancingOffer memory offer) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
@@ -50,7 +50,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function assertionsForClosedLoan(Offer memory offer, address expectedNftOwner) private {
+    function assertionsForClosedLoan(
+        SellerFinancingOffer memory offer,
+        address expectedNftOwner
+    ) private {
         // expected address has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), expectedNftOwner);
 
@@ -79,7 +82,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_instantSell_loanClosed_simplest_case(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -176,8 +179,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         _test_instantSell_loanClosed_simplest_case(fixedForSpeed);
     }
 
-    function _test_instantSell_loanClosed_multipleConsideration(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+    function _test_instantSell_loanClosed_multipleConsideration(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         createOfferAndBuyWithFinancing(offer);
@@ -228,19 +233,11 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0])
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
 
         assertionsForClosedLoan(offer, buyer2);
-        assertEq(
-            address(buyer1).balance,
-            (buyer1BalanceBefore - offer.downPaymentAmount)
-        );
+        assertEq(address(buyer1).balance, (buyer1BalanceBefore - offer.downPaymentAmount));
     }
 
     function test_fuzz_instantSell_loanClosed_multipleConsideration(
@@ -257,7 +254,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_loanClosed_withoutSeaportFee(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -339,7 +336,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_instantSell_reverts_post_grace_period(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
@@ -395,7 +392,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_instantSell_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
@@ -432,7 +429,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.prank(owner);
         sellerFinancing.unpauseSanctions();
-        
+
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -461,7 +458,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     }
 
     function _test_instantSell_reverts_ifCallerIsNotBuyer(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
@@ -513,7 +510,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifLoanInHardDefault(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
@@ -565,7 +562,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifOrderConsideration0NotERC721Type(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
 
@@ -612,7 +609,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifOrderNftAddressNotEqualToLoanNftAddress(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
 
@@ -659,7 +656,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifOrderNftIdNotEqualToLoanNftId(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
 
@@ -705,7 +702,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifInvalidOrderOffer0ItemType(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
 
@@ -751,7 +748,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifInvalidOrderOffer0Token(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
 
@@ -797,7 +794,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifOrderConsideration1NotERC20Type(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
 
@@ -844,7 +841,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifInvalidOrderConsideration1Token(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
 
@@ -891,7 +888,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifSaleAmountLessThanMinSaleAmountRequested(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
@@ -953,20 +950,16 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifOrderOfferLengthNotEqualToOne(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-       
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
         createOfferAndBuyWithFinancing(offer);
-        
+
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
-        );
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) *
-            40 +
-            38) / 39;
+        uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.nftContractAddress,
@@ -993,18 +986,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(buyer1);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidOfferLength.selector,
-                2,
-                1
-            )
+            abi.encodeWithSelector(ISellerFinancingErrors.InvalidOfferLength.selector, 2, 1)
         );
-        sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
-            0,
-            abi.encode(order[0])
-        );
+        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 

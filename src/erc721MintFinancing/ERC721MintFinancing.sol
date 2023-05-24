@@ -63,14 +63,12 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
     ///        all NFTs will be minted up to the limit and excess funds will be returned.
     ///        If the first NFT of a collection is minted with finance the collection tokenIds will begin at index 1
     function mintWithFinancing(
-        ISellerFinancing.Offer memory offer,
+        ISellerFinancing.SellerFinancingOffer memory offer,
         bytes calldata signature,
         uint256 count
     ) external payable nonReentrant returns (uint256[] memory tokenIds) {
-        address signer = ISellerFinancing(sellerFinancingContractAddress).getOfferSigner(
-            offer,
-            signature
-        );
+        address signer = ISellerFinancing(sellerFinancingContractAddress)
+            .getSellerFinancingOfferSigner(offer, signature);
 
         uint64 collectionOfferLimitCount = ISellerFinancing(sellerFinancingContractAddress)
             .getCollectionOfferCount(signature);

@@ -52,7 +52,7 @@ contract NiftyApesSellerFinancing is
     /// @dev Constant typeHash for EIP-712 hashing of LendingOffer struct
     bytes32 private constant LENDING_OFFER_TYPEHASH =
         keccak256(
-            "Offer(uint128 amount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,uint64 collectionOfferLimit)"
+            "Offer(uint128 principalAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,uint64 collectionOfferLimit)"
         );
 
     // increments by two for each loan, once for buyerNftId, once for sellerNftId
@@ -192,7 +192,7 @@ contract NiftyApesSellerFinancing is
         SellerFinancingOffer memory offer,
         bytes memory signature
     ) public view override returns (address) {
-        return ECDSABridge.recover(getOfferHash(offer), signature);
+        return ECDSABridge.recover(getSellerFinancingOfferHash(offer), signature);
     }
 
     /// @inheritdoc ISellerFinancing
@@ -211,7 +211,7 @@ contract NiftyApesSellerFinancing is
         bytes memory signature
     ) external {
         _requireAvailableSignature(signature);
-        address signer = getOfferSigner(offer, signature);
+        address signer = getSellerFinancingOfferSigner(offer, signature);
         _requireSigner(signer, msg.sender);
         _markSignatureUsed(offer, signature);
     }
@@ -240,8 +240,14 @@ contract NiftyApesSellerFinancing is
         // instantiate loan
         Loan storage loan = _getLoan(offer.nftContractAddress, nftId);
         // get seller
-        address seller = getOfferSigner(offer, signature);
-        if (_callERC1271isValidSignature(offer.creator, getOfferHash(offer), signature)) {
+        address seller = getSellerFinancingOfferSigner(offer, signature);
+        if (
+            _callERC1271isValidSignature(
+                offer.creator,
+                getSellerFinancingOfferHash(offer),
+                signature
+            )
+        ) {
             seller = offer.creator;
         }
 
@@ -934,8 +940,8 @@ contract NiftyApesSellerFinancing is
             _hashTypedDataV4(
                 keccak256(
                     abi.encode(
-                        Lending_OFFER_TYPEHASH,
-                        offer.amount,
+                        LENDING_OFFER_TYPEHASH,
+                        offer.principalAmount,
                         offer.minimumPrincipalPerPeriod,
                         offer.nftId,
                         offer.nftContractAddress,
@@ -953,7 +959,7 @@ contract NiftyApesSellerFinancing is
         LendingOffer memory offer,
         bytes memory signature
     ) public view override returns (address) {
-        return ECDSABridge.recover(getOfferHash(offer), signature);
+        return ECDSABridge.recover(getLendingOfferHash(offer), signature);
     }
 
     function withdrawLendingOfferSignature(
@@ -961,7 +967,7 @@ contract NiftyApesSellerFinancing is
         bytes memory signature
     ) external {
         _requireAvailableSignature(signature);
-        address signer = getOfferSigner(offer, signature);
+        address signer = getLendingOfferSigner(offer, signature);
         _requireSigner(signer, msg.sender);
         _markSignatureUsed(offer, signature);
     }
@@ -989,8 +995,8 @@ contract NiftyApesSellerFinancing is
         // instantiate loan
         Loan storage loan = _getLoan(offer.nftContractAddress, nftId);
         // get lender
-        address lender = getOfferSigner(offer, signature);
-        if (_callERC1271isValidSignature(offer.creator, getOfferHash(offer), signature)) {
+        address lender = getLendingOfferSigner(offer, signature);
+        if (_callERC1271isValidSignature(offer.creator, getLendingOfferHash(offer), signature)) {
             lender = offer.creator;
         }
 
@@ -1035,11 +1041,11 @@ contract NiftyApesSellerFinancing is
         payable(borrower).sendValue(conversionAmountReceived);
 
         // mint borrower nft
-        uint256 borrowerNftId = loanNftNonce;
+        // use loanNftNonce to prevent stack too deep error
+        _safeMint(borrower, loanNftNonce);
         loanNftNonce++;
-        _safeMint(borrower, borrowerNftId);
         _setTokenURI(
-            borrowerNftId,
+            loanNftNonce - 1,
             IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
         );
 
@@ -1049,7 +1055,7 @@ contract NiftyApesSellerFinancing is
         loanNftNonce++;
 
         // create loan
-        _createLoan(loan, offer, nftId, loanNftNonce - 1, borrowerNftId, offer.principalAmount);
+        _createLoan(loan, offer, nftId, loanNftNonce - 2, loanNftNonce - 1, offer.principalAmount);
 
         // transfer nft from borrower to this contract, revert on failure
         _transferNft(offer.nftContractAddress, nftId, borrower, address(this));
@@ -1064,5 +1070,35 @@ contract NiftyApesSellerFinancing is
 
         // emit loan executed event
         emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
+    }
+
+    function _createLoan(
+        Loan storage loan,
+        LendingOffer memory offer,
+        uint256 nftId,
+        uint256 sellerNftId,
+        uint256 buyerNftId,
+        uint256 amount
+    ) internal {
+        loan.sellerNftId = sellerNftId;
+        loan.buyerNftId = buyerNftId;
+        loan.remainingPrincipal = uint128(amount);
+        loan.periodEndTimestamp = _currentTimestamp32() + offer.periodDuration;
+        loan.periodBeginTimestamp = _currentTimestamp32();
+        loan.minimumPrincipalPerPeriod = offer.minimumPrincipalPerPeriod;
+        loan.periodInterestRateBps = offer.periodInterestRateBps;
+        loan.periodDuration = offer.periodDuration;
+
+        // instantiate underlying nft pointer
+        UnderlyingNft storage buyerUnderlyingNft = _getUnderlyingNft(buyerNftId);
+        // set underlying nft values
+        buyerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
+        buyerUnderlyingNft.nftId = nftId;
+
+        // instantiate underlying nft pointer
+        UnderlyingNft storage sellerUnderlyingNft = _getUnderlyingNft(sellerNftId);
+        // set underlying nft values
+        sellerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
+        sellerUnderlyingNft.nftId = nftId;
     }
 }

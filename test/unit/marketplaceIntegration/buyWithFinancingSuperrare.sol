@@ -13,7 +13,7 @@ contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer) private {
+    function assertionsForExecutedLoan(SellerFinancingOffer memory offer) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
@@ -50,7 +50,7 @@ contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
     function _test_buyWithFinancingMarketplace_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
@@ -86,7 +86,7 @@ contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
     function _test_buyWithFinancingMarketplace_reverts_ifValueSentLessThanDownpaymentPlusMarketFee(
         FuzzedOfferFields memory fuzzed
     ) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        SellerFinancingOffer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;

@@ -77,9 +77,9 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
     function offerStructFromFields(
         FuzzedOfferFields memory fuzzed,
         FixedOfferFields memory fixedFields
-    ) internal pure returns (Offer memory) {
+    ) internal pure returns (SellerFinancingOffer memory) {
         return
-            Offer({
+            SellerFinancingOffer({
                 creator: fixedFields.creator,
                 nftId: fixedFields.nftId,
                 nftContractAddress: fixedFields.nftContractAddress,
@@ -93,14 +93,19 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
             });
     }
 
-    function signOffer(uint256 signerPrivateKey, Offer memory offer) public returns (bytes memory) {
+    function signOffer(
+        uint256 signerPrivateKey,
+        SellerFinancingOffer memory offer
+    ) public returns (bytes memory) {
         // This is the EIP712 signed hash
-        bytes32 offerHash = sellerFinancing.getOfferHash(offer);
+        bytes32 offerHash = sellerFinancing.getSellerFinancingOfferHash(offer);
 
         return sign(signerPrivateKey, offerHash);
     }
 
-    function seller1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
+    function seller1CreateOffer(
+        SellerFinancingOffer memory offer
+    ) internal returns (bytes memory signature) {
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
         vm.stopPrank();
@@ -108,7 +113,7 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
         return signOffer(seller1_private_key, offer);
     }
 
-    function createOfferAndBuyWithFinancing(Offer memory offer) internal {
+    function createOfferAndBuyWithFinancing(SellerFinancingOffer memory offer) internal {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);

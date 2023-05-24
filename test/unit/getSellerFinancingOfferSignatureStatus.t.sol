@@ -23,7 +23,7 @@ contract TestGetOfferSignatureStatus is
     }
 
     function test_unit_getOfferSignature_returnsTrue_whenWithdrawn() public {
-        Offer memory offer = Offer({
+        SellerFinancingOffer memory offer = SellerFinancingOffer({
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
@@ -36,19 +36,19 @@ contract TestGetOfferSignatureStatus is
             collectionOfferLimit: 1
         });
 
-        bytes32 offerHash = sellerFinancing.getOfferHash(offer);
+        bytes32 offerHash = sellerFinancing.getSellerFinancingOfferHash(offer);
 
         bytes memory signature = sign(SIGNER_PRIVATE_KEY_1, offerHash);
 
         vm.startPrank(address(SIGNER_1));
-        sellerFinancing.withdrawOfferSignature(offer, signature);
+        sellerFinancing.withdrawSellerFinancingOfferSignature(offer, signature);
         vm.stopPrank();
 
         assertEq(sellerFinancing.getOfferSignatureStatus(signature), true);
     }
 
     function test_unit_getOfferSignature_returnsTrue_whenUsed() public {
-        Offer memory offer = offerStructFromFields(
+        SellerFinancingOffer memory offer = offerStructFromFields(
             defaultFixedFuzzedFieldsForFastUnitTesting,
             defaultFixedOfferFields
         );
@@ -68,7 +68,7 @@ contract TestGetOfferSignatureStatus is
     }
 
     function test_unit_getOfferSignature_returnsFalse_whenNotWithdrawnOrUsed() public {
-        Offer memory offer = Offer({
+        SellerFinancingOffer memory offer = SellerFinancingOffer({
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
@@ -81,7 +81,7 @@ contract TestGetOfferSignatureStatus is
             collectionOfferLimit: 1
         });
 
-        bytes32 offerHash = sellerFinancing.getOfferHash(offer);
+        bytes32 offerHash = sellerFinancing.getSellerFinancingOfferHash(offer);
 
         bytes memory signature = sign(SIGNER_PRIVATE_KEY_1, offerHash);
 
