@@ -3,7 +3,7 @@ pragma solidity 0.8.18;
 
 import "../interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
-/// @title Storage contract for first facet FacetA
+/// @title Storage contract for first facet SellerFinancingFacet
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)

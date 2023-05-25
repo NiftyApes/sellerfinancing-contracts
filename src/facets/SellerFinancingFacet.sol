@@ -61,19 +61,19 @@ contract NiftyApesSellerFinancingFacet is
         _requireNonZeroAddress(newSeaportContractAddress);
         _requireNonZeroAddress(newWethContractAddress);
 
-        // manually setting interfaceIds to be true, 
-        // since we have an independent supportsInterface function that exists in 
-        // diamondLoupe and has a separate mapping storage to store the supporting interfaces
-        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
-        ds.supportedInterfaces[type(IERC721Upgradeable).interfaceId] = true;
-        ds.supportedInterfaces[type(IERC721MetadataUpgradeable).interfaceId] = true;
-
         EIP712Upgradeable.__EIP712_init("NiftyApes_SellerFinancing", "0.0.1");
         PausableUpgradeable.__Pausable_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init("NiftyApes Seller Financing Tickets", "BANANAS");
         ERC721URIStorageUpgradeable.__ERC721URIStorage_init();
+
+        // manually setting interfaceIds to be true,
+        // since we have an independent supportsInterface in diamondLoupe facet
+        // and has a separate mapping storage to mark the supported interfaces as true
+        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
+        ds.supportedInterfaces[type(IERC721Upgradeable).interfaceId] = true;
+        ds.supportedInterfaces[type(IERC721MetadataUpgradeable).interfaceId] = true;
 
         StorageA.SellerFinancingStorage storage sf = StorageA.sellerFinancingStorage();
 
