@@ -972,12 +972,12 @@ contract NiftyApesSellerFinancing is
         _markSignatureUsed(offer, signature);
     }
 
-    function executeLoan(
+    function _commonLoanChecks(
         LendingOffer memory offer,
         bytes calldata signature,
         address borrower,
         uint256 nftId
-    ) external payable whenNotPaused nonReentrant returns (uint256 conversionAmountReceived) {
+    ) internal returns (address lender) {
         // check for collection offer
         if (offer.nftId != ~uint256(0)) {
             if (nftId != offer.nftId) {
@@ -992,10 +992,9 @@ contract NiftyApesSellerFinancing is
             }
             _collectionOfferCounters[signature] += 1;
         }
-        // instantiate loan
-        Loan storage loan = _getLoan(offer.nftContractAddress, nftId);
+
         // get lender
-        address lender = getLendingOfferSigner(offer, signature);
+        lender = getLendingOfferSigner(offer, signature);
         if (_callERC1271isValidSignature(offer.creator, getLendingOfferHash(offer), signature)) {
             lender = offer.creator;
         }
@@ -1022,6 +1021,56 @@ contract NiftyApesSellerFinancing is
         if (offer.nftContractAddress == address(this)) {
             revert CannotBuySellerFinancingTicket();
         }
+    }
+
+    function _executeLoan(
+        Loan storage loan,
+        LendingOffer memory offer,
+        bytes calldata signature,
+        address borrower,
+        address lender,
+        uint256 nftId
+    ) internal {
+        // mint borrower nft
+        _safeMint(borrower, loanNftNonce);
+        loanNftNonce++;
+        _setTokenURI(
+            loanNftNonce - 1,
+            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
+        );
+
+        // mint lender nft
+        _safeMint(lender, loanNftNonce);
+        loanNftNonce++;
+
+        // create loan
+        _createLoan(loan, offer, nftId, loanNftNonce - 2, loanNftNonce - 1);
+
+        // transfer nft from borrower to this contract, revert on failure
+        _transferNft(offer.nftContractAddress, nftId, borrower, address(this));
+
+        // add borrower delegate.cash delegation
+        IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
+            borrower,
+            offer.nftContractAddress,
+            nftId,
+            true
+        );
+
+        // emit loan executed event
+        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
+    }
+
+    function borrow(
+        LendingOffer memory offer,
+        bytes calldata signature,
+        address borrower,
+        uint256 nftId
+    ) external payable whenNotPaused nonReentrant returns (uint256 conversionAmountReceived) {
+        // instantiate loan
+        Loan storage loan = _getLoan(offer.nftContractAddress, nftId);
+
+        address lender = _commonLoanChecks(offer, signature, borrower, nftId);
 
         // cache this contract eth balance before the weth conversion
         uint256 contractBalanceBefore = address(this).balance;
@@ -1047,88 +1096,20 @@ contract NiftyApesSellerFinancing is
         // payout borrower
         payable(borrower).sendValue(conversionAmountReceived);
 
-        // mint borrower nft
-        // use loanNftNonce to prevent stack too deep error
-        _safeMint(borrower, loanNftNonce);
-        loanNftNonce++;
-        _setTokenURI(
-            loanNftNonce - 1,
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
-        );
-
-        // mint lender nft
-        // use loanNftNonce to prevent stack too deep error
-        _safeMint(lender, loanNftNonce);
-        loanNftNonce++;
-
-        // create loan
-        _createLoan(loan, offer, nftId, loanNftNonce - 2, loanNftNonce - 1);
-
-        // transfer nft from borrower to this contract, revert on failure
-        _transferNft(offer.nftContractAddress, nftId, borrower, address(this));
-
-        // add borrower delegate.cash delegation
-        IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
-            borrower,
-            offer.nftContractAddress,
-            nftId,
-            true
-        );
-
-        // emit loan executed event
-        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
+        _executeLoan(loan, offer, signature, borrower, lender, nftId);
     }
 
     function buyWith3rdPartyFinancing(
         LendingOffer memory offer,
         bytes calldata signature,
-        address buyer,
+        address borrower,
         uint256 nftId,
         bytes calldata data
     ) external payable whenNotPaused nonReentrant {
-        // check for collection offer
-        if (offer.nftId != ~uint256(0)) {
-            if (nftId != offer.nftId) {
-                revert NftIdsMustMatch();
-            }
-            _requireAvailableSignature(signature);
-            // mark signature as used
-            _markSignatureUsed(offer, signature);
-        } else {
-            if (getCollectionOfferCount(signature) >= offer.collectionOfferLimit) {
-                revert CollectionOfferLimitReached();
-            }
-            _collectionOfferCounters[signature] += 1;
-        }
         // instantiate loan
         Loan storage loan = _getLoan(offer.nftContractAddress, nftId);
-        // get lender
-        address lender = getLendingOfferSigner(offer, signature);
-        if (_callERC1271isValidSignature(offer.creator, getLendingOfferHash(offer), signature)) {
-            lender = offer.creator;
-        }
 
-        _requireIsNotSanctioned(lender);
-        _requireIsNotSanctioned(buyer);
-        _requireIsNotSanctioned(msg.sender);
-        _requireOfferNotExpired(offer);
-        // requireOfferisValid
-        _requireNonZeroAddress(offer.nftContractAddress);
-        // require1MinsMinimumDuration
-        if (offer.periodDuration < 1 minutes) {
-            revert InvalidPeriodDuration();
-        }
-        // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
-        if (offer.principalAmount < offer.minimumPrincipalPerPeriod) {
-            revert InvalidMinimumPrincipalPerPeriod(
-                offer.minimumPrincipalPerPeriod,
-                offer.principalAmount
-            );
-        }
-        // requireNotSellerFinancingTicket
-        if (offer.nftContractAddress == address(this)) {
-            revert CannotBuySellerFinancingTicket();
-        }
+        address lender = _commonLoanChecks(offer, signature, borrower, nftId);
 
         // decode seaport order data
         ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
@@ -1147,7 +1128,7 @@ contract NiftyApesSellerFinancing is
 
         // transferFrom downPayment from buyer
         asset.safeTransferFrom(
-            lender,
+            borrower,
             address(this),
             totalConsiderationAmount - offer.principalAmount
         );
@@ -1160,34 +1141,7 @@ contract NiftyApesSellerFinancing is
             revert SeaportOrderNotFulfilled();
         }
 
-        // mint buyer nft
-        _safeMint(buyer, loanNftNonce);
-        loanNftNonce++;
-        _setTokenURI(
-            loanNftNonce - 1,
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
-        );
-
-        // mint lender nft
-        _safeMint(lender, loanNftNonce);
-        loanNftNonce++;
-
-        // create loan
-        _createLoan(loan, offer, nftId, loanNftNonce - 2, loanNftNonce - 1);
-
-        // transfer nft from buyer to this contract, revert on failure
-        _transferNft(offer.nftContractAddress, nftId, buyer, address(this));
-
-        // add buyer delegate.cash delegation
-        IDelegationRegistry(delegateRegistryContractAddress).delegateForToken(
-            buyer,
-            offer.nftContractAddress,
-            nftId,
-            true
-        );
-
-        // emit loan executed event
-        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
+        _executeLoan(loan, offer, signature, borrower, lender, nftId);
     }
 
     function _createLoan(
