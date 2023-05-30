@@ -25,6 +25,8 @@ library StorageA {
         keccak256("diamond.standard.seller.financing");
 
     struct SellerFinancingStorage {
+        // slot values given below are relative the actual slot position determined by the slot for `SELLER_FINANCING_STORAGE_POSITION`
+
         // increments by two for each loan, once for buyerNftId, once for sellerNftId
         /// slot0
         uint256 loanNftNonce;
