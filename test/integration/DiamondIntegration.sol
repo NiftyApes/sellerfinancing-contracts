@@ -83,7 +83,8 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(facetFunctionSelectors[2], sellerFinancingFacet.updateSeaportContractAddress.selector);
         assertEq(facetFunctionSelectors[10], sellerFinancingFacet.pauseSanctions.selector);
         assertEq(facetFunctionSelectors[20], sellerFinancingFacet.instantSell.selector);
-        assertEq(facetFunctionSelectors[30], sellerFinancingFacet.onERC721Received.selector);
+        assertEq(facetFunctionSelectors[30], sellerFinancingFacet.balanceOf.selector);
+        assertEq(facetFunctionSelectors[36], sellerFinancingFacet.isApprovedForAll.selector);
     }
 
     function test_facetAddress_must_return_correctAddresses_for_each_selector() public {
