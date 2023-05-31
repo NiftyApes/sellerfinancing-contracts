@@ -76,7 +76,7 @@ contract SellerFinancingDeployment is Test, DiamondDeployment {
         allSellerFinancingSelectors[34] = sellerFinancingFacet.getApproved.selector;
         allSellerFinancingSelectors[35] = sellerFinancingFacet.setApprovalForAll.selector;
         allSellerFinancingSelectors[36] = sellerFinancingFacet.isApprovedForAll.selector;
-        
+
         IDiamondCut.FacetCut[] memory diamondCut = new IDiamondCut.FacetCut[](1);
         diamondCut[0] = IDiamondCut.FacetCut(address(sellerFinancingFacet), IDiamondCut.FacetCutAction.Add, allSellerFinancingSelectors);
 
