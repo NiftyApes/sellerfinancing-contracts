@@ -382,6 +382,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
 
+        vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 ISellerFinancingErrors.SignatureNotAvailable.selector,
