@@ -47,13 +47,14 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[2].functionSelectors[0], ownershipFacet.transferOwnership.selector);
         assertEq(allFacets[2].functionSelectors[1], ownershipFacet.owner.selector);
 
-        assertEq(allFacets[3].functionSelectors.length, 30);
+        assertEq(allFacets[3].functionSelectors.length, 37);
         assertEq(allFacets[3].functionSelectors[0], sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector);
         assertEq(allFacets[3].functionSelectors[1], sellerFinancingFacet.updateDelegateRegistryContractAddress.selector);
         assertEq(allFacets[3].functionSelectors[2], sellerFinancingFacet.updateSeaportContractAddress.selector);
         assertEq(allFacets[3].functionSelectors[10], sellerFinancingFacet.pauseSanctions.selector);
         assertEq(allFacets[3].functionSelectors[20], sellerFinancingFacet.instantSell.selector);
-        assertEq(allFacets[3].functionSelectors[29], sellerFinancingFacet.onERC721Received.selector);
+        assertEq(allFacets[3].functionSelectors[30], sellerFinancingFacet.balanceOf.selector);
+        assertEq(allFacets[3].functionSelectors[36], sellerFinancingFacet.isApprovedForAll.selector);
     }
 
     function test_facetFunctionSelectors_must_return_all_added_selectors_for_each_facet() public {
@@ -76,13 +77,13 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(facetFunctionSelectors[1], ownershipFacet.owner.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(sellerFinancingFacet));
-        assertEq(facetFunctionSelectors.length, 30);
+        assertEq(facetFunctionSelectors.length, 37);
         assertEq(facetFunctionSelectors[0], sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector);
         assertEq(facetFunctionSelectors[1], sellerFinancingFacet.updateDelegateRegistryContractAddress.selector);
         assertEq(facetFunctionSelectors[2], sellerFinancingFacet.updateSeaportContractAddress.selector);
         assertEq(facetFunctionSelectors[10], sellerFinancingFacet.pauseSanctions.selector);
         assertEq(facetFunctionSelectors[20], sellerFinancingFacet.instantSell.selector);
-        assertEq(facetFunctionSelectors[29], sellerFinancingFacet.onERC721Received.selector);
+        assertEq(facetFunctionSelectors[30], sellerFinancingFacet.onERC721Received.selector);
     }
 
     function test_facetAddress_must_return_correctAddresses_for_each_selector() public {
