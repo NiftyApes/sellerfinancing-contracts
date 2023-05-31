@@ -40,7 +40,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
         assertEq(loan.buyerNftId, 0);
         assertEq(loan.sellerNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);

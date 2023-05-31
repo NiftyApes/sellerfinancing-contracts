@@ -167,24 +167,26 @@ contract NiftyApesSellerFinancingFacet is
 
     /// @inheritdoc ISellerFinancing
     function getOfferHash(Offer memory offer) public view returns (bytes32) {
-        return
-            _hashTypedDataV4(
-                keccak256(
-                    abi.encode(
-                        StorageA._OFFER_TYPEHASH,
-                        offer.price,
-                        offer.downPaymentAmount,
-                        offer.minimumPrincipalPerPeriod,
-                        offer.nftId,
-                        offer.nftContractAddress,
-                        offer.creator,
-                        offer.periodInterestRateBps,
-                        offer.periodDuration,
-                        offer.expiration,
-                        offer.collectionOfferLimit
-                    )
+    return
+        _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    StorageA._OFFER_TYPEHASH,
+                    offer.offerType,
+                    offer.downPaymentAmount,
+                    offer.principalAmount,
+                    offer.minimumPrincipalPerPeriod,
+                    offer.nftId,
+                    offer.nftContractAddress,
+                    offer.periodInterestRateBps,
+                    offer.periodDuration,
+                    offer.expiration,
+                    offer.creator,
+                    offer.isCollectionOffer,
+                    offer.collectionOfferLimit
                 )
-            );
+            )
+        );
     }
 
     /// @inheritdoc ISellerFinancing
@@ -226,7 +228,7 @@ contract NiftyApesSellerFinancingFacet is
         // get SellerFinancing storage
         StorageA.SellerFinancingStorage storage sf = StorageA.sellerFinancingStorage();
         // check for collection offer
-        if (offer.nftId != ~uint256(0)) {
+        if (!offer.isCollectionOffer) {
             if (nftId != offer.nftId) {
                 revert NftIdsMustMatch();
             }
@@ -262,14 +264,13 @@ contract NiftyApesSellerFinancingFacet is
         if (msg.value < offer.downPaymentAmount) {
             revert InsufficientMsgValue(msg.value, offer.downPaymentAmount);
         }
-        // requireDownPaymentLessThanOfferPrice
-        if (offer.price <= offer.downPaymentAmount) {
-            revert DownPaymentGreaterThanOrEqualToOfferPrice(offer.downPaymentAmount, offer.price);
+        // requireNonZeroPrincipalAmount
+        if (offer.principalAmount == 0) {
+            revert PrincipalAmountZero();
         }
         // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
-        uint256 loanValue = offer.price - offer.downPaymentAmount;
-        if (loanValue < offer.minimumPrincipalPerPeriod) {
-            revert InvalidMinimumPrincipalPerPeriod(offer.minimumPrincipalPerPeriod, loanValue);
+        if (offer.principalAmount < offer.minimumPrincipalPerPeriod) {
+            revert InvalidMinimumPrincipalPerPeriod(offer.minimumPrincipalPerPeriod, offer.principalAmount);
         }
         // requireNotSellerFinancingTicket
         if (offer.nftContractAddress == address(this)) {
@@ -307,7 +308,7 @@ contract NiftyApesSellerFinancingFacet is
         sf.loanNftNonce++;
 
         // create loan
-        _createLoan(loan, offer, nftId, sf.loanNftNonce - 1, buyerNftId, loanValue, sf);
+        _createLoan(loan, offer, nftId, sf.loanNftNonce - 1, buyerNftId, offer.principalAmount, sf);
 
         // transfer nft from seller to this contract, revert on failure
         _transferNft(offer.nftContractAddress, nftId, seller, address(this));

@@ -38,7 +38,7 @@ contract SellerFinancingDeployment is Test, DiamondDeployment {
 
         sellerFinancingFacet = new NiftyApesSellerFinancingFacet();
 
-        bytes4[] memory allSellerFinancingSelectors = new bytes4[](30);
+        bytes4[] memory allSellerFinancingSelectors = new bytes4[](37);
         allSellerFinancingSelectors[0] = sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector;
         allSellerFinancingSelectors[1] = sellerFinancingFacet.updateDelegateRegistryContractAddress.selector;
         allSellerFinancingSelectors[2] = sellerFinancingFacet.updateSeaportContractAddress.selector;
@@ -69,7 +69,14 @@ contract SellerFinancingDeployment is Test, DiamondDeployment {
         allSellerFinancingSelectors[27] = sellerFinancingFacet.ownerOf.selector;
         allSellerFinancingSelectors[28] = sellerFinancingFacet.tokenURI.selector;
         allSellerFinancingSelectors[29] = sellerFinancingFacet.onERC721Received.selector;
-
+        allSellerFinancingSelectors[30] = sellerFinancingFacet.balanceOf.selector;
+        allSellerFinancingSelectors[31] = sellerFinancingFacet.name.selector;
+        allSellerFinancingSelectors[32] = sellerFinancingFacet.symbol.selector;
+        allSellerFinancingSelectors[33] = sellerFinancingFacet.approve.selector;
+        allSellerFinancingSelectors[34] = sellerFinancingFacet.getApproved.selector;
+        allSellerFinancingSelectors[35] = sellerFinancingFacet.setApprovalForAll.selector;
+        allSellerFinancingSelectors[36] = sellerFinancingFacet.isApprovedForAll.selector;
+        
         IDiamondCut.FacetCut[] memory diamondCut = new IDiamondCut.FacetCut[](1);
         diamondCut[0] = IDiamondCut.FacetCut(address(sellerFinancingFacet), IDiamondCut.FacetCutAction.Add, allSellerFinancingSelectors);
 

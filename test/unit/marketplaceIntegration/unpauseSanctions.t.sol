@@ -38,7 +38,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
         assertEq(loan.buyerNftId, 0);
         assertEq(loan.sellerNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -53,7 +53,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         vm.startPrank(owner);
         marketplaceIntegration.pauseSanctions();

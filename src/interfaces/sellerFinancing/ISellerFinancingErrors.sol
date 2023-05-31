@@ -47,7 +47,7 @@ interface ISellerFinancingErrors {
 
     error InsufficientMsgValue(uint256 msgValueSent, uint256 minMsgValueExpected);
 
-    error DownPaymentGreaterThanOrEqualToOfferPrice(uint256 downPaymentAmount, uint256 offerPrice);
+    error PrincipalAmountZero();
 
     error InvalidMinimumPrincipalPerPeriod(
         uint256 givenMinPrincipalPerPeriod,

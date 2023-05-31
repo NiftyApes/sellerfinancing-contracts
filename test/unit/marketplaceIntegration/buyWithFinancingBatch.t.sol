@@ -46,7 +46,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
 
         // check loan struct values
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -60,7 +60,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         Offer[] memory offers = new Offer[](1);
         offers[0] = offer;
@@ -100,7 +100,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -113,7 +113,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
 
@@ -158,7 +158,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 1;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -171,7 +171,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
@@ -225,7 +225,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -237,7 +237,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
@@ -291,7 +291,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -304,7 +304,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
@@ -358,7 +358,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 1;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -371,7 +371,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         Offer[] memory offers = new Offer[](2);
         offers[0] = offer;
@@ -414,7 +414,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -427,7 +427,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         Offer[] memory offers = new Offer[](2);
         offers[0] = offer;
@@ -473,7 +473,7 @@ contract TestBuyWithFinancingBatchMarketplace is Test, OffersLoansFixtures {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         Offer[] memory offers = new Offer[](2);
         offers[0] = offer;

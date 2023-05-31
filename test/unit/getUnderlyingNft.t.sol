@@ -56,7 +56,7 @@ contract TestGetUnderlyingNft is
             defaultFixedOfferFields
         );
         uint256 nftId = offer.nftId;
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), nftId);

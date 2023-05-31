@@ -49,7 +49,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
 
         // check loan struct values
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -162,7 +162,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
 
     function _test_instantSellBatch_executes_two_loan_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -286,7 +286,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
 
     function _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -408,7 +408,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
 
     function _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -530,7 +530,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
 
     function _test_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -642,7 +642,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
 
      function _test_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -754,7 +754,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
 
     function _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);

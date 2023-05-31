@@ -50,7 +50,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         // check loan struct values
         assertEq(loan.buyerNftId, 0);
         assertEq(loan.sellerNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -109,7 +109,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         // set any value > 0
-        uint256 extraAmount = 1234567890;
+        uint256 extraAmount = 1234;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         vm.startPrank(buyer1);
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount + extraAmount }(
@@ -175,7 +175,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
     function _test_buyWithFinancing_collection_offer(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 nftId = offer.nftId;
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -275,7 +275,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 nftId = offer.nftId;
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), nftId);
@@ -501,21 +501,15 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         _test_buyWithFinancing_reverts_if_invalidDownpaymentValue(fixedForSpeed);
     }
 
-    function _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(
+    function _test_buyWithFinancing_reverts_if_principalAmountZero(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.price = offer.downPaymentAmount - 1;
+        offer.principalAmount = 0;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ISellerFinancingErrors.DownPaymentGreaterThanOrEqualToOfferPrice.selector,
-                offer.downPaymentAmount,
-                offer.price
-            )
-        );
+        vm.expectRevert(ISellerFinancingErrors.PrincipalAmountZero.selector);
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
@@ -525,22 +519,22 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.stopPrank();
     }
 
-    function test_fuzz_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(
+    function test_fuzz_buyWithFinancing_reverts_if_principalAmountZero(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(fuzzed);
+        _test_buyWithFinancing_reverts_if_principalAmountZero(fuzzed);
     }
 
-    function test_unit_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment() public {
+    function test_unit_buyWithFinancing_reverts_if_principalAmountZero() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_buyWithFinancing_reverts_if_offerPriceLessThanDownpayment(fixedForSpeed);
+        _test_buyWithFinancing_reverts_if_principalAmountZero(fixedForSpeed);
     }
 
     function _test_buyWithFinancing_reverts_if_invalidMinPrincipalPerPeriod(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.minimumPrincipalPerPeriod = (offer.price - offer.downPaymentAmount) + 1;
+        offer.minimumPrincipalPerPeriod = offer.principalAmount + 1;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
@@ -548,7 +542,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             abi.encodeWithSelector(
                 ISellerFinancingErrors.InvalidMinimumPrincipalPerPeriod.selector,
                 offer.minimumPrincipalPerPeriod,
-                offer.price - offer.downPaymentAmount
+                offer.principalAmount
             )
         );
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(

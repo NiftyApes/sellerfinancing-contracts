@@ -110,9 +110,8 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         _requireIsNotSanctioned(buyer);
 
         // calculate marketplace fee
-        uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / BASE_BPS;
+        uint256 marketplaceFeeAmount = ((offer.principalAmount + offer.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
 
-        // requireSufficientValue
         if (msg.value < offer.downPaymentAmount + marketplaceFeeAmount) {
             revert InsufficientMsgValue(msg.value, offer.downPaymentAmount + marketplaceFeeAmount);
         }
@@ -159,7 +158,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             ISellerFinancing.Offer memory offer = offers[i];
 
             // calculate marketplace fee for ith offer
-            uint256 marketplaceFeeAmount = (offer.price * marketplaceFeeBps) / BASE_BPS;
+            uint256 marketplaceFeeAmount = ((offer.principalAmount + offer.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
 
             // if remaining value is not sufficient to execute ith offer
             if (msg.value - valueConsumed < offer.downPaymentAmount + marketplaceFeeAmount) {
