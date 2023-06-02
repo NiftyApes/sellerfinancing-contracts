@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 
 contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function setUp() public override {

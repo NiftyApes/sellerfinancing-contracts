@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "../interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
 
 /// @title Storage contract for first facet SellerFinancingFacet
 /// @custom:version 2.0

@@ -9,7 +9,7 @@ import "../src/diamond/facets/OwnershipFacet.sol";
 import "../src/diamond/Diamond.sol";
 import "../src/diamond/interfaces/IERC173.sol";
 import "../src/facets/SellerFinancingFacet.sol";
-import "../src/interfaces/sellerFinancing/ISellerFinancing.sol";
+import "../src/interfaces/niftyapes/sellerFinancing/ISellerFinancing.sol";
 
 contract DeploySellerFinancingFacetGoerli is Script {
     NiftyApesSellerFinancingFacet sellerFinancingFacet;

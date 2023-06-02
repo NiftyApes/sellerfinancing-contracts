@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
 
 contract TestGetOfferSigner is Test, BaseTest, ISellerFinancingStructs, OffersLoansFixtures {
     uint256 immutable SIGNER_PRIVATE_KEY_1 =

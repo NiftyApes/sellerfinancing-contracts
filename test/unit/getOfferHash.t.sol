@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
 
 contract TestGetOfferHash is Test, ISellerFinancingStructs, OffersLoansFixtures {
     function setUp() public override {

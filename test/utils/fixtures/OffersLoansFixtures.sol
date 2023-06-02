@@ -5,8 +5,8 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 
-import "../../utils/fixtures/SellerFinancingDeployment.sol";
-import "../../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../utils/fixtures/NiftyApesDeployment.sol";
+import "../../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
 
 import "../../common/BaseTest.sol";
 
@@ -14,7 +14,7 @@ uint256 constant BASE_BPS = 10_000;
 uint256 constant MAX_FEE = 1_000;
 
 // Note: need "sign" function from BaseTest for signOffer below
-contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerFinancingDeployment {
+contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, NiftyApesDeployment {
     struct FuzzedOfferFields {
         uint128 principalAmount;
         uint128 downPaymentAmount;

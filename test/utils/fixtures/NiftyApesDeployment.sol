@@ -4,8 +4,9 @@ pragma solidity 0.8.18;
 import "@openzeppelin-norm/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 // import "@openzeppelin-norm/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import "../../../src/interfaces/sellerFinancing/ISellerFinancing.sol";
+import "../../../src/interfaces/niftyapes/INiftyApes.sol";
 import "../../../src/facets/SellerFinancingFacet.sol";
+import "../../../src/facets/LendingFacet.sol";
 import "../../../src/marketplaceIntegration/MarketplaceIntegration.sol";
 import "../../../src/erc721MintFinancing/ERC721MintFinancing.sol";
 import { DiamondDeployment } from "./DiamondDeployment.sol";
@@ -14,10 +15,11 @@ import "../../../src/diamond/interfaces/IDiamondCut.sol";
 import "forge-std/Test.sol";
 
 // deploy & initializes SellerFinancing contracts
-contract SellerFinancingDeployment is Test, DiamondDeployment {
+contract NiftyApesDeployment is Test, DiamondDeployment {
 
     NiftyApesSellerFinancingFacet sellerFinancingFacet;
-    ISellerFinancing sellerFinancing;
+    NiftyApesLendingFacet lendingFacet;
+    INiftyApes sellerFinancing;
 
     MarketplaceIntegration marketplaceIntegration;
     ERC721MintFinancing erc721MintFinancing;
@@ -77,11 +79,18 @@ contract SellerFinancingDeployment is Test, DiamondDeployment {
         allSellerFinancingSelectors[35] = sellerFinancingFacet.setApprovalForAll.selector;
         allSellerFinancingSelectors[36] = sellerFinancingFacet.isApprovedForAll.selector;
 
-        IDiamondCut.FacetCut[] memory diamondCut = new IDiamondCut.FacetCut[](1);
-        diamondCut[0] = IDiamondCut.FacetCut(address(sellerFinancingFacet), IDiamondCut.FacetCutAction.Add, allSellerFinancingSelectors);
+        lendingFacet = new NiftyApesLendingFacet();
+
+        bytes4[] memory allLendingSelectors = new bytes4[](2);
+        allLendingSelectors[0] = lendingFacet.borrow.selector;
+        allLendingSelectors[1] = lendingFacet.buyWith3rdPartyFinancing.selector;
+
+        IDiamondCut.FacetCut[] memory diamondCuts = new IDiamondCut.FacetCut[](2);
+        diamondCuts[0] = IDiamondCut.FacetCut(address(sellerFinancingFacet), IDiamondCut.FacetCutAction.Add, allSellerFinancingSelectors);
+        diamondCuts[1] = IDiamondCut.FacetCut(address(lendingFacet), IDiamondCut.FacetCutAction.Add, allLendingSelectors);
 
         IDiamondCut(address(diamond)).diamondCut(
-            diamondCut, 
+            diamondCuts, 
             address(sellerFinancingFacet),
             abi.encodeWithSelector(
                 sellerFinancingFacet.initialize.selector, 
@@ -93,7 +102,7 @@ contract SellerFinancingDeployment is Test, DiamondDeployment {
         );
 
         // declare interfaces
-        sellerFinancing = ISellerFinancing(address(diamond));
+        sellerFinancing = INiftyApes(address(diamond));
 
         // deploy marketplace integration
         marketplaceIntegration = new MarketplaceIntegration(

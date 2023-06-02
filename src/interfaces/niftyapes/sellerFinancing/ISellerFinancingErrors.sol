@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "../seaport/ISeaport.sol";
+import "../../seaport/ISeaport.sol";
+import "./ISellerFinancingStructs.sol";
 
 /// @title The SellerFinancing interface defining custom errors
 interface ISellerFinancingErrors {
@@ -79,4 +80,6 @@ interface ISellerFinancingErrors {
     error InsufficientBalance(uint256 amountRequested, uint256 contractBalance);
 
     error ConditionSendValueFailed(address from, address to, uint256 amount);
+
+    error InvalidOfferType(ISellerFinancingStructs.OfferType given, ISellerFinancingStructs.OfferType expected);
 }

@@ -5,8 +5,8 @@ import "forge-std/Test.sol";
 
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingErrors.sol";
 
 contract TestWithdrawOfferSignature is
     Test,

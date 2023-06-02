@@ -6,7 +6,8 @@ import "@openzeppelin-norm/contracts/security/Pausable.sol";
 import "@openzeppelin-norm/contracts/utils/Address.sol";
 import "@openzeppelin-norm/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin-norm/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "../interfaces/sellerFinancing/ISellerFinancing.sol";
+import "../interfaces/niftyapes/sellerFinancing/ISellerFinancing.sol";
+import "../interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
 import "../interfaces/sanctions/SanctionsList.sol";
 
 
@@ -101,7 +102,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param buyer The address of the buyer
     /// @param nftId The nftId of the nft the buyer intends to buy
     function buyWithFinancing(
-        ISellerFinancing.Offer memory offer,
+        ISellerFinancingStructs.Offer memory offer,
         bytes calldata signature,
         address buyer,
         uint256 nftId
@@ -133,7 +134,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param partialExecution If set to true, will continue to attempt transaction executions regardless
     ///        if previous transactions have failed or had insufficient value available
     function buyWithFinancingBatch(
-        ISellerFinancing.Offer[] memory offers,
+        ISellerFinancingStructs.Offer[] memory offers,
         bytes[] calldata signatures,
         address buyer,
         uint256[] calldata nftIds,
@@ -155,7 +156,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         // loop through list of offers to execute
         for (uint256 i; i < offersLength; ++i) {
             // instantiate ith offer
-            ISellerFinancing.Offer memory offer = offers[i];
+            ISellerFinancingStructs.Offer memory offer = offers[i];
 
             // calculate marketplace fee for ith offer
             uint256 marketplaceFeeAmount = ((offer.principalAmount + offer.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
@@ -231,7 +232,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             address nftContractAddress = nftContractAddresses[i];
             uint256 nftId = nftIds[i];
             // fetech active loan details
-            ISellerFinancing.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
+            ISellerFinancingStructs.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
             // transfer buyerNft from caller to this contract.
             // this call also ensures that loan exists and caller is the current buyer
             try IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.buyerNftId) {
