@@ -235,14 +235,14 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             ISellerFinancingStructs.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
             // transfer buyerNft from caller to this contract.
             // this call also ensures that loan exists and caller is the current buyer
-            try IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.buyerNftId) {
+            try IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.borrowerNftId) {
                 // call instantSell to close the loan
                 try ISellerFinancing(sellerFinancingContractAddress).instantSell(nftContractAddress, nftId, minProfitAmounts[i], data[i]) {} 
                 catch {
                     if (!partialExecution) {
                         revert InstantSellCallRevertedAt(i);
                     } else {
-                        IERC721(sellerFinancingContractAddress).safeTransferFrom(address(this), msg.sender, loan.buyerNftId);
+                        IERC721(sellerFinancingContractAddress).safeTransferFrom(address(this), msg.sender, loan.borrowerNftId);
                     }
                 }
             } catch {

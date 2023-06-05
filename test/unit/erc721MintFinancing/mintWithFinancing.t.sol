@@ -37,8 +37,8 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
-        assertEq(loan.buyerNftId, 0);
-        assertEq(loan.sellerNftId, 1);
+        assertEq(loan.borrowerNftId, 0);
+        assertEq(loan.lenderNftId, 1);
         assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);

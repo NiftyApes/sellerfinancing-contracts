@@ -41,8 +41,8 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
-        assertEq(loan.buyerNftId, 0);
-        assertEq(loan.sellerNftId, 1);
+        assertEq(loan.borrowerNftId, 0);
+        assertEq(loan.lenderNftId, 1);
         assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
@@ -60,7 +60,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
@@ -92,7 +92,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.buyerNftId, bytes(""));
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId, bytes(""));
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
@@ -125,7 +125,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loan.borrowerNftId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
@@ -163,13 +163,13 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 SANCTIONED_ADDRESS
             )
         );
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.borrowerNftId);
 
         vm.prank(owner);
         sellerFinancing.pauseSanctions();
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.borrowerNftId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
@@ -202,6 +202,6 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 SANCTIONED_ADDRESS
             )
         );
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(SANCTIONED_ADDRESS, buyer1, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(SANCTIONED_ADDRESS, buyer1, loan.borrowerNftId);
     }
 }

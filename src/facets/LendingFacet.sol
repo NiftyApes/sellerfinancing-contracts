@@ -56,6 +56,9 @@ contract NiftyApesLendingFacet is
         // calculate ethReceived
         ethReceived = address(this).balance - contractBalanceBefore;
 
+        // transfer nft from borrower to this contract, revert on failure
+        IERC721Upgradeable(offer.nftContractAddress).safeTransferFrom(borrower, address(this), nftId);
+
         _executeLoan(offer, signature, borrower, lender, nftId, sf);
 
         // payout borrower
@@ -85,7 +88,7 @@ contract NiftyApesLendingFacet is
 
         // calculate totalConsiderationAmount
         uint256 totalConsiderationAmount;
-        for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
+        for (uint256 i = 0; i < order.parameters.totalOriginalConsiderationItems; i++) {
             totalConsiderationAmount += order.parameters.consideration[i].endAmount;
         }
 

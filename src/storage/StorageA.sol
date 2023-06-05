@@ -27,7 +27,7 @@ library StorageA {
     struct SellerFinancingStorage {
         // slot values given below are relative the actual slot position determined by the slot for `SELLER_FINANCING_STORAGE_POSITION`
 
-        // increments by two for each loan, once for buyerNftId, once for sellerNftId
+        // increments by two for each loan, once for borrowerNftId, once for lenderNftId
         /// slot0
         uint256 loanNftNonce;
         /// @dev The stored address for the royalties engine

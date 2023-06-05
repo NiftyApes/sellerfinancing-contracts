@@ -131,7 +131,6 @@ abstract contract NiftyApesInternal is
             lender = offer.creator;
         }
 
-        _require721Owner(offer.nftContractAddress, nftId, borrower);
         _requireIsNotSanctioned(lender, sf);
         _requireIsNotSanctioned(borrower, sf);
         _requireIsNotSanctioned(msg.sender, sf);
@@ -179,10 +178,7 @@ abstract contract NiftyApesInternal is
         sf.loanNftNonce++;
 
         // create loan
-        _createLoan(loan, offer, nftId, sf.loanNftNonce - 2, sf.loanNftNonce - 1, sf);
-
-        // transfer nft from borrower to this contract, revert on failure
-        IERC721Upgradeable(offer.nftContractAddress).safeTransferFrom(borrower, address(this), nftId);
+        _createLoan(loan, offer, nftId, sf.loanNftNonce - 1, sf.loanNftNonce - 2, sf);
 
         // add borrower delegate.cash delegation
         IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
@@ -200,12 +196,12 @@ abstract contract NiftyApesInternal is
         Loan storage loan,
         Offer memory offer,
         uint256 nftId,
-        uint256 sellerNftId,
-        uint256 buyerNftId,
+        uint256 lenderNftId,
+        uint256 borrowerNftId,
         StorageA.SellerFinancingStorage storage sf
     ) internal {
-        loan.sellerNftId = sellerNftId;
-        loan.buyerNftId = buyerNftId;
+        loan.lenderNftId = lenderNftId;
+        loan.borrowerNftId = borrowerNftId;
         loan.remainingPrincipal = uint128(offer.principalAmount);
         loan.periodEndTimestamp = _currentTimestamp32() + offer.periodDuration;
         loan.periodBeginTimestamp = _currentTimestamp32();
@@ -214,13 +210,13 @@ abstract contract NiftyApesInternal is
         loan.periodDuration = offer.periodDuration;
 
         // instantiate underlying nft pointer
-        UnderlyingNft storage buyerUnderlyingNft = _getUnderlyingNft(buyerNftId, sf);
+        UnderlyingNft storage buyerUnderlyingNft = _getUnderlyingNft(borrowerNftId, sf);
         // set underlying nft values
         buyerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
         buyerUnderlyingNft.nftId = nftId;
 
         // instantiate underlying nft pointer
-        UnderlyingNft storage sellerUnderlyingNft = _getUnderlyingNft(sellerNftId, sf);
+        UnderlyingNft storage sellerUnderlyingNft = _getUnderlyingNft(lenderNftId, sf);
         // set underlying nft values
         sellerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
         sellerUnderlyingNft.nftId = nftId;

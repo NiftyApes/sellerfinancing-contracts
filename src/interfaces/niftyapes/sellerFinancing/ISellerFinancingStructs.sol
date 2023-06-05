@@ -41,10 +41,10 @@ interface ISellerFinancingStructs {
     struct Loan {
         // SLOT 0
         // Buyer loan receipt nftId
-        uint256 buyerNftId;
+        uint256 borrowerNftId;
         // SLOT 1
         // Seller loan receipt nftId
-        uint256 sellerNftId;
+        uint256 lenderNftId;
         // SLOT 2
         // Remaining principal on loan
         uint128 remainingPrincipal;

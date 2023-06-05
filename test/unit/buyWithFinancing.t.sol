@@ -42,14 +42,14 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
         //buyer nftId has tokenURI same as original nft
         assertEq(
-            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId),
+            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId),
             IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
         );
-        Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
+        Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId));
 
         // check loan struct values
-        assertEq(loan.buyerNftId, 0);
-        assertEq(loan.sellerNftId, 1);
+        assertEq(loan.borrowerNftId, 0);
+        assertEq(loan.lenderNftId, 1);
         assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
@@ -649,7 +649,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         offer.nftContractAddress = address(sellerFinancing);
-        offer.nftId = loan.sellerNftId;
+        offer.nftId = loan.lenderNftId;
 
         bytes memory offerSignature2 = signOffer(seller1_private_key, offer);
 
