@@ -17,18 +17,20 @@ contract DeployDiamond is Script {
     Diamond diamond;
     DiamondInit diamondInit;
 
+    address constant OWNER = 0x3c4AC95DA655DA25a77609907CBB8B0012b01fF6;
+
     function run() external {
 
         // account address of the private key
-        uint256 deployerPrivateKey = vm.envUint("GOERLI_PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
-        address owner = 0x3c4AC95DA655DA25a77609907CBB8B0012b01fF6;
+        
 
         // deploy DiamondCutFacet
         diamondCutFacet = new DiamondCutFacet();
 
         // deploy Diamond
-        diamond = new Diamond(owner, address(diamondCutFacet));
+        diamond = new Diamond(OWNER, address(diamondCutFacet));
 
         diamondInit = new DiamondInit();
 
@@ -51,7 +53,7 @@ contract DeployDiamond is Script {
         diamondCut[1] = IDiamondCut.FacetCut(address(ownershipFacet), IDiamondCut.FacetCutAction.Add, allOwnershipSelectors);
 
         IDiamondCut(address(diamond)).diamondCut(diamondCut, address(diamondInit), abi.encode(diamondInit.init.selector));
-        IERC173(address(diamond)).transferOwnership(owner);
+        IERC173(address(diamond)).transferOwnership(OWNER);
         
         vm.stopBroadcast();
     }

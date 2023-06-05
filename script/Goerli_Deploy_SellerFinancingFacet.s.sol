@@ -9,24 +9,23 @@ import "../src/diamond/facets/OwnershipFacet.sol";
 import "../src/diamond/Diamond.sol";
 import "../src/diamond/interfaces/IERC173.sol";
 import "../src/facets/SellerFinancingFacet.sol";
+import "../src/interfaces/sellerFinancing/ISellerFinancing.sol";
 
-contract DeploySellerFinancingFacet is Script {
+contract DeploySellerFinancingFacetGoerli is Script {
     NiftyApesSellerFinancingFacet sellerFinancingFacet;
     IDiamondCut diamond;
 
-    // NiftyApesSellerFinancing sellerFinancingFacet;
+    address constant DIAMOND_PROXY_ADDRESS = 0xa99755b549e9BfaBE0969CcA4Ea0f652272C896F;
 
-    address SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
-    address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
+    address constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant goerliRoyaltiesEngineAddress = 0xe7c9Cb6D966f76f3B5142167088927Bf34966a1f;
+    address constant goerliDelegateRegistryAddress = 0x00000000000076A84feF008CDAbe6409d2FE638B;
 
     function run() external {
-        address DIAMOND_PROXY_ADDRESS = 0xa99755b549e9BfaBE0969CcA4Ea0f652272C896F;
-
-        address goerliRoyaltiesEngineAddress = 0xe7c9Cb6D966f76f3B5142167088927Bf34966a1f;
-        address goerliDelegateRegistryAddress = 0x00000000000076A84feF008CDAbe6409d2FE638B;
 
         // account address of the private key
-        uint256 deployerPrivateKey = vm.envUint("GOERLI_PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
         sellerFinancingFacet = new NiftyApesSellerFinancingFacet();
@@ -79,6 +78,9 @@ contract DeploySellerFinancingFacet is Script {
                 WETH_ADDRESS
             )
         );
+
+        // pauseSanctions for Goerli as Chainalysis contact doesnt exists there
+        ISellerFinancing(address(diamond)).pauseSanctions();
         
         vm.stopBroadcast();
     }

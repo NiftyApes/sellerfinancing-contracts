@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
@@ -68,6 +67,13 @@ contract NiftyApesSellerFinancingFacet is
         ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init("NiftyApes Seller Financing Tickets", "BANANAS");
         ERC721URIStorageUpgradeable.__ERC721URIStorage_init();
+
+        // manually setting interfaceIds to be true,
+        // since we have an independent supportsInterface in diamondLoupe facet
+        // and has a separate mapping storage to mark the supported interfaces as true
+        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
+        ds.supportedInterfaces[type(IERC721Upgradeable).interfaceId] = true;
+        ds.supportedInterfaces[type(IERC721MetadataUpgradeable).interfaceId] = true;
 
         StorageA.SellerFinancingStorage storage sf = StorageA.sellerFinancingStorage();
 

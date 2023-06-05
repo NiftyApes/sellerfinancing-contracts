@@ -3,7 +3,7 @@ pragma solidity 0.8.18;
 
 import "../interfaces/sellerFinancing/ISellerFinancingStructs.sol";
 
-/// @title Storage contract for first facet FacetA
+/// @title Storage contract for first facet SellerFinancingFacet
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
@@ -25,6 +25,8 @@ library StorageA {
         keccak256("diamond.standard.seller.financing");
 
     struct SellerFinancingStorage {
+        // slot values given below are relative the actual slot position determined by the slot for `SELLER_FINANCING_STORAGE_POSITION`
+
         // increments by two for each loan, once for buyerNftId, once for sellerNftId
         /// slot0
         uint256 loanNftNonce;

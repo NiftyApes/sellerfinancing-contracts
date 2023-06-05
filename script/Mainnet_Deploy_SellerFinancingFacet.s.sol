@@ -1,44 +1,37 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.18;
+pragma solidity ^0.8.18;
 
-import "@openzeppelin-norm/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-// import "@openzeppelin-norm/contracts/proxy/transparent/ProxyAdmin.sol";
+import "forge-std/Script.sol";
 
-import "../../../src/interfaces/sellerFinancing/ISellerFinancing.sol";
-import "../../../src/facets/SellerFinancingFacet.sol";
-import "../../../src/marketplaceIntegration/MarketplaceIntegration.sol";
-import "../../../src/erc721MintFinancing/ERC721MintFinancing.sol";
-import { DiamondDeployment } from "./DiamondDeployment.sol";
-import "../../../src/diamond/interfaces/IDiamondCut.sol";
+import "../src/diamond/facets/DiamondCutFacet.sol";
+import "../src/diamond/interfaces/IDiamondCut.sol";
+import "../src/diamond/facets/DiamondLoupeFacet.sol";
+import "../src/diamond/facets/OwnershipFacet.sol";
+import "../src/diamond/Diamond.sol";
+import "../src/diamond/interfaces/IERC173.sol";
+import "../src/facets/SellerFinancingFacet.sol";
 
-import "forge-std/Test.sol";
-
-// deploy & initializes SellerFinancing contracts
-contract SellerFinancingDeployment is Test, DiamondDeployment {
-
+contract DeploySellerFinancingFacetMainnet is Script {
     NiftyApesSellerFinancingFacet sellerFinancingFacet;
-    ISellerFinancing sellerFinancing;
+    IDiamondCut diamond;
 
-    MarketplaceIntegration marketplaceIntegration;
-    ERC721MintFinancing erc721MintFinancing;
+    address constant DIAMOND_PROXY_ADDRESS = 0xa99755b549e9BfaBE0969CcA4Ea0f652272C896F;
 
-    address SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
-    address SEAPORT_CONDUIT = 0x1E0049783F008A0085193E00003D00cd54003c71;
-    address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address SUPERRARE_MARKETPLACE = 0x34CfAC646f301356fAa8B21e94227e3583Fe3F5F;
-    address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
-    address mainnetDelegateRegistryAddress = 0x00000000000076A84feF008CDAbe6409d2FE638B;
+    address constant SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
+    address constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
+    address constant mainnetDelegateRegistryAddress = 0x00000000000076A84feF008CDAbe6409d2FE638B;
 
-    uint256 SUPERRARE_MARKET_FEE_BPS = 300;
+    function run() external {
 
-    function setUp() public virtual override {
-        super.setUp();
-
-        vm.startPrank(owner);
+        // account address of the private key
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
 
         sellerFinancingFacet = new NiftyApesSellerFinancingFacet();
 
-        bytes4[] memory allSellerFinancingSelectors = new bytes4[](37);
+        diamond = IDiamondCut(DIAMOND_PROXY_ADDRESS);
+
+        bytes4[] memory allSellerFinancingSelectors = new bytes4[](30);
         allSellerFinancingSelectors[0] = sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector;
         allSellerFinancingSelectors[1] = sellerFinancingFacet.updateDelegateRegistryContractAddress.selector;
         allSellerFinancingSelectors[2] = sellerFinancingFacet.updateSeaportContractAddress.selector;
@@ -69,51 +62,22 @@ contract SellerFinancingDeployment is Test, DiamondDeployment {
         allSellerFinancingSelectors[27] = sellerFinancingFacet.ownerOf.selector;
         allSellerFinancingSelectors[28] = sellerFinancingFacet.tokenURI.selector;
         allSellerFinancingSelectors[29] = sellerFinancingFacet.onERC721Received.selector;
-        allSellerFinancingSelectors[30] = sellerFinancingFacet.balanceOf.selector;
-        allSellerFinancingSelectors[31] = sellerFinancingFacet.name.selector;
-        allSellerFinancingSelectors[32] = sellerFinancingFacet.symbol.selector;
-        allSellerFinancingSelectors[33] = sellerFinancingFacet.approve.selector;
-        allSellerFinancingSelectors[34] = sellerFinancingFacet.getApproved.selector;
-        allSellerFinancingSelectors[35] = sellerFinancingFacet.setApprovalForAll.selector;
-        allSellerFinancingSelectors[36] = sellerFinancingFacet.isApprovedForAll.selector;
 
         IDiamondCut.FacetCut[] memory diamondCut = new IDiamondCut.FacetCut[](1);
         diamondCut[0] = IDiamondCut.FacetCut(address(sellerFinancingFacet), IDiamondCut.FacetCutAction.Add, allSellerFinancingSelectors);
 
-        IDiamondCut(address(diamond)).diamondCut(
+        diamond.diamondCut(
             diamondCut, 
             address(sellerFinancingFacet),
             abi.encodeWithSelector(
-                sellerFinancingFacet.initialize.selector, 
+                sellerFinancingFacet.initialize.selector,
                 mainnetRoyaltiesEngineAddress, 
                 mainnetDelegateRegistryAddress,
                 SEAPORT_ADDRESS,
                 WETH_ADDRESS
             )
         );
-
-        // declare interfaces
-        sellerFinancing = ISellerFinancing(address(diamond));
-
-        // deploy marketplace integration
-        marketplaceIntegration = new MarketplaceIntegration(
-            address(sellerFinancing),
-            SUPERRARE_MARKETPLACE,
-            SUPERRARE_MARKET_FEE_BPS
-        );
-
-        vm.stopPrank();
-        vm.startPrank(seller1);
-
-        // deploy mint financing contracts
-        erc721MintFinancing = new ERC721MintFinancing(
-            "Minty mints",
-            "MINT",
-            address(sellerFinancing)
-        );
-
-        vm.stopPrank();
-
-        vm.label(address(0), "NULL !!!!! ");
+        
+        vm.stopBroadcast();
     }
 }
