@@ -12,27 +12,10 @@ contract TestSellerFinancingInitialize is Test, BaseTest, OffersLoansFixtures {
     }
 
     function test_unit_SellerFinancing_initialize() public {
-        TransparentUpgradeableProxy sellerFinancingProxyTest;
-        ISellerFinancing sellerFinancingTest;
-
-        // deploy proxies
-        sellerFinancingProxyTest = new TransparentUpgradeableProxy(
-            address(sellerFinancingImplementation),
-            address(sellerFinancingProxyAdmin),
-            bytes("")
-        );
-
-        // declare interfaces
-        sellerFinancingTest = ISellerFinancing(address(sellerFinancingProxyTest));
-
-        // initialize proxies
-        sellerFinancingTest.initialize(
-            mainnetRoyaltiesEngineAddress,
-            mainnetDelegateRegistryAddress,
-            SEAPORT_ADDRESS,
-            WETH_ADDRESS
-        );
-        assertEq(sellerFinancingTest.seaportContractAddress(), SEAPORT_ADDRESS);
-        assertEq(sellerFinancingTest.wethContractAddress(), WETH_ADDRESS);
+        // we assert the already initalised values from deployments as the contract has already been initialized
+        assertEq(sellerFinancing.seaportContractAddress(), SEAPORT_ADDRESS);
+        assertEq(sellerFinancing.wethContractAddress(), WETH_ADDRESS);
+        assertEq(sellerFinancing.royaltiesEngineContractAddress(), mainnetRoyaltiesEngineAddress);
+        assertEq(sellerFinancing.delegateRegistryContractAddress(), mainnetDelegateRegistryAddress);
     }
 }

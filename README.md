@@ -151,3 +151,24 @@ To verify proxy on Etherscan (probably won't need to do this again, as we probab
 ```
 forge verify-contract <proxy contract address> TransparentUpgradeableProxy <Etherscan API Key> --constructor-args-path constructor-args.txt --watch
 ```
+
+### Important Notes regarding Diamond Pattern (EIP-2535) integration
+
+1. Within the diamond standard, the absence of a fixed protocol for declaring and managing state variables can lead to storage slot collisions among different facets if not handled cautiously. There are numerous strategies for efficient management (a comprehensive article elucidating the key methods prevalent in the industry can be found), and we've implemented a particular method known as the Diamond Storage pattern within our src/storage/StorageA.sol. This pattern ensures variable accessibility across any desired facets, while simultaneously circumventing potential storage collisions. 
+
+2. However, an inherent challenge in storage management lies in the inability to control variable declarations from all external contracts, such as those from OpenZeppelin libraries. These external contracts claim slots starting from slot 0, creating the risk of collision among different facets that inherit these libraries and access the same slots for differing variables.
+
+3. To mitigate these collisions, we've established a contract named Gap1000, designed to be inherited by the next facet intended for later addition. In order to ensure a storage slot gap of 1000, this contract must be inherited prior to any other contract, hence leaving slots occupied by the first facet. 
+
+4. For each new facet that will be added, corresponding Gap contracts will need to be created, with the slot gap depending on the number of slots previously occupied. For example, if two facets already occupy the first 2000 slots (1000 slots per facet), the third facet will need to create and inherit Gap2000 prior to inheriting any external contract. It's crucial that this pattern is adhered to for the addition of any new facets in the future.
+
+5. The uint256[547] private __gap in NiftyApesSellerFinancingFacet is specifically included to reserve 1000 slots in the SellerFinancingFacet. The array's length is dependent on the number of slots that have been previously occupied by the state variables from the externally inherited contracts.
+
+To determine the precise number of slots occupied by all state variables within any contract, we can execute the following command and scrutinize the final variable __gap slot value:
+
+
+```
+solc @openzeppelin/=lib/openzeppelin-contracts-upgradeable/ --storage-layout src/facets/SellerFinancingFacet.sol
+```
+
+If the last variable __gap starts from slot `x`, then we set the length of the __gap array to be `1000-x`.
