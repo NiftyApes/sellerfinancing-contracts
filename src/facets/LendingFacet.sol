@@ -26,7 +26,7 @@ contract NiftyApesLendingFacet is
         bytes calldata signature,
         address borrower,
         uint256 nftId
-    ) external payable whenNotPaused nonReentrant returns (uint256 ethReceived) {
+    ) external whenNotPaused nonReentrant returns (uint256 ethReceived) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
 
@@ -71,7 +71,7 @@ contract NiftyApesLendingFacet is
         address borrower,
         uint256 nftId,
         bytes calldata data
-    ) external payable whenNotPaused nonReentrant {
+    ) external whenNotPaused nonReentrant {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
 

@@ -141,6 +141,10 @@ abstract contract NiftyApesInternal is
         if (offer.periodDuration < 1 minutes) {
             revert InvalidPeriodDuration();
         }
+        // requireNonZeroPrincipalAmount
+        if (offer.principalAmount == 0) {
+            revert PrincipalAmountZero();
+        }
         // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
         if (offer.principalAmount < offer.minimumPrincipalPerPeriod) {
             revert InvalidMinimumPrincipalPerPeriod(

@@ -10,7 +10,7 @@ interface ISellerFinancingStructs {
     struct Offer {
         // SLOT 0
         OfferType offerType;
-        // Down payment for NFT financing
+        // Down payment for NFT financing, ignored for LENDING offers
         uint128 downPaymentAmount;
         // SLOT 1
         // Loan offer amount, where price will be equal to `downPaymentAmount` + `principalAmount`

@@ -195,63 +195,22 @@ contract NiftyApesSellerFinancingFacet is
     ) external payable whenNotPaused nonReentrant {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.SELLER_FINANCING);
-
-        // get SellerFinancing storage
-        StorageA.SellerFinancingStorage storage sf = StorageA.sellerFinancingStorage();
-        // check for collection offer
-        if (!offer.isCollectionOffer) {
-            if (nftId != offer.nftId) {
-                revert NftIdsMustMatch();
-            }
-            _requireAvailableSignature(signature, sf);
-            // mark signature as used
-            _markSignatureUsed(offer, signature, sf);
-        } else {
-            if (getCollectionOfferCount(signature) >= offer.collectionOfferLimit) {
-                revert CollectionOfferLimitReached();
-            }
-            sf.collectionOfferCounters[signature] += 1;
-        }
-        // instantiate loan
-        Loan storage loan = _getLoan(offer.nftContractAddress, nftId, sf);
-        // get seller
-        address seller = getOfferSigner(offer, signature);
-        if (_callERC1271isValidSignature(offer.creator, getOfferHash(offer), signature)) {
-            seller = offer.creator;
-        }
-
-        _require721Owner(offer.nftContractAddress, nftId, seller);
-        _requireIsNotSanctioned(seller, sf);
-        _requireIsNotSanctioned(buyer, sf);
-        _requireIsNotSanctioned(msg.sender, sf);
-        _requireOfferNotExpired(offer);
-        // requireOfferisValid
-        _requireNonZeroAddress(offer.nftContractAddress);
-        // require1MinsMinimumDuration
-        if (offer.periodDuration < 1 minutes) {
-            revert InvalidPeriodDuration();
-        }
         // requireSufficientMsgValue
         if (msg.value < offer.downPaymentAmount) {
             revert InsufficientMsgValue(msg.value, offer.downPaymentAmount);
         }
-        // requireNonZeroPrincipalAmount
-        if (offer.principalAmount == 0) {
-            revert PrincipalAmountZero();
-        }
-        // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
-        if (offer.principalAmount < offer.minimumPrincipalPerPeriod) {
-            revert InvalidMinimumPrincipalPerPeriod(offer.minimumPrincipalPerPeriod, offer.principalAmount);
-        }
-        // requireNotSellerFinancingTicket
-        if (offer.nftContractAddress == address(this)) {
-            revert CannotBuySellerFinancingTicket();
-        }
-
         // if msg.value is too high, return excess value
         if (msg.value > offer.downPaymentAmount) {
             payable(buyer).sendValue(msg.value - offer.downPaymentAmount);
         }
+
+        // get SellerFinancing storage
+        StorageA.SellerFinancingStorage storage sf = StorageA.sellerFinancingStorage();
+        
+        address seller = _commonLoanChecks(offer, signature, buyer, nftId, sf);
+
+        // transfer nft from seller to this contract, revert on failure
+        _transferNft(offer.nftContractAddress, nftId, seller, address(this));
 
         uint256 totalRoyaltiesPaid = _payRoyalties(
             offer.nftContractAddress,
@@ -264,36 +223,7 @@ contract NiftyApesSellerFinancingFacet is
         // payout seller
         payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
 
-        // mint buyer nft
-        uint256 borrowerNftId = sf.loanNftNonce;
-        sf.loanNftNonce++;
-        _safeMint(buyer, borrowerNftId);
-        _setTokenURI(
-            borrowerNftId,
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
-        );
-
-        // mint seller nft
-        // use loanNftNonce to prevent stack too deep error
-        _safeMint(seller, sf.loanNftNonce);
-        sf.loanNftNonce++;
-
-        // create loan
-        _createLoan(loan, offer, nftId, sf.loanNftNonce - 1, borrowerNftId, offer.principalAmount, sf);
-
-        // transfer nft from seller to this contract, revert on failure
-        _transferNft(offer.nftContractAddress, nftId, seller, address(this));
-
-        // add buyer delegate.cash delegation
-        IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
-            buyer,
-            offer.nftContractAddress,
-            nftId,
-            true
-        );
-
-        // emit loan executed event
-        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
+        _executeLoan(offer, signature, buyer, seller, nftId, sf);
     }
 
     /// @inheritdoc ISellerFinancing

@@ -330,14 +330,7 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
         );
 
         vm.startPrank(buyer1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ISellerFinancingErrors.NotNftOwner.selector,
-                offer.nftContractAddress,
-                offer.nftId,
-                seller1
-            )
-        );
+        vm.expectRevert("ERC721: transfer caller is not owner nor approved");
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
