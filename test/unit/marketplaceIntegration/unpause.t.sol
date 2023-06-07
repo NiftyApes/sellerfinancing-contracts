@@ -35,9 +35,9 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
-        assertEq(loan.buyerNftId, 0);
-        assertEq(loan.sellerNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.borrowerNftId, 0);
+        assertEq(loan.lenderNftId, 1);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -52,14 +52,14 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = (offer.price * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount)* SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         vm.prank(owner);
         marketplaceIntegration.pause();
 
         vm.startPrank(buyer1);
         vm.expectRevert("Pausable: paused");
-        marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             buyer1,
@@ -71,7 +71,7 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
         marketplaceIntegration.unpause();
 
         vm.startPrank(buyer1);
-        marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             buyer1,

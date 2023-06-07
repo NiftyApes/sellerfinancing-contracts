@@ -5,13 +5,13 @@ import "forge-std/Test.sol";
 
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
 
 contract TestGetOfferSignatureStatus is
     Test,
     BaseTest,
-    ISellerFinancingStructs,
+    INiftyApesStructs,
     OffersLoansFixtures
 {
     uint256 immutable SIGNER_PRIVATE_KEY_1 =
@@ -27,7 +27,9 @@ contract TestGetOfferSignatureStatus is
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
-            price: 1 ether,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
+            principalAmount: 0.7 ether,
+            isCollectionOffer: false,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
@@ -56,7 +58,7 @@ contract TestGetOfferSignatureStatus is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             signature,
             buyer1,
@@ -72,7 +74,9 @@ contract TestGetOfferSignatureStatus is
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
-            price: 1 ether,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
+            principalAmount: 0.7 ether,
+            isCollectionOffer: false,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,

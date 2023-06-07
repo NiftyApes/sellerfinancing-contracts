@@ -2,6 +2,7 @@
 pragma solidity 0.8.18;
 
 import "@openzeppelin/contracts/utils/StringsUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "forge-std/Test.sol";
 
 // creates payable addresses
@@ -20,10 +21,18 @@ contract UsersFixtures is Test {
     address payable internal seller2;
     address payable internal seller3;
     address payable internal owner;
+    address payable internal lender1;
+    uint256 internal lender1_private_key;
+    address payable internal borrower1;
+    uint256 internal borrower1_private_key;
     address constant SANCTIONED_ADDRESS =
         address(0x7FF9cFad3877F21d41Da833E2F775dB0569eE3D9);
 
     address payable[10] internal users;
+    
+    address wethWhale = 0xf584F8728B874a6a5c7A8d4d387C9aae9172D621;
+    IERC20Upgradeable weth =
+        IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     // current total supply of ether
     uint256 internal defaultInitialEthBalance = ~uint128(0);
@@ -50,6 +59,18 @@ contract UsersFixtures is Test {
         seller3 = getNextUserAddress();
         vm.deal(seller3, defaultInitialEthBalance);
         vm.label(seller3, "seller3");
+
+        lender1 = buyer1;
+        lender1_private_key = buyer1_private_key;
+        vm.label(lender1, "lender1");
+
+        borrower1 = seller1;
+        borrower1_private_key = seller1_private_key;
+        vm.label(borrower1, "borrower1");
+
+        vm.startPrank(wethWhale);
+        weth.transfer(lender1, weth.balanceOf(wethWhale));
+        vm.stopPrank();
 
         owner = getNextUserAddress();
         vm.deal(owner, defaultInitialEthBalance);

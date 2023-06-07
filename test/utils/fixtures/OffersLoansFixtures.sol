@@ -5,8 +5,8 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 
-import "../../utils/fixtures/SellerFinancingDeployment.sol";
-import "../../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../utils/fixtures/NiftyApesDeployment.sol";
+import "../../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 
 import "../../common/BaseTest.sol";
 
@@ -14,9 +14,9 @@ uint256 constant BASE_BPS = 10_000;
 uint256 constant MAX_FEE = 1_000;
 
 // Note: need "sign" function from BaseTest for signOffer below
-contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerFinancingDeployment {
+contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDeployment {
     struct FuzzedOfferFields {
-        uint128 price;
+        uint128 principalAmount;
         uint128 downPaymentAmount;
         uint128 minimumPrincipalPerPeriod;
         uint32 periodInterestRateBps;
@@ -25,15 +25,21 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
     }
 
     struct FixedOfferFields {
+        INiftyApesStructs.OfferType offerType;
         address creator;
         uint256 nftId;
         address nftContractAddress;
+        bool isCollectionOffer;
         uint64 collectionOfferLimit;
     }
 
     FixedOfferFields internal defaultFixedOfferFields;
 
+    FixedOfferFields internal defaultFixedOfferFieldsForLending;
+
     FuzzedOfferFields internal defaultFixedFuzzedFieldsForFastUnitTesting;
+
+    FuzzedOfferFields internal defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
 
     function setUp() public virtual override {
         super.setUp();
@@ -41,17 +47,41 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
         // these fields are fixed, not fuzzed
         // but specific fields can be overridden in tests
         defaultFixedOfferFields = FixedOfferFields({
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
             creator: seller1,
             nftContractAddress: address(boredApeYachtClub),
             nftId: 8661,
+            isCollectionOffer: false,
+            collectionOfferLimit: 1
+        });
+
+        // these fields are fixed for Lending offer, not fuzzed
+        // but specific fields can be overridden in tests
+        defaultFixedOfferFieldsForLending = FixedOfferFields({
+            offerType: INiftyApesStructs.OfferType.LENDING,
+            creator: seller1,
+            nftContractAddress: address(boredApeYachtClub),
+            nftId: 8661,
+            isCollectionOffer: false,
             collectionOfferLimit: 1
         });
 
         // in addition to fuzz tests, we have fast unit tests
         // using these default values instead of fuzzing
         defaultFixedFuzzedFieldsForFastUnitTesting = FuzzedOfferFields({
-            price: 1 ether,
+            principalAmount: 0.7 ether,
             downPaymentAmount: 0.3 ether,
+            minimumPrincipalPerPeriod: 0.07 ether,
+            periodInterestRateBps: 25,
+            periodDuration: 30 days,
+            expiration: uint32(block.timestamp) + 1 days
+        });
+
+        // in addition to fuzz tests, we have fast unit tests
+        // using these default values instead of fuzzing
+        defaultFixedFuzzedFieldsForLendingForFastUnitTesting = FuzzedOfferFields({
+            principalAmount: 1 ether,
+            downPaymentAmount: 0 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
             periodDuration: 30 days,
@@ -60,14 +90,15 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
     }
 
     modifier validateFuzzedOfferFields(FuzzedOfferFields memory fuzzed) {
-        vm.assume(fuzzed.price < ~uint64(0));
-        vm.assume(fuzzed.price > ~uint8(0));
+        vm.assume(fuzzed.principalAmount < ~uint64(0));
+        vm.assume(fuzzed.principalAmount > ~uint8(0));
         vm.assume(fuzzed.downPaymentAmount > ~uint8(0));
+        vm.assume(fuzzed.downPaymentAmount < ~uint64(0));
         vm.assume(fuzzed.minimumPrincipalPerPeriod > ~uint8(0));
         vm.assume(fuzzed.periodInterestRateBps < 100000);
 
-        vm.assume(fuzzed.price > fuzzed.downPaymentAmount);
-        vm.assume(fuzzed.price - fuzzed.downPaymentAmount > fuzzed.minimumPrincipalPerPeriod);
+        vm.assume(fuzzed.principalAmount > 0);
+        vm.assume(fuzzed.principalAmount > fuzzed.minimumPrincipalPerPeriod);
         vm.assume(fuzzed.periodDuration > 1 minutes);
         vm.assume(fuzzed.periodDuration <= 180 days);
         vm.assume(fuzzed.expiration > block.timestamp);
@@ -83,8 +114,31 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
                 creator: fixedFields.creator,
                 nftId: fixedFields.nftId,
                 nftContractAddress: fixedFields.nftContractAddress,
-                price: fuzzed.price,
+                offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
+                principalAmount: fuzzed.principalAmount,
+                isCollectionOffer: fixedFields.isCollectionOffer,
                 downPaymentAmount: fuzzed.downPaymentAmount,
+                minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
+                periodInterestRateBps: fuzzed.periodInterestRateBps,
+                periodDuration: fuzzed.periodDuration,
+                expiration: fuzzed.expiration,
+                collectionOfferLimit: fixedFields.collectionOfferLimit
+            });
+    }
+
+    function offerStructFromFieldsForLending(
+        FuzzedOfferFields memory fuzzed,
+        FixedOfferFields memory fixedFields
+    ) internal pure returns (Offer memory) {
+        return
+            Offer({
+                creator: fixedFields.creator,
+                nftId: fixedFields.nftId,
+                nftContractAddress: fixedFields.nftContractAddress,
+                offerType: INiftyApesStructs.OfferType.LENDING,
+                principalAmount: fuzzed.principalAmount,
+                isCollectionOffer: fixedFields.isCollectionOffer,
+                downPaymentAmount: 0,
                 minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
                 periodInterestRateBps: fuzzed.periodInterestRateBps,
                 periodDuration: fuzzed.periodDuration,
@@ -108,11 +162,19 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
         return signOffer(seller1_private_key, offer);
     }
 
-    function createOfferAndBuyWithFinancing(Offer memory offer) internal {
+    function lender1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
+        vm.startPrank(lender1);
+        weth.approve(address(sellerFinancing), offer.principalAmount);
+        vm.stopPrank();
+
+        return signOffer(lender1_private_key, offer);
+    }
+
+    function createOfferAndBuyWithSellerFinancing(Offer memory offer) internal {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,

@@ -22,7 +22,7 @@ contract TestUpdateDelegateRegistryContractAddress is
     }
 
     function test_unit_updateDelegateRegistryContractAddress_reverts_if_zeroAddress() public { 
-        vm.expectRevert(ISellerFinancingErrors.ZeroAddress.selector);
+        vm.expectRevert(INiftyApesErrors.ZeroAddress.selector);
         vm.prank(owner);
         sellerFinancing.updateDelegateRegistryContractAddress(address(0));
     }

@@ -5,9 +5,9 @@ import "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 
-contract TestGetOfferHash is Test, ISellerFinancingStructs, OffersLoansFixtures {
+contract TestGetOfferHash is Test, INiftyApesStructs, OffersLoansFixtures {
     function setUp() public override {
         super.setUp();
     }
@@ -17,7 +17,9 @@ contract TestGetOfferHash is Test, ISellerFinancingStructs, OffersLoansFixtures 
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
-            price: 1 ether,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
+            principalAmount: 0.7 ether,
+            isCollectionOffer: false,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
@@ -28,7 +30,7 @@ contract TestGetOfferHash is Test, ISellerFinancingStructs, OffersLoansFixtures 
 
         bytes32 functionOfferHash = sellerFinancing.getOfferHash(offer);
 
-        bytes32 expectedFunctionHash = 0xbd6a85c43773bd0885d728b960307027cb3addb5fe54f24efe563dee3da8cbaa;
+        bytes32 expectedFunctionHash = 0x1931828706b2c87ed52a7279457e40b7c645f94098632948f94e7c34e61ed7e5;
 
         assertEq(functionOfferHash, expectedFunctionHash);
     }

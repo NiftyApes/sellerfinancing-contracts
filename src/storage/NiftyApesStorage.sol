@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "../interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../interfaces/niftyapes/INiftyApesStructs.sol";
 
 /// @title Storage contract for first facet SellerFinancingFacet
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
 /// @custom:contributor zjmiller (zjmiller.eth)
-library StorageA {
+library NiftyApesStorage {
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
     address constant SANCTIONS_CONTRACT = 0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 
@@ -18,7 +18,7 @@ library StorageA {
     /// @dev Constant typeHash for EIP-712 hashing of Offer struct
     bytes32 constant _OFFER_TYPEHASH =
         keccak256(
-            "Offer(uint128 price,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,uint64 collectionOfferLimit)"
+            "Offer(uint128 price,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,bool isCollectionOffer,uint64 collectionOfferLimit)"
         );
 
     bytes32 constant SELLER_FINANCING_STORAGE_POSITION =
@@ -27,7 +27,7 @@ library StorageA {
     struct SellerFinancingStorage {
         // slot values given below are relative the actual slot position determined by the slot for `SELLER_FINANCING_STORAGE_POSITION`
 
-        // increments by two for each loan, once for buyerNftId, once for sellerNftId
+        // increments by two for each loan, once for borrowerNftId, once for lenderNftId
         /// slot0
         uint256 loanNftNonce;
         /// @dev The stored address for the royalties engine
@@ -49,11 +49,11 @@ library StorageA {
         ///      The mapping has to be broken into two parts since an NFT is denominated by its address (first part)
         ///      and its nftId (second part) in our code base.
         /// slot5
-        mapping(address => mapping(uint256 => ISellerFinancingStructs.Loan)) loans;
+        mapping(address => mapping(uint256 => INiftyApesStructs.Loan)) loans;
         /// @dev A mapping for a Seller Financing Ticket to an underlying NFT Asset .
         ///      This mapping enables the protocol to query a loan by Seller Financing Ticket Id.
         /// slot6
-        mapping(uint256 => ISellerFinancingStructs.UnderlyingNft) underlyingNfts;
+        mapping(uint256 => INiftyApesStructs.UnderlyingNft) underlyingNfts;
         /// @dev A mapping for a signed offer to a collection offer counter
         /// slot7
         mapping(bytes => uint64) collectionOfferCounters;

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "../../utils/fixtures/OffersLoansFixtures.sol";
-import "../../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 
 contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function setUp() public override {
@@ -37,9 +37,9 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
-        assertEq(loan.buyerNftId, 0);
-        assertEq(loan.sellerNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.borrowerNftId, 0);
+        assertEq(loan.lenderNftId, 1);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -49,7 +49,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
     function _test_mintWithFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.nftContractAddress = address(erc721MintFinancing);
 
         vm.startPrank(seller1);
@@ -80,7 +80,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
     function _test_mintWithFinancing_3_count(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.nftContractAddress = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
 
@@ -116,7 +116,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.nftContractAddress = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
 
@@ -155,7 +155,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.nftContractAddress = address(erc721MintFinancing);
 
         vm.startPrank(seller1);
@@ -196,7 +196,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.nftContractAddress = address(0);
 
         vm.startPrank(seller1);
@@ -234,7 +234,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
     function _test_mintWithFinancing_reverts_ifCountIs0(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.nftContractAddress = address(erc721MintFinancing);
 
         vm.startPrank(seller1);
@@ -268,7 +268,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.nftContractAddress = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
 
@@ -318,7 +318,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.nftId = ~uint256(0);
+        offer.isCollectionOffer = true;
         offer.nftContractAddress = address(erc721MintFinancing);
         offer.collectionOfferLimit = 0;
 

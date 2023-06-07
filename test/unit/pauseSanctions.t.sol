@@ -37,15 +37,15 @@ contract TestPauseSanctions is Test, BaseTest, OffersLoansFixtures {
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
         //buyer nftId has tokenURI same as original nft
         assertEq(
-            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId),
+            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId),
             IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(offer.nftId)
         );
-        Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
+        Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId));
 
         // check loan struct values
-        assertEq(loan.buyerNftId, 0);
-        assertEq(loan.sellerNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.borrowerNftId, 0);
+        assertEq(loan.lenderNftId, 1);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -64,7 +64,7 @@ contract TestPauseSanctions is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.pauseSanctions();
 
         vm.startPrank(SANCTIONED_ADDRESS);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,

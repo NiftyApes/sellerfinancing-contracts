@@ -2,9 +2,10 @@
 pragma solidity 0.8.18;
 
 import "../seaport/ISeaport.sol";
+import "./INiftyApesStructs.sol";
 
-/// @title The SellerFinancing interface defining custom errors
-interface ISellerFinancingErrors {
+/// @title The NiftyApes interface defining custom errors
+interface INiftyApesErrors {
     error ZeroAddress();
 
     error SignatureNotAvailable(bytes signature);
@@ -47,7 +48,7 @@ interface ISellerFinancingErrors {
 
     error InsufficientMsgValue(uint256 msgValueSent, uint256 minMsgValueExpected);
 
-    error DownPaymentGreaterThanOrEqualToOfferPrice(uint256 downPaymentAmount, uint256 offerPrice);
+    error PrincipalAmountZero();
 
     error InvalidMinimumPrincipalPerPeriod(
         uint256 givenMinPrincipalPerPeriod,
@@ -79,4 +80,6 @@ interface ISellerFinancingErrors {
     error InsufficientBalance(uint256 amountRequested, uint256 contractBalance);
 
     error ConditionSendValueFailed(address from, address to, uint256 amount);
+
+    error InvalidOfferType(INiftyApesStructs.OfferType given, INiftyApesStructs.OfferType expected);
 }

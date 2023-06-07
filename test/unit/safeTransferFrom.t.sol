@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 
 import "../common/Console.sol";
 
@@ -41,9 +41,9 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
-        assertEq(loan.buyerNftId, 0);
-        assertEq(loan.sellerNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.borrowerNftId, 0);
+        assertEq(loan.lenderNftId, 1);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -54,13 +54,13 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
     function test_unit_safeTranferFrom_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
@@ -86,13 +86,13 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
     function test_unit_safeTranferFromData_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.buyerNftId, bytes(""));
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId, bytes(""));
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
@@ -119,13 +119,13 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
     function test_unit_tranferFrom_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loan.borrowerNftId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
@@ -151,7 +151,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
     function test_unit_safeTranferFrom_reverts_if_anyTransactingPartiesAreSanctioned() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -159,17 +159,17 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.prank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.borrowerNftId);
 
         vm.prank(owner);
         sellerFinancing.pauseSanctions();
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.borrowerNftId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
@@ -198,10 +198,10 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.prank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(SANCTIONED_ADDRESS, buyer1, loan.buyerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(SANCTIONED_ADDRESS, buyer1, loan.borrowerNftId);
     }
 }

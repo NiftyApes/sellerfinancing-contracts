@@ -9,7 +9,7 @@ import "../src/diamond/facets/OwnershipFacet.sol";
 import "../src/diamond/Diamond.sol";
 import "../src/diamond/interfaces/IERC173.sol";
 import "../src/facets/SellerFinancingFacet.sol";
-import "../src/interfaces/sellerFinancing/ISellerFinancing.sol";
+import "../src/interfaces/niftyapes/sellerFinancing/ISellerFinancing.sol";
 
 contract DeploySellerFinancingFacetGoerli is Script {
     NiftyApesSellerFinancingFacet sellerFinancingFacet;
@@ -50,7 +50,7 @@ contract DeploySellerFinancingFacetGoerli is Script {
         allSellerFinancingSelectors[14] = sellerFinancingFacet.getOfferSignatureStatus.selector;
         allSellerFinancingSelectors[15] = sellerFinancingFacet.getCollectionOfferCount.selector;
         allSellerFinancingSelectors[16] = sellerFinancingFacet.withdrawOfferSignature.selector;
-        allSellerFinancingSelectors[17] = sellerFinancingFacet.buyWithFinancing.selector;
+        allSellerFinancingSelectors[17] = sellerFinancingFacet.buyWithSellerFinancing.selector;
         allSellerFinancingSelectors[18] = sellerFinancingFacet.makePayment.selector;
         allSellerFinancingSelectors[19] = sellerFinancingFacet.seizeAsset.selector;
         allSellerFinancingSelectors[20] = sellerFinancingFacet.instantSell.selector;

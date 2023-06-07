@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 import "../../src/interfaces/seaport/ISeaport.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 import "../common/Console.sol";
 
 contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
@@ -40,9 +40,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
-        assertEq(loan.buyerNftId, 0);
-        assertEq(loan.sellerNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.price - offer.downPaymentAmount);
+        assertEq(loan.borrowerNftId, 0);
+        assertEq(loan.lenderNftId, 1);
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
         assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
         assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
         assertEq(loan.periodDuration, offer.periodDuration);
@@ -93,7 +93,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         }
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -180,7 +180,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -271,7 +271,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         }
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -341,7 +341,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_post_grace_period(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -373,7 +373,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        vm.expectRevert(ISellerFinancingErrors.SoftGracePeriodEnded.selector);
+        vm.expectRevert(INiftyApesErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.instantSell(
             offer.nftContractAddress,
             offer.nftId,
@@ -397,7 +397,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -427,7 +427,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(
             buyer1,
             SANCTIONED_ADDRESS,
-            loan.buyerNftId
+            loan.borrowerNftId
         );
 
         vm.prank(owner);
@@ -436,7 +436,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );
@@ -463,7 +463,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifCallerIsNotBuyer(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -488,7 +488,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(buyer2);
         vm.expectRevert(
-            abi.encodeWithSelector(ISellerFinancingErrors.InvalidCaller.selector, buyer2, buyer1)
+            abi.encodeWithSelector(INiftyApesErrors.InvalidCaller.selector, buyer2, buyer1)
         );
         sellerFinancing.instantSell(
             offer.nftContractAddress,
@@ -515,7 +515,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -541,7 +541,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         );
 
         vm.startPrank(buyer1);
-        vm.expectRevert(ISellerFinancingErrors.SoftGracePeriodEnded.selector);
+        vm.expectRevert(INiftyApesErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.instantSell(
             offer.nftContractAddress,
             offer.nftId,
@@ -567,7 +567,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -588,7 +588,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidConsiderationItemType.selector,
+                INiftyApesErrors.InvalidConsiderationItemType.selector,
                 0,
                 ISeaport.ItemType.ERC20,
                 ISeaport.ItemType.ERC721
@@ -614,7 +614,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -635,7 +635,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidConsiderationToken.selector,
+                INiftyApesErrors.InvalidConsiderationToken.selector,
                 0,
                 address(1),
                 offer.nftContractAddress
@@ -661,7 +661,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -682,7 +682,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidConsideration0Identifier.selector,
+                INiftyApesErrors.InvalidConsideration0Identifier.selector,
                 1,
                 offer.nftId
             )
@@ -707,7 +707,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -728,7 +728,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidOffer0ItemType.selector,
+                INiftyApesErrors.InvalidOffer0ItemType.selector,
                 ISeaport.ItemType.ERC721,
                 ISeaport.ItemType.ERC20
             )
@@ -753,7 +753,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -774,7 +774,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidOffer0Token.selector,
+                INiftyApesErrors.InvalidOffer0Token.selector,
                 address(1),
                 WETH_ADDRESS
             )
@@ -799,7 +799,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -820,7 +820,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidConsiderationItemType.selector,
+                INiftyApesErrors.InvalidConsiderationItemType.selector,
                 1,
                 ISeaport.ItemType.ERC721,
                 ISeaport.ItemType.ERC20
@@ -846,7 +846,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -867,7 +867,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidConsiderationToken.selector,
+                INiftyApesErrors.InvalidConsiderationToken.selector,
                 1,
                 address(1),
                 WETH_ADDRESS
@@ -893,7 +893,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -925,7 +925,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InsufficientAmountReceivedFromSale.selector,
+                INiftyApesErrors.InsufficientAmountReceivedFromSale.selector,
                 loan.remainingPrincipal + totalInterest + minProfitAmount,
                 loan.remainingPrincipal + totalInterest + minProfitAmount + 1
             )
@@ -955,7 +955,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
@@ -994,7 +994,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidOfferLength.selector,
+                INiftyApesErrors.InvalidOfferLength.selector,
                 2,
                 1
             )

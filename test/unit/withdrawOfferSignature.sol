@@ -5,13 +5,13 @@ import "forge-std/Test.sol";
 
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
 
 contract TestWithdrawOfferSignature is
     Test,
     BaseTest,
-    ISellerFinancingStructs,
+    INiftyApesStructs,
     OffersLoansFixtures
 {
     uint256 immutable SIGNER_PRIVATE_KEY_1 =
@@ -27,7 +27,9 @@ contract TestWithdrawOfferSignature is
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
-            price: 1 ether,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
+            principalAmount: 0.7 ether,
+            isCollectionOffer: false,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
@@ -50,7 +52,9 @@ contract TestWithdrawOfferSignature is
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
-            price: 1 ether,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
+            principalAmount: 0.7 ether,
+            isCollectionOffer: false,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
@@ -75,7 +79,9 @@ contract TestWithdrawOfferSignature is
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
-            price: 1 ether,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
+            principalAmount: 0.7 ether,
+            isCollectionOffer: false,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
             periodInterestRateBps: 25,
@@ -90,7 +96,7 @@ contract TestWithdrawOfferSignature is
 
         vm.startPrank(address(seller2));
         vm.expectRevert(
-            abi.encodeWithSelector(ISellerFinancingErrors.InvalidSigner.selector, seller1, seller2)
+            abi.encodeWithSelector(INiftyApesErrors.InvalidSigner.selector, seller1, seller2)
         );
         sellerFinancing.withdrawOfferSignature(offer, signature);
         vm.stopPrank();

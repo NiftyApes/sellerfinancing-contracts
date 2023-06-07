@@ -7,7 +7,7 @@ import "@openzeppelin-norm/contracts/security/ReentrancyGuard.sol";
 
 import "@openzeppelin-norm/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-norm/contracts/utils/Counters.sol";
-import "../interfaces/sellerFinancing/ISellerFinancing.sol";
+import "../interfaces/niftyapes/sellerFinancing/ISellerFinancing.sol";
 
 /// @title ERC721MintFinancing
 /// @custom:version 1.0
@@ -63,7 +63,7 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
     ///        all NFTs will be minted up to the limit and excess funds will be returned.
     ///        If the first NFT of a collection is minted with finance the collection tokenIds will begin at index 1
     function mintWithFinancing(
-        ISellerFinancing.Offer memory offer,
+        INiftyApesStructs.Offer memory offer,
         bytes calldata signature,
         uint256 count
     ) external payable nonReentrant returns (uint256[] memory tokenIds) {
@@ -114,7 +114,7 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             tokenIds[i] = _tokenIdTracker.current();
 
             // Execute loan
-            ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
+            ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
                 value: offer.downPaymentAmount
             }(offer, signature, msg.sender, _tokenIdTracker.current());
         }
