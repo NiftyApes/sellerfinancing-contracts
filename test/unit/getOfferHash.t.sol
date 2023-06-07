@@ -5,9 +5,9 @@ import "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 
-contract TestGetOfferHash is Test, ISellerFinancingStructs, OffersLoansFixtures {
+contract TestGetOfferHash is Test, INiftyApesStructs, OffersLoansFixtures {
     function setUp() public override {
         super.setUp();
     }
@@ -17,7 +17,7 @@ contract TestGetOfferHash is Test, ISellerFinancingStructs, OffersLoansFixtures 
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
-            offerType: ISellerFinancingStructs.OfferType.SELLER_FINANCING,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
             principalAmount: 0.7 ether,
             isCollectionOffer: false,
             downPaymentAmount: 0.3 ether,

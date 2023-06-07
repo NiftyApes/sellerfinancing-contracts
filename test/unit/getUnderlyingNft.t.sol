@@ -5,13 +5,13 @@ import "forge-std/Test.sol";
 
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
 
 contract TestGetUnderlyingNft is
     Test,
     BaseTest,
-    ISellerFinancingStructs,
+    INiftyApesStructs,
     OffersLoansFixtures
 {
     uint256 immutable SIGNER_PRIVATE_KEY_1 =
@@ -31,7 +31,7 @@ contract TestGetUnderlyingNft is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             signature,
             buyer1,
@@ -65,7 +65,7 @@ contract TestGetUnderlyingNft is
         bytes memory signature =  signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             signature,
             buyer1,
@@ -93,7 +93,7 @@ contract TestGetUnderlyingNft is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             signature,
             buyer1,

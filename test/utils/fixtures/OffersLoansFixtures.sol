@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 
 import "../../utils/fixtures/NiftyApesDeployment.sol";
-import "../../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 
 import "../../common/BaseTest.sol";
 
@@ -14,7 +14,7 @@ uint256 constant BASE_BPS = 10_000;
 uint256 constant MAX_FEE = 1_000;
 
 // Note: need "sign" function from BaseTest for signOffer below
-contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, NiftyApesDeployment {
+contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDeployment {
     struct FuzzedOfferFields {
         uint128 principalAmount;
         uint128 downPaymentAmount;
@@ -25,7 +25,7 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, NiftyAp
     }
 
     struct FixedOfferFields {
-        ISellerFinancingStructs.OfferType offerType;
+        INiftyApesStructs.OfferType offerType;
         address creator;
         uint256 nftId;
         address nftContractAddress;
@@ -47,7 +47,7 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, NiftyAp
         // these fields are fixed, not fuzzed
         // but specific fields can be overridden in tests
         defaultFixedOfferFields = FixedOfferFields({
-            offerType: ISellerFinancingStructs.OfferType.SELLER_FINANCING,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
             creator: seller1,
             nftContractAddress: address(boredApeYachtClub),
             nftId: 8661,
@@ -58,7 +58,7 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, NiftyAp
         // these fields are fixed for Lending offer, not fuzzed
         // but specific fields can be overridden in tests
         defaultFixedOfferFieldsForLending = FixedOfferFields({
-            offerType: ISellerFinancingStructs.OfferType.LENDING,
+            offerType: INiftyApesStructs.OfferType.LENDING,
             creator: seller1,
             nftContractAddress: address(boredApeYachtClub),
             nftId: 8661,
@@ -114,7 +114,7 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, NiftyAp
                 creator: fixedFields.creator,
                 nftId: fixedFields.nftId,
                 nftContractAddress: fixedFields.nftContractAddress,
-                offerType: ISellerFinancingStructs.OfferType.SELLER_FINANCING,
+                offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
                 principalAmount: fuzzed.principalAmount,
                 isCollectionOffer: fixedFields.isCollectionOffer,
                 downPaymentAmount: fuzzed.downPaymentAmount,
@@ -135,7 +135,7 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, NiftyAp
                 creator: fixedFields.creator,
                 nftId: fixedFields.nftId,
                 nftContractAddress: fixedFields.nftContractAddress,
-                offerType: ISellerFinancingStructs.OfferType.LENDING,
+                offerType: INiftyApesStructs.OfferType.LENDING,
                 principalAmount: fuzzed.principalAmount,
                 isCollectionOffer: fixedFields.isCollectionOffer,
                 downPaymentAmount: 0,
@@ -170,11 +170,11 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, NiftyAp
         return signOffer(lender1_private_key, offer);
     }
 
-    function createOfferAndBuyWithFinancing(Offer memory offer) internal {
+    function createOfferAndBuyWithSellerFinancing(Offer memory offer) internal {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,

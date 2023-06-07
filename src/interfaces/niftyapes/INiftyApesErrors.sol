@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "../../seaport/ISeaport.sol";
-import "./ISellerFinancingStructs.sol";
+import "../seaport/ISeaport.sol";
+import "./INiftyApesStructs.sol";
 
-/// @title The SellerFinancing interface defining custom errors
-interface ISellerFinancingErrors {
+/// @title The NiftyApes interface defining custom errors
+interface INiftyApesErrors {
     error ZeroAddress();
 
     error SignatureNotAvailable(bytes signature);
@@ -81,5 +81,5 @@ interface ISellerFinancingErrors {
 
     error ConditionSendValueFailed(address from, address to, uint256 amount);
 
-    error InvalidOfferType(ISellerFinancingStructs.OfferType given, ISellerFinancingStructs.OfferType expected);
+    error InvalidOfferType(INiftyApesStructs.OfferType given, INiftyApesStructs.OfferType expected);
 }

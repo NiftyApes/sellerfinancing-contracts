@@ -3,8 +3,8 @@ pragma solidity 0.8.18;
 
 import "./sellerFinancing/ISellerFinancing.sol";
 import "./sellerFinancing/ISellerFinancingEvents.sol";
-import "./sellerFinancing/ISellerFinancingStructs.sol";
-import "./sellerFinancing/ISellerFinancingErrors.sol";
+import "./INiftyApesStructs.sol";
+import "./INiftyApesErrors.sol";
 import "./lending/ILending.sol";
 
 
@@ -12,7 +12,7 @@ import "./lending/ILending.sol";
 interface INiftyApes is
     ISellerFinancing,
     ISellerFinancingEvents,
-    ISellerFinancingStructs,
-    ISellerFinancingErrors,
+    INiftyApesStructs,
+    INiftyApesErrors,
     ILending
     {}

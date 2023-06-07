@@ -22,7 +22,7 @@ contract TestUpdateSeaportContractAddress is
     }
 
     function test_unit_updateSeaportContractAddress_reverts_if_zeroAddress() public { 
-        vm.expectRevert(ISellerFinancingErrors.ZeroAddress.selector);
+        vm.expectRevert(INiftyApesErrors.ZeroAddress.selector);
         vm.prank(owner);
         sellerFinancing.updateSeaportContractAddress(address(0));
     }

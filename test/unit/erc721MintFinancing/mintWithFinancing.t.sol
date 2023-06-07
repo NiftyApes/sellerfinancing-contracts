@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "../../utils/fixtures/OffersLoansFixtures.sol";
-import "../../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 
 contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function setUp() public override {

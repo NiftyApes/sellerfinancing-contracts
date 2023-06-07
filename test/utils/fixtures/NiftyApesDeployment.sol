@@ -58,7 +58,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allSellerFinancingSelectors[14] = sellerFinancingFacet.getOfferSignatureStatus.selector;
         allSellerFinancingSelectors[15] = sellerFinancingFacet.getCollectionOfferCount.selector;
         allSellerFinancingSelectors[16] = sellerFinancingFacet.withdrawOfferSignature.selector;
-        allSellerFinancingSelectors[17] = sellerFinancingFacet.buyWithFinancing.selector;
+        allSellerFinancingSelectors[17] = sellerFinancingFacet.buyWithSellerFinancing.selector;
         allSellerFinancingSelectors[18] = sellerFinancingFacet.makePayment.selector;
         allSellerFinancingSelectors[19] = sellerFinancingFacet.seizeAsset.selector;
         allSellerFinancingSelectors[20] = sellerFinancingFacet.instantSell.selector;

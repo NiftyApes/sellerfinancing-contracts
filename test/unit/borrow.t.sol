@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
 import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 
 contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
@@ -144,7 +144,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
 
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidOfferType.selector, ISellerFinancingStructs.OfferType.SELLER_FINANCING, ISellerFinancingStructs.OfferType.LENDING));
+        vm.expectRevert(abi.encodeWithSelector(INiftyApesErrors.InvalidOfferType.selector, INiftyApesStructs.OfferType.SELLER_FINANCING, INiftyApesStructs.OfferType.LENDING));
         sellerFinancing.borrow(
             offer,
             offerSignature,
@@ -253,7 +253,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
             nftId1
         );
         boredApeYachtClub.approve(address(sellerFinancing), nftId2);
-        vm.expectRevert(ISellerFinancingErrors.CollectionOfferLimitReached.selector);
+        vm.expectRevert(INiftyApesErrors.CollectionOfferLimitReached.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
@@ -317,7 +317,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(borrower1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SignatureNotAvailable.selector,
+                INiftyApesErrors.SignatureNotAvailable.selector,
                 offerSignature
             )
         );
@@ -350,7 +350,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
-        vm.expectRevert(ISellerFinancingErrors.OfferExpired.selector);
+        vm.expectRevert(INiftyApesErrors.OfferExpired.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
@@ -378,7 +378,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
-        vm.expectRevert(ISellerFinancingErrors.InvalidPeriodDuration.selector);
+        vm.expectRevert(INiftyApesErrors.InvalidPeriodDuration.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
@@ -405,7 +405,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        vm.expectRevert(ISellerFinancingErrors.PrincipalAmountZero.selector);
+        vm.expectRevert(INiftyApesErrors.PrincipalAmountZero.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
@@ -434,7 +434,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(borrower1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidMinimumPrincipalPerPeriod.selector,
+                INiftyApesErrors.InvalidMinimumPrincipalPerPeriod.selector,
                 offer.minimumPrincipalPerPeriod,
                 offer.principalAmount
             )
@@ -466,7 +466,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(borrower1);
        vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );
@@ -497,7 +497,7 @@ contract TestBorrow is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(SANCTIONED_ADDRESS);
        vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );

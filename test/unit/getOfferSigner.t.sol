@@ -5,9 +5,9 @@ import "forge-std/Test.sol";
 
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 
-contract TestGetOfferSigner is Test, BaseTest, ISellerFinancingStructs, OffersLoansFixtures {
+contract TestGetOfferSigner is Test, BaseTest, INiftyApesStructs, OffersLoansFixtures {
     uint256 immutable SIGNER_PRIVATE_KEY_1 =
         0x60b919c82f0b4791a5b7c6a7275970ace1748759ebdaa4076d7eeed9dbcff3c3;
     address immutable SIGNER_1 = 0x503408564C50b43208529faEf9bdf9794c015d52;
@@ -21,7 +21,7 @@ contract TestGetOfferSigner is Test, BaseTest, ISellerFinancingStructs, OffersLo
             creator: seller1,
             nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
             nftId: 1,
-            offerType: ISellerFinancingStructs.OfferType.SELLER_FINANCING,
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
             principalAmount: 0.7 ether,
             isCollectionOffer: false,
             downPaymentAmount: 0.3 ether,

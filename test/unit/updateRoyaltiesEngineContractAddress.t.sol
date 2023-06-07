@@ -22,7 +22,7 @@ contract TestUpdateRoyaltiesEngineContractAddress is
     }
 
     function test_unit_updateRoyaltiesEngineContractAddress_reverts_if_zeroAddress() public { 
-        vm.expectRevert(ISellerFinancingErrors.ZeroAddress.selector);
+        vm.expectRevert(INiftyApesErrors.ZeroAddress.selector);
         vm.prank(owner);
         sellerFinancing.updateRoyaltiesEngineContractAddress(address(0));
     }

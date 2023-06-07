@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
 import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 
 contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents {
@@ -161,7 +161,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         vm.startPrank(borrower1);
         weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
 
-        vm.expectRevert(abi.encodeWithSelector(ISellerFinancingErrors.InvalidOfferType.selector, ISellerFinancingStructs.OfferType.SELLER_FINANCING, ISellerFinancingStructs.OfferType.LENDING));
+        vm.expectRevert(abi.encodeWithSelector(INiftyApesErrors.InvalidOfferType.selector, INiftyApesStructs.OfferType.SELLER_FINANCING, INiftyApesStructs.OfferType.LENDING));
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
@@ -291,7 +291,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
             nftId1,
             abi.encode(order1)
         );
-        vm.expectRevert(ISellerFinancingErrors.CollectionOfferLimitReached.selector);
+        vm.expectRevert(INiftyApesErrors.CollectionOfferLimitReached.selector);
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
@@ -362,7 +362,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SignatureNotAvailable.selector,
+                INiftyApesErrors.SignatureNotAvailable.selector,
                 offerSignature
             )
         );
@@ -401,7 +401,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         
         vm.startPrank(borrower1);
         weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
-        vm.expectRevert(ISellerFinancingErrors.OfferExpired.selector);
+        vm.expectRevert(INiftyApesErrors.OfferExpired.selector);
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
@@ -438,7 +438,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         
         vm.startPrank(borrower1);
         weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
-        vm.expectRevert(ISellerFinancingErrors.InvalidPeriodDuration.selector);
+        vm.expectRevert(INiftyApesErrors.InvalidPeriodDuration.selector);
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
@@ -474,7 +474,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
 
         
         vm.startPrank(borrower1);
-        vm.expectRevert(ISellerFinancingErrors.PrincipalAmountZero.selector);
+        vm.expectRevert(INiftyApesErrors.PrincipalAmountZero.selector);
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
@@ -512,7 +512,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         vm.startPrank(borrower1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.InvalidMinimumPrincipalPerPeriod.selector,
+                INiftyApesErrors.InvalidMinimumPrincipalPerPeriod.selector,
                 offer.minimumPrincipalPerPeriod,
                 offer.principalAmount
             )
@@ -554,7 +554,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         vm.startPrank(borrower1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );
@@ -595,7 +595,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );

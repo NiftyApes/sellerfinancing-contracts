@@ -23,7 +23,7 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         vm.expectRevert("Pausable: paused");
-        sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,

@@ -61,7 +61,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         vm.stopPrank();
 
         vm.startPrank(SANCTIONED_ADDRESS);
-        marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
@@ -80,7 +80,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
             )
         );
         vm.startPrank(SANCTIONED_ADDRESS);
-        marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,

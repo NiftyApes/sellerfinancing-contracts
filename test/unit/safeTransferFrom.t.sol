@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
 import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 
 import "../common/Console.sol";
@@ -54,7 +54,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
     function test_unit_safeTranferFrom_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -86,7 +86,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
     function test_unit_safeTranferFromData_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -119,7 +119,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
     function test_unit_tranferFrom_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -151,7 +151,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
     function test_unit_safeTranferFrom_reverts_if_anyTransactingPartiesAreSanctioned() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -159,7 +159,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.prank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );
@@ -198,7 +198,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         vm.prank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );

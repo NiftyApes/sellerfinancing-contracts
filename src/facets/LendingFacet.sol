@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "../storage/StorageA.sol";
+import "../storage/NiftyApesStorage.sol";
 import "../interfaces/niftyapes/lending/ILending.sol";
 import "../interfaces/seaport/ISeaport.sol";
 import "./common/NiftyApesInternal.sol";
@@ -31,7 +31,7 @@ contract NiftyApesLendingFacet is
         _requireExpectedOfferType(offer, OfferType.LENDING);
 
         // get storage
-        StorageA.SellerFinancingStorage storage sf = StorageA.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         
         address lender = _commonLoanChecks(offer, signature, borrower, nftId, sf);
 
@@ -76,7 +76,7 @@ contract NiftyApesLendingFacet is
         _requireExpectedOfferType(offer, OfferType.LENDING);
 
         // get storage
-        StorageA.SellerFinancingStorage storage sf = StorageA.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         
         address lender = _commonLoanChecks(offer, signature, borrower, nftId, sf);
 

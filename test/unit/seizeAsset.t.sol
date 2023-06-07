@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 
 contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
@@ -76,7 +76,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
     function _test_seizeAsset_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -107,11 +107,11 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
     function _test_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         vm.startPrank(seller1);
-        vm.expectRevert(ISellerFinancingErrors.LoanNotInDefault.selector);
+        vm.expectRevert(INiftyApesErrors.LoanNotInDefault.selector);
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
     }
@@ -129,7 +129,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
     function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -165,7 +165,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_seizeAsset_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -187,7 +187,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );
@@ -209,7 +209,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_seizeAsset_reverts_ifCallerNotSeller(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -217,7 +217,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(seller2);
         vm.expectRevert(
-            abi.encodeWithSelector(ISellerFinancingErrors.InvalidCaller.selector, seller2, seller1)
+            abi.encodeWithSelector(INiftyApesErrors.InvalidCaller.selector, seller2, seller1)
         );
         sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();

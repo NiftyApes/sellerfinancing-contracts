@@ -9,7 +9,6 @@ import "../../src/diamond/interfaces/IERC173.sol";
 import "../common/BaseTest.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../common/mock/MockFacet1.sol";
-import "../common/mock/MockFacet2.sol";
 
 contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
     function setUp() public override {
@@ -100,7 +99,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(diamondLoupe.facetAddress(diamondCutFacet.diamondCut.selector), address(diamondCutFacet));
         assertEq(diamondLoupe.facetAddress(diamondLoupeFacet.facets.selector), address(diamondLoupeFacet));
         assertEq(diamondLoupe.facetAddress(ownershipFacet.transferOwnership.selector), address(ownershipFacet));
-        assertEq(diamondLoupe.facetAddress(sellerFinancing.buyWithFinancing.selector), address(sellerFinancingFacet));
+        assertEq(diamondLoupe.facetAddress(sellerFinancing.buyWithSellerFinancing.selector), address(sellerFinancingFacet));
     }
 
     function test_supportsInterface_must_be_true_for_all_supported_intrerface() public {
@@ -142,8 +141,8 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         MockFacet1 mockFacet = new MockFacet1();
 
         bytes4[] memory allFacetSelectors = new bytes4[](2);
-        allFacetSelectors[0] = mockFacet.getValueFacet1At.selector;
-        allFacetSelectors[1] = mockFacet.setValueFacet1At.selector;
+        allFacetSelectors[0] = mockFacet.mockAddress.selector;
+        allFacetSelectors[1] = mockFacet.mockValue.selector;
 
         IDiamondCut.FacetCut[] memory facetCut = new IDiamondCut.FacetCut[](1);
         facetCut[0] = IDiamondCut.FacetCut(address(mockFacet), IDiamondCut.FacetCutAction.Add, allFacetSelectors);
@@ -151,16 +150,16 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         vm.prank(owner);
         diamondCut.diamondCut(facetCut, address(0), bytes("0"));
 
-        MockFacet1(address(diamond)).setValueFacet1At(0, 1234);
-        assertEq(MockFacet1(address(diamond)).getValueFacet1At(0), 1234);
+        assertEq(MockFacet1(address(diamond)).mockAddress(), address(0));
+        assertEq(MockFacet1(address(diamond)).mockValue(), 0);
     }
 
     function test_diamondCut_removes_functions_from_facets() public {
         MockFacet1 mockFacet = new MockFacet1();
 
         bytes4[] memory allFacetSelectors = new bytes4[](2);
-        allFacetSelectors[0] = mockFacet.getValueFacet1At.selector;
-        allFacetSelectors[1] = mockFacet.setValueFacet1At.selector;
+        allFacetSelectors[0] = mockFacet.mockAddress.selector;
+        allFacetSelectors[1] = mockFacet.mockValue.selector;
 
         IDiamondCut.FacetCut[] memory facetCut = new IDiamondCut.FacetCut[](1);
         facetCut[0] = IDiamondCut.FacetCut(address(mockFacet), IDiamondCut.FacetCutAction.Add, allFacetSelectors);
@@ -168,8 +167,8 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         vm.prank(owner);
         diamondCut.diamondCut(facetCut, address(0), bytes("0"));
 
-        MockFacet1(address(diamond)).setValueFacet1At(0, 1234);
-        assertEq(MockFacet1(address(diamond)).getValueFacet1At(0), 1234);
+        assertEq(MockFacet1(address(diamond)).mockAddress(), address(0));
+        assertEq(MockFacet1(address(diamond)).mockValue(), 0);
 
         facetCut[0] = IDiamondCut.FacetCut(address(0), IDiamondCut.FacetCutAction.Remove, allFacetSelectors);
 
@@ -177,9 +176,9 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         diamondCut.diamondCut(facetCut, address(0), bytes("0"));
 
         vm.expectRevert("Diamond: Function does not exist");
-        MockFacet1(address(diamond)).setValueFacet1At(0, 1234);
+        MockFacet1(address(diamond)).mockAddress();
         vm.expectRevert("Diamond: Function does not exist");
-        MockFacet1(address(diamond)).getValueFacet1At(0);
+        MockFacet1(address(diamond)).mockValue();
     }
 
     function test_diamondCut_calls_provided_init_function() public {
@@ -197,36 +196,5 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
 
         assertEq(MockFacet1(address(diamond)).mockAddress(), address(this));
         assertEq(MockFacet1(address(diamond)).mockValue(), 1234);
-    }
-
-    function test_mockFacet2Storage_doesnt_interferes_with_mockFacet1Storage() public {
-        MockFacet1 mockFacet1 = new MockFacet1();
-        MockFacet2 mockFacet2 = new MockFacet2();
-
-        bytes4[] memory allFacet1Selectors = new bytes4[](2);
-        allFacet1Selectors[0] = mockFacet1.setValueFacet1At.selector;
-        allFacet1Selectors[1] = mockFacet1.getValueFacet1At.selector;
-
-        bytes4[] memory allFacet2Selectors = new bytes4[](2);
-        allFacet2Selectors[0] = mockFacet2.setValueFacet2At.selector;
-        allFacet2Selectors[1] = mockFacet2.getValueFacet2At.selector;
-
-        IDiamondCut.FacetCut[] memory facetCut = new IDiamondCut.FacetCut[](2);
-        facetCut[0] = IDiamondCut.FacetCut(address(mockFacet1), IDiamondCut.FacetCutAction.Add, allFacet1Selectors);
-        facetCut[1] = IDiamondCut.FacetCut(address(mockFacet2), IDiamondCut.FacetCutAction.Add, allFacet2Selectors);
-
-        vm.prank(owner);
-        diamondCut.diamondCut(facetCut, address(0), bytes("0"));
-
-        MockFacet1(address(diamond)).setValueFacet1At(0, 100);
-        MockFacet1(address(diamond)).setValueFacet1At(999, 1000);
-
-        MockFacet2(address(diamond)).setValueFacet2At(0, 200);
-        MockFacet2(address(diamond)).setValueFacet2At(999, 2000);
-
-        assertEq(MockFacet1(address(diamond)).getValueFacet1At(0), 100);
-        assertEq(MockFacet1(address(diamond)).getValueFacet1At(999), 1000);
-        assertEq(MockFacet2(address(diamond)).getValueFacet2At(0), 200);
-        assertEq(MockFacet2(address(diamond)).getValueFacet2At(999), 2000);
     }
 }

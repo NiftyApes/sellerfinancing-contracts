@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "../interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
+import "../interfaces/niftyapes/INiftyApesStructs.sol";
 
 /// @title Storage contract for first facet SellerFinancingFacet
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
 /// @custom:contributor zjmiller (zjmiller.eth)
-library StorageA {
+library NiftyApesStorage {
     /// @dev Internal constant address for the Chainalysis OFAC sanctions oracle
     address constant SANCTIONS_CONTRACT = 0x40C57923924B5c5c5455c48D93317139ADDaC8fb;
 
@@ -49,11 +49,11 @@ library StorageA {
         ///      The mapping has to be broken into two parts since an NFT is denominated by its address (first part)
         ///      and its nftId (second part) in our code base.
         /// slot5
-        mapping(address => mapping(uint256 => ISellerFinancingStructs.Loan)) loans;
+        mapping(address => mapping(uint256 => INiftyApesStructs.Loan)) loans;
         /// @dev A mapping for a Seller Financing Ticket to an underlying NFT Asset .
         ///      This mapping enables the protocol to query a loan by Seller Financing Ticket Id.
         /// slot6
-        mapping(uint256 => ISellerFinancingStructs.UnderlyingNft) underlyingNfts;
+        mapping(uint256 => INiftyApesStructs.UnderlyingNft) underlyingNfts;
         /// @dev A mapping for a signed offer to a collection offer counter
         /// slot7
         mapping(bytes => uint64) collectionOfferCounters;

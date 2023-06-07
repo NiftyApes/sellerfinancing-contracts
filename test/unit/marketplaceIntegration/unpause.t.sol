@@ -59,7 +59,7 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         vm.expectRevert("Pausable: paused");
-        marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             buyer1,
@@ -71,7 +71,7 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
         marketplaceIntegration.unpause();
 
         vm.startPrank(buyer1);
-        marketplaceIntegration.buyWithFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             buyer1,

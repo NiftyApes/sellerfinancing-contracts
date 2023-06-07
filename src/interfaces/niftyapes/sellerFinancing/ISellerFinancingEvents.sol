@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "./ISellerFinancingStructs.sol";
+import "../INiftyApesStructs.sol";
 
 /// @title Events emitted by the offers part of the protocol.
 interface ISellerFinancingEvents {
@@ -13,7 +13,7 @@ interface ISellerFinancingEvents {
     event OfferSignatureUsed(
         address indexed nftContractAddress,
         uint256 indexed nftId,
-        ISellerFinancingStructs.Offer offer,
+        INiftyApesStructs.Offer offer,
         bytes signature
     );
 
@@ -26,7 +26,7 @@ interface ISellerFinancingEvents {
         address indexed nftContractAddress,
         uint256 indexed nftId,
         bytes signature,
-        ISellerFinancingStructs.Loan loan
+        INiftyApesStructs.Loan loan
     );
 
     /// @notice Emitted when a payment is made toward the loan
@@ -42,7 +42,7 @@ interface ISellerFinancingEvents {
         uint256 amount,
         uint256 totalRoyaltiesPaid,
         uint256 interestPaid,
-        ISellerFinancingStructs.Loan loan
+        INiftyApesStructs.Loan loan
     );
 
     /// @notice Emitted when a loan is fully repaid
@@ -52,7 +52,7 @@ interface ISellerFinancingEvents {
     event LoanRepaid(
         address indexed nftContractAddress,
         uint256 indexed nftId,
-        ISellerFinancingStructs.Loan loan
+        INiftyApesStructs.Loan loan
     );
 
     /// @notice Emitted when an asset is seized
@@ -62,7 +62,7 @@ interface ISellerFinancingEvents {
     event AssetSeized(
         address indexed nftContractAddress,
         uint256 indexed nftId,
-        ISellerFinancingStructs.Loan loan
+        INiftyApesStructs.Loan loan
     );
 
     /// @notice Emitted when an NFT is sold instantly on Seaport
@@ -84,7 +84,7 @@ interface ISellerFinancingEvents {
         address indexed nftContractAddress,
         uint256 indexed nftId,
         bytes32 indexed orderHash,
-        ISellerFinancingStructs.Loan loan
+        INiftyApesStructs.Loan loan
     );
 
     /// @notice Emitted when a seaport NFT listing thorugh NiftyApes is cancelled by the borrower
@@ -96,7 +96,7 @@ interface ISellerFinancingEvents {
         address indexed nftContractAddress,
         uint256 indexed nftId,
         bytes32 indexed orderHash,
-        ISellerFinancingStructs.Loan loan
+        INiftyApesStructs.Loan loan
     );
 
     /// @notice Emitted when a flashClaim is executed on an NFT

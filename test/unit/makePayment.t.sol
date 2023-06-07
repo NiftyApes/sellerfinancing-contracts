@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingStructs.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingErrors.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
 import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 
 import "../common/Console.sol";
@@ -96,7 +96,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 sellerBalanceBefore = address(seller1).balance;
         uint256 royaltiesBalanceBefore = address(recipients1[0]).balance;
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -163,7 +163,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(
@@ -208,7 +208,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -277,7 +277,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -316,7 +316,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -330,7 +330,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
         assertEq(totalInterest, 3 * periodInterest);
 
         vm.startPrank(buyer1);
-        vm.expectRevert(ISellerFinancingErrors.SoftGracePeriodEnded.selector);
+        vm.expectRevert(INiftyApesErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.makePayment{ value: (loan.remainingPrincipal + totalInterest) }(
             offer.nftContractAddress,
             offer.nftId
@@ -354,7 +354,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -426,7 +426,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
@@ -436,7 +436,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.SanctionedAddress.selector,
+                INiftyApesErrors.SanctionedAddress.selector,
                 SANCTIONED_ADDRESS
             )
         );
@@ -463,7 +463,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(
@@ -505,7 +505,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(
@@ -520,7 +520,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISellerFinancingErrors.AmountReceivedLessThanRequiredMinimumPayment.selector,
+                INiftyApesErrors.AmountReceivedLessThanRequiredMinimumPayment.selector,
                 loan.minimumPrincipalPerPeriod + periodInterest - 1,
                 loan.minimumPrincipalPerPeriod + periodInterest
             )
@@ -547,7 +547,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
-        createOfferAndBuyWithFinancing(offer);
+        createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
         Loan memory loan = sellerFinancing.getLoan(
