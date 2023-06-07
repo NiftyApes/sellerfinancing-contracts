@@ -241,6 +241,54 @@ contract NiftyApesSellerFinancingFacet is
         }
     }
 
+    function makePaymentBatch(
+        address[] memory  nftContractAddresses,
+        uint256[] memory nftIds,
+        uint256[] memory payments,
+        bool partialExecution
+    ) external payable whenNotPaused nonReentrant {
+        uint256 batchLength = nftContractAddresses.length;
+        if (nftIds.length != batchLength) {
+            revert InvalidInputLength();
+        }
+
+        // get SellerFinancing storage
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        
+        uint256 valueConsumed;
+
+        // loop through the list to execute payment
+        for (uint256 i; i < batchLength; ++i) {
+
+            // if remaining value is not sufficient to execute ith payment
+            if (msg.value - valueConsumed < payments[i]) {
+                // if partial execution is allowed then move to next offer
+                if (partialExecution) {
+                    continue;
+                }
+                // else revert
+                else {
+                    revert InsufficientMsgValue(
+                        msg.value,
+                        valueConsumed + payments[i]
+                    );
+                }
+            }
+
+            address buyer = _makePayment(nftContractAddresses[i], nftIds[i], payments[i], sf);
+            // transfer nft to buyer if loan closed
+            if (buyer != address(0)) {
+                _transferNft(nftContractAddresses[i], nftIds[i], address(this), buyer);
+            }
+            // add current payment to the `valueConsumed`
+            valueConsumed += payments[i];
+        }
+        // send any unused value back to msg.sender
+        if (msg.value - valueConsumed > 0) {
+            payable(msg.sender).sendValue(msg.value - valueConsumed);
+        }
+    }
+
     function _makePayment(
         address nftContractAddress,
         uint256 nftId,

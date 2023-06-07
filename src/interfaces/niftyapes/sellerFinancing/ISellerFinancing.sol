@@ -63,6 +63,20 @@ interface ISellerFinancing is
     /// @param nftId The id of a specified NFT
     function makePayment(address nftContractAddress, uint256 nftId) external payable;
 
+    /// @notice Make payments to a list of active loans
+    /// @dev Any address may make a payment towards the loans.
+    /// @param nftContractAddresses The list of addresses of the NFT collections
+    /// @param nftIds The list of ids of the specified NFTs
+    /// @param payments The list of payment values for the loan
+    /// @param partialExecution If set to true, will continue to attempt transaction executions even
+    ///        if the any payment request had insufficient value available for the requested payment
+    function makePaymentBatch(
+        address[] memory  nftContractAddresses,
+        uint256[] memory nftIds,
+        uint256[] memory payments,
+        bool partialExecution
+    ) external payable;
+
     /// @notice Seize an asset from a defaulted loan.
     /// @dev    This function is only callable by the seller address
     /// @param nftContractAddress The address of the NFT collection
