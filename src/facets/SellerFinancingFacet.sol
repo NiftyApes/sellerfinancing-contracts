@@ -259,7 +259,6 @@ contract NiftyApesSellerFinancingFacet is
 
         // loop through the list to execute payment
         for (uint256 i; i < batchLength; ++i) {
-
             // if remaining value is not sufficient to execute ith payment
             if (msg.value - valueConsumed < payments[i]) {
                 // if partial execution is allowed then move to next offer

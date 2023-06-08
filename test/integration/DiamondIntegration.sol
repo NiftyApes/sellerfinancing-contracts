@@ -46,7 +46,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[2].functionSelectors[0], ownershipFacet.transferOwnership.selector);
         assertEq(allFacets[2].functionSelectors[1], ownershipFacet.owner.selector);
 
-        assertEq(allFacets[3].functionSelectors.length, 37);
+        assertEq(allFacets[3].functionSelectors.length, 38);
         assertEq(allFacets[3].functionSelectors[0], sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector);
         assertEq(allFacets[3].functionSelectors[1], sellerFinancingFacet.updateDelegateRegistryContractAddress.selector);
         assertEq(allFacets[3].functionSelectors[2], sellerFinancingFacet.updateSeaportContractAddress.selector);
@@ -80,7 +80,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(facetFunctionSelectors[1], ownershipFacet.owner.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(sellerFinancingFacet));
-        assertEq(facetFunctionSelectors.length, 37);
+        assertEq(facetFunctionSelectors.length, 38);
         assertEq(facetFunctionSelectors[0], sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector);
         assertEq(facetFunctionSelectors[1], sellerFinancingFacet.updateDelegateRegistryContractAddress.selector);
         assertEq(facetFunctionSelectors[2], sellerFinancingFacet.updateSeaportContractAddress.selector);
