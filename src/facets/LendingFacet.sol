@@ -57,7 +57,7 @@ contract NiftyApesLendingFacet is
         ethReceived = address(this).balance - contractBalanceBefore;
 
         // transfer nft from borrower to this contract, revert on failure
-        IERC721Upgradeable(offer.nftContractAddress).safeTransferFrom(borrower, address(this), nftId);
+        _transferCollateral(offer.nftContractAddress, nftId, borrower, address(this));
 
         _executeLoan(offer, signature, borrower, lender, nftId, sf);
 

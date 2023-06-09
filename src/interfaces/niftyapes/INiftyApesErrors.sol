@@ -16,6 +16,8 @@ interface INiftyApesErrors {
 
     error NotNftOwner(address nftContractAddress, uint256 nftId, address account);
 
+    error NotNonFungibleToken(address nftContractAddress, uint256 nftId);
+
     error InvalidSigner(address signer, address expected);
 
     error LoanAlreadyClosed();

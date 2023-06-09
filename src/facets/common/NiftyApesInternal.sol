@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165CheckerUpgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
@@ -20,6 +23,7 @@ import "../../interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
 import "../../interfaces/sanctions/SanctionsList.sol";
 import "../../interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "../../interfaces/delegateCash/IDelegationRegistry.sol";
+import "../../interfaces/erc1155/IERC1155SupplyUpgradeable.sol";
 import "../../lib/ECDSABridge.sol";
 import { LibDiamond } from "../../diamond/libraries/LibDiamond.sol";
 
@@ -33,11 +37,13 @@ abstract contract NiftyApesInternal is
     EIP712Upgradeable,
     ERC721URIStorageUpgradeable,
     ERC721HolderUpgradeable,
+    ERC1155HolderUpgradeable,
     INiftyApesErrors,
     INiftyApesStructs,
     ISellerFinancingEvents
 {
     using AddressUpgradeable for address payable;
+    using ERC165CheckerUpgradeable for address;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// @dev This empty reserved space is put in place for any variables 
@@ -137,7 +143,13 @@ abstract contract NiftyApesInternal is
         _requireOfferNotExpired(offer);
         // requireOfferisValid
         _requireNonZeroAddress(offer.nftContractAddress);
-        // require1MinsMinimumDuration
+if (IERC1155SupplyUpgradeable(offer.nftContractAddress).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
+                _requireNonFungibleToken(
+                    offer.nftContractAddress,
+                    nftId
+                );
+            }        
+            // require1MinsMinimumDuration
         if (offer.periodDuration < 1 minutes) {
             revert InvalidPeriodDuration();
         }
@@ -237,6 +249,29 @@ abstract contract NiftyApesInternal is
         return bytes4(data) == 0x1626ba7e;
     }
 
+    function _transferCollateral(
+        address nftContractAddress,
+        uint256 nftId,
+        address from,
+        address to
+    ) internal {
+        if (IERC1155SupplyUpgradeable(nftContractAddress).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
+            _transferERC1155Token(
+                nftContractAddress,
+                nftId,
+                from,
+                to
+            );
+        } else {
+            _transferNft(
+                nftContractAddress,
+                nftId,
+                from,
+                to
+            );
+        }
+    }
+
     function _transferNft(
         address nftContractAddress,
         uint256 nftId,
@@ -244,6 +279,15 @@ abstract contract NiftyApesInternal is
         address to
     ) internal {
         IERC721Upgradeable(nftContractAddress).safeTransferFrom(from, to, nftId);
+    }
+
+    function _transferERC1155Token(
+        address nftContractAddress,
+        uint256 nftId,
+        address from,
+        address to
+    ) internal {
+        IERC1155SupplyUpgradeable(nftContractAddress).safeTransferFrom(from, to, nftId, 1, bytes(""));
     }
 
     function _currentTimestamp32() internal view returns (uint32) {
@@ -269,13 +313,19 @@ abstract contract NiftyApesInternal is
         }
     }
 
-    function _require721Owner(
+    function supportsInterface(bytes4 interfaceId) public pure  override(ERC1155ReceiverUpgradeable, ERC721Upgradeable) returns (bool) {
+        return
+            interfaceId == type(IERC721Upgradeable).interfaceId ||
+            interfaceId == type(IERC721MetadataUpgradeable).interfaceId ||
+            interfaceId == type(IERC1155ReceiverUpgradeable).interfaceId;
+    }
+
+    function _requireNonFungibleToken(
         address nftContractAddress,
-        uint256 nftId,
-        address nftOwner
+        uint256 nftId
     ) internal view {
-        if (IERC721Upgradeable(nftContractAddress).ownerOf(nftId) != nftOwner) {
-            revert NotNftOwner(nftContractAddress, nftId, nftOwner);
+        if (IERC1155SupplyUpgradeable(nftContractAddress).totalSupply(nftId) != 1){
+            revert NotNonFungibleToken(nftContractAddress, nftId);
         }
     }
 

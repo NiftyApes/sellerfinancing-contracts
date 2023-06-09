@@ -210,7 +210,7 @@ contract NiftyApesSellerFinancingFacet is
         address seller = _commonLoanChecks(offer, signature, buyer, nftId, sf);
 
         // transfer nft from seller to this contract, revert on failure
-        _transferNft(offer.nftContractAddress, nftId, seller, address(this));
+        _transferCollateral(offer.nftContractAddress, nftId, seller, address(this));
 
         uint256 totalRoyaltiesPaid = _payRoyalties(
             offer.nftContractAddress,
@@ -237,7 +237,7 @@ contract NiftyApesSellerFinancingFacet is
         address buyer = _makePayment(nftContractAddress, nftId, msg.value, sf);
         // transfer nft to buyer if loan closed
         if (buyer != address(0)) {
-            _transferNft(nftContractAddress, nftId, address(this), buyer);
+            _transferCollateral(nftContractAddress, nftId, address(this), buyer);
         }
     }
 
@@ -397,7 +397,7 @@ contract NiftyApesSellerFinancingFacet is
         delete sf.loans[nftContractAddress][nftId];
 
         // transfer NFT from this contract to the seller address
-        _transferNft(nftContractAddress, nftId, address(this), sellerAddress);
+        _transferCollateral(nftContractAddress, nftId, address(this), sellerAddress);
     }
 
     /// @inheritdoc ISellerFinancing
