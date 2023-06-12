@@ -40,7 +40,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
 
         sellerFinancingFacet = new NiftyApesSellerFinancingFacet();
 
-        bytes4[] memory allSellerFinancingSelectors = new bytes4[](38);
+        bytes4[] memory allSellerFinancingSelectors = new bytes4[](39);
         allSellerFinancingSelectors[0] = sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector;
         allSellerFinancingSelectors[1] = sellerFinancingFacet.updateDelegateRegistryContractAddress.selector;
         allSellerFinancingSelectors[2] = sellerFinancingFacet.updateSeaportContractAddress.selector;
@@ -79,6 +79,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allSellerFinancingSelectors[35] = sellerFinancingFacet.setApprovalForAll.selector;
         allSellerFinancingSelectors[36] = sellerFinancingFacet.isApprovedForAll.selector;
         allSellerFinancingSelectors[37] = sellerFinancingFacet.makePaymentBatch.selector;
+        allSellerFinancingSelectors[38] = sellerFinancingFacet.seizeAssetBatch.selector;
 
         lendingFacet = new NiftyApesLendingFacet();
 

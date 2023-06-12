@@ -404,6 +404,30 @@ contract NiftyApesSellerFinancingFacet is
     ) external whenNotPaused nonReentrant {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        _seizeAsset(nftContractAddress, nftId, sf);
+    }
+
+    /// @inheritdoc ISellerFinancing
+    function seizeAssetBatch(
+        address[] memory nftContractAddresses,
+        uint256[] memory nftIds
+    ) external whenNotPaused nonReentrant {
+        uint256 batchLength = nftContractAddresses.length;
+        if (nftIds.length != batchLength) {
+            revert InvalidInputLength();
+        }
+        // get SellerFinancing storage
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        
+        for (uint256 i; i < batchLength; ++i) {
+            _seizeAsset(nftContractAddresses[i], nftIds[i], sf);
+        }
+    }
+    function _seizeAsset(
+        address nftContractAddress,
+        uint256 nftId,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal {
         // instantiate loan
         Loan storage loan = _getLoan(nftContractAddress, nftId, sf);
         // get buyer
