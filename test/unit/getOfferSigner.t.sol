@@ -29,7 +29,8 @@ contract TestGetOfferSigner is Test, BaseTest, INiftyApesStructs, OffersLoansFix
             periodInterestRateBps: 25,
             periodDuration: 30 days,
             expiration: uint32(1657217355),
-            collectionOfferLimit: 1
+            collectionOfferLimit: 1,
+            creatorOfferNonce: 0
         });
 
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);

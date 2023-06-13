@@ -31,6 +31,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         address nftContractAddress;
         bool isCollectionOffer;
         uint64 collectionOfferLimit;
+        uint32 creatorOfferNonce;
     }
 
     FixedOfferFields internal defaultFixedOfferFields;
@@ -52,7 +53,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             nftContractAddress: address(boredApeYachtClub),
             nftId: 8661,
             isCollectionOffer: false,
-            collectionOfferLimit: 1
+            collectionOfferLimit: 1,
+            creatorOfferNonce: 0
         });
 
         // these fields are fixed for Lending offer, not fuzzed
@@ -63,7 +65,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             nftContractAddress: address(boredApeYachtClub),
             nftId: 8661,
             isCollectionOffer: false,
-            collectionOfferLimit: 1
+            collectionOfferLimit: 1,
+            creatorOfferNonce: 0
         });
 
         // in addition to fuzz tests, we have fast unit tests
@@ -122,7 +125,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                 periodInterestRateBps: fuzzed.periodInterestRateBps,
                 periodDuration: fuzzed.periodDuration,
                 expiration: fuzzed.expiration,
-                collectionOfferLimit: fixedFields.collectionOfferLimit
+                collectionOfferLimit: fixedFields.collectionOfferLimit,
+                creatorOfferNonce: fixedFields.creatorOfferNonce
             });
     }
 
@@ -143,7 +147,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                 periodInterestRateBps: fuzzed.periodInterestRateBps,
                 periodDuration: fuzzed.periodDuration,
                 expiration: fuzzed.expiration,
-                collectionOfferLimit: fixedFields.collectionOfferLimit
+                collectionOfferLimit: fixedFields.collectionOfferLimit,
+                creatorOfferNonce: fixedFields.creatorOfferNonce
             });
     }
 

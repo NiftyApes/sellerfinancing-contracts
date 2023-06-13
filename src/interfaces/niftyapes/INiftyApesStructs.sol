@@ -8,8 +8,11 @@ interface INiftyApesStructs {
     }
     
     struct Offer {
-        // SLOT 0
+        // SLOT 0 - 88 remaining
         OfferType offerType;
+        // Current offer nonce value of the creator
+        // Offer becomes invalid if current offerNonce is increased
+        uint32 creatorOfferNonce;
         // Down payment for NFT financing, ignored for LENDING offers
         uint128 downPaymentAmount;
         // SLOT 1

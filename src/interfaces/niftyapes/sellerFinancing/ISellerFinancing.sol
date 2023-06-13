@@ -45,6 +45,10 @@ interface ISellerFinancing is
     /// @param signature The signature of the offer
     function withdrawOfferSignature(INiftyApesStructs.Offer memory offer, bytes calldata signature) external;
 
+    /// @notice Withdraws and invalidate all offers created by the caller
+    /// @dev    Calling this method allows users to withdraw all their signed offers in one call
+    function withdrawAllOffers() external;
+
     /// @notice Start a loan as buyer using a signed offer.
     /// @param offer The details of the financing offer
     /// @param signature A signed offerHash

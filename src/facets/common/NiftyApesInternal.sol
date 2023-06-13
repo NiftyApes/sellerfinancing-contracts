@@ -48,24 +48,28 @@ abstract contract NiftyApesInternal is
     constructor() initializer {}
 
     function _getOfferHash(Offer memory offer) internal view returns (bytes32) {
+        bytes memory firstHalfEncoding = abi.encode(
+            NiftyApesStorage._OFFER_TYPEHASH,
+            offer.offerType,
+            offer.creatorOfferNonce,
+            offer.downPaymentAmount,
+            offer.principalAmount,
+            offer.minimumPrincipalPerPeriod,
+            offer.nftId
+        );
+        bytes memory secondHalfEncoding = abi.encode(
+            offer.nftContractAddress,
+            offer.periodInterestRateBps,
+            offer.periodDuration,
+            offer.expiration,
+            offer.creator,
+            offer.isCollectionOffer,
+            offer.collectionOfferLimit
+        );
     return
         _hashTypedDataV4(
             keccak256(
-                abi.encode(
-                    NiftyApesStorage._OFFER_TYPEHASH,
-                    offer.offerType,
-                    offer.downPaymentAmount,
-                    offer.principalAmount,
-                    offer.minimumPrincipalPerPeriod,
-                    offer.nftId,
-                    offer.nftContractAddress,
-                    offer.periodInterestRateBps,
-                    offer.periodDuration,
-                    offer.expiration,
-                    offer.creator,
-                    offer.isCollectionOffer,
-                    offer.collectionOfferLimit
-                )
+                bytes.concat(firstHalfEncoding, secondHalfEncoding)
             )
         );
     }
@@ -131,6 +135,7 @@ abstract contract NiftyApesInternal is
             lender = offer.creator;
         }
 
+        _requireValidOfferNonce(offer, lender, sf);
         _requireIsNotSanctioned(lender, sf);
         _requireIsNotSanctioned(borrower, sf);
         _requireIsNotSanctioned(msg.sender, sf);
@@ -351,6 +356,16 @@ abstract contract NiftyApesInternal is
     function _requireMsgSenderIsValidCaller(address expectedCaller) internal view {
         if (msg.sender != expectedCaller) {
             revert InvalidCaller(msg.sender, expectedCaller);
+        }
+    }
+
+    function _requireValidOfferNonce(
+        Offer memory offer,
+        address lender,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal view {
+        if (offer.creatorOfferNonce != sf.offerNonce[lender]) {
+            revert InvalidOfferNonce(offer.creatorOfferNonce, sf.offerNonce[lender]);
         }
     }
 }

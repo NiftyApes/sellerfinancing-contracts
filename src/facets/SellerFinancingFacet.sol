@@ -187,6 +187,12 @@ contract NiftyApesSellerFinancingFacet is
     }
 
     /// @inheritdoc ISellerFinancing
+    function withdrawAllOffers() external {
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        sf.offerNonce[msg.sender] += 1;
+    }
+
+    /// @inheritdoc ISellerFinancing
     function buyWithSellerFinancing(
         Offer memory offer,
         bytes calldata signature,
