@@ -80,7 +80,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allSellerFinancingSelectors[36] = sellerFinancingFacet.isApprovedForAll.selector;
         allSellerFinancingSelectors[37] = sellerFinancingFacet.makePaymentBatch.selector;
         allSellerFinancingSelectors[38] = sellerFinancingFacet.seizeAssetBatch.selector;
-        allSellerFinancingSelectors[38] = sellerFinancingFacet.withdrawAllOffers.selector;
+        allSellerFinancingSelectors[39] = sellerFinancingFacet.withdrawAllOffers.selector;
 
         lendingFacet = new NiftyApesLendingFacet();
 
