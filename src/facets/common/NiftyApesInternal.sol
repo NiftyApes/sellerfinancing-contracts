@@ -143,7 +143,7 @@ abstract contract NiftyApesInternal is
         _requireOfferNotExpired(offer);
         // requireOfferisValid
         _requireNonZeroAddress(offer.nftContractAddress);
-if (IERC1155SupplyUpgradeable(offer.nftContractAddress).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
+        if (IERC1155SupplyUpgradeable(offer.nftContractAddress).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
                 _requireNonFungibleToken(
                     offer.nftContractAddress,
                     nftId

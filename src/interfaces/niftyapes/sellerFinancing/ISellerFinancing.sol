@@ -53,7 +53,6 @@ interface ISellerFinancing is
     function buyWithSellerFinancing(
         INiftyApesStructs.Offer calldata offer,
         bytes memory signature,
-        address buyer,
         uint256 nftId
     ) external payable;
 
@@ -85,15 +84,14 @@ interface ISellerFinancing is
     ) external;
 
     /// @notice Returns a loan identified by a given nft.
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param nftId The id of a specified NFT
-    function getLoan(address nftContractAddress, uint256 nftId) external view returns (INiftyApesStructs.Loan memory);
+    /// @param loanId
+    function getLoan(uint256 loanId) external view returns (INiftyApesStructs.Loan memory);
 
     /// @notice Returns the underlying nft of a specified a seller financing ticket id.
     /// @param sellerFinancingTicketId The id of a specified seller financing ticket id
     function getUnderlyingNft(
         uint256 sellerFinancingTicketId
-    ) external view returns (INiftyApesStructs.UnderlyingNft memory);
+    ) external view returns (address nftContractAddress, uint256 nftId);
 
     /// @notice Returns minimum payment required for the current period and current period interest
     /// @dev    This function calculates a sum of current and late payment values if applicable

@@ -190,7 +190,6 @@ contract NiftyApesSellerFinancingFacet is
     function buyWithSellerFinancing(
         Offer memory offer,
         bytes calldata signature,
-        address buyer,
         uint256 nftId
     ) external payable whenNotPaused nonReentrant {
         // validate offerType
@@ -201,21 +200,26 @@ contract NiftyApesSellerFinancingFacet is
         }
         // if msg.value is too high, return excess value
         if (msg.value > offer.downPaymentAmount) {
-            payable(buyer).sendValue(msg.value - offer.downPaymentAmount);
+            payable(msg.sender).sendValue(msg.value - offer.downPaymentAmount);
         }
 
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        
-        address seller = _commonLoanChecks(offer, signature, buyer, nftId, sf);
+
+
+        // add check that offer.item.itemType is either 721 or 1155
+        // add check that offer.terms.itemType is either NATIVE or 20
+        address seller = _commonLoanChecks(offer, signature, msg.sender, nftId, sf);
 
         // transfer nft from seller to this contract, revert on failure
         _transferCollateral(offer.nftContractAddress, nftId, seller, address(this));
 
+        // add loop to pay out marketplaceRecipients
+
         uint256 totalRoyaltiesPaid = _payRoyalties(
             offer.nftContractAddress,
             nftId,
-            buyer,
+            msg.sender,
             offer.downPaymentAmount,
             sf
         );
@@ -223,8 +227,10 @@ contract NiftyApesSellerFinancingFacet is
         // payout seller
         payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
 
-        _executeLoan(offer, signature, buyer, seller, nftId, sf);
+        _executeLoan(offer, signature, msg.sender, seller, nftId, sf);
     }
+
+    // add buyNow function, probably in separate facet
 
     /// @inheritdoc ISellerFinancing
     function makePayment(
@@ -241,6 +247,7 @@ contract NiftyApesSellerFinancingFacet is
         }
     }
 
+// add protocol fee to this transaction, if first payment in period charge bps on remainingPrincipal at start of payment
     function _makePayment(
         address nftContractAddress,
         uint256 nftId,
@@ -389,10 +396,6 @@ contract NiftyApesSellerFinancingFacet is
         //emit asset seized event
         emit AssetSeized(nftContractAddress, nftId, loan);
 
-        // delete buyer nft id pointer
-        delete sf.underlyingNfts[loan.borrowerNftId];
-        // delete seller nft id pointer
-        delete sf.underlyingNfts[loan.lenderNftId];
         // close loan
         delete sf.loans[nftContractAddress][nftId];
 
@@ -645,6 +648,8 @@ contract NiftyApesSellerFinancingFacet is
         }
     }
 
+    // Should these functions take a loanId or simply the ticketId. Having it with a address and id in the mapping identifies the nft more simply...
+
     /// @inheritdoc ISellerFinancing
     function getLoan(
         address nftContractAddress,
@@ -658,7 +663,7 @@ contract NiftyApesSellerFinancingFacet is
     /// @inheritdoc ISellerFinancing
     function getUnderlyingNft(
         uint256 sellerFinancingTicketId
-    ) external view returns (UnderlyingNft memory) {
+    ) external view returns (address nftContractAddress, uint256 nftId) {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         return _getUnderlyingNft(sellerFinancingTicketId, sf);
