@@ -82,4 +82,6 @@ interface INiftyApesErrors {
     error ConditionSendValueFailed(address from, address to, uint256 amount);
 
     error InvalidOfferType(INiftyApesStructs.OfferType given, INiftyApesStructs.OfferType expected);
+
+    error InvalidInputLength();
 }

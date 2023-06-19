@@ -234,10 +234,57 @@ contract NiftyApesSellerFinancingFacet is
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         // make payment
-        address buyer = _makePayment(nftContractAddress, nftId, msg.value, sf);
-        // transfer nft to buyer if loan closed
-        if (buyer != address(0)) {
-            _transferNft(nftContractAddress, nftId, address(this), buyer);
+        address borrower = _makePayment(nftContractAddress, nftId, msg.value, sf);
+        // transfer nft to borrower if loan closed
+        if (borrower != address(0)) {
+            _transferNft(nftContractAddress, nftId, address(this), borrower);
+        }
+    }
+
+    function makePaymentBatch(
+        address[] memory  nftContractAddresses,
+        uint256[] memory nftIds,
+        uint256[] memory payments,
+        bool partialExecution
+    ) external payable whenNotPaused nonReentrant {
+        uint256 batchLength = nftContractAddresses.length;
+        if (nftIds.length != batchLength) {
+            revert InvalidInputLength();
+        }
+
+        // get SellerFinancing storage
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        
+        uint256 valueConsumed;
+
+        // loop through the list to execute payment
+        for (uint256 i; i < batchLength; ++i) {
+            // if remaining value is not sufficient to execute ith payment
+            if (msg.value - valueConsumed < payments[i]) {
+                // if partial execution is allowed then move to next offer
+                if (partialExecution) {
+                    continue;
+                }
+                // else revert
+                else {
+                    revert InsufficientMsgValue(
+                        msg.value,
+                        valueConsumed + payments[i]
+                    );
+                }
+            }
+
+            address borrower = _makePayment(nftContractAddresses[i], nftIds[i], payments[i], sf);
+            // transfer nft to borrower if loan closed
+            if (borrower != address(0)) {
+                _transferNft(nftContractAddresses[i], nftIds[i], address(this), borrower);
+            }
+            // add current payment to the `valueConsumed`
+            valueConsumed += payments[i];
+        }
+        // send any unused value back to msg.sender
+        if (msg.value - valueConsumed > 0) {
+            payable(msg.sender).sendValue(msg.value - valueConsumed);
         }
     }
 
@@ -246,15 +293,15 @@ contract NiftyApesSellerFinancingFacet is
         uint256 nftId,
         uint256 amountReceived,
         NiftyApesStorage.SellerFinancingStorage storage sf
-    ) internal returns (address buyer) {
+    ) internal returns (address borrower) {
         // instantiate loan
         Loan storage loan = _getLoan(nftContractAddress, nftId, sf);
-        // get buyer
-        address buyerAddress = ownerOf(loan.borrowerNftId);
-        // get seller
-        address sellerAddress = ownerOf(loan.lenderNftId);
+        // get borrower
+        address borrowerAddress = ownerOf(loan.borrowerNftId);
+        // get lender
+        address lenderAddress = ownerOf(loan.lenderNftId);
 
-        _requireIsNotSanctioned(buyerAddress, sf);
+        _requireIsNotSanctioned(borrowerAddress, sf);
         _requireIsNotSanctioned(msg.sender, sf);
         // requireLoanNotInHardDefault
         _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
@@ -275,7 +322,7 @@ contract NiftyApesSellerFinancingFacet is
         // if amountReceived is greater than the totalPossiblePayment send back the difference
         if (amountReceived > totalPossiblePayment) {
             //send back value
-            payable(buyerAddress).sendValue(amountReceived - totalPossiblePayment);
+            payable(borrowerAddress).sendValue(amountReceived - totalPossiblePayment);
             // adjust amountReceived value
             amountReceived = totalPossiblePayment;
         }
@@ -283,31 +330,31 @@ contract NiftyApesSellerFinancingFacet is
         uint256 totalRoyaltiesPaid = _payRoyalties(
             nftContractAddress,
             nftId,
-            buyerAddress,
+            borrowerAddress,
             amountReceived,
             sf
         );
 
-        // payout seller
-        _conditionalSendValue(sellerAddress, buyerAddress, amountReceived - totalRoyaltiesPaid, sf);
+        // payout lender
+        _conditionalSendValue(lenderAddress, borrowerAddress, amountReceived - totalRoyaltiesPaid, sf);
 
         // update loan struct
         loan.remainingPrincipal -= uint128(amountReceived - periodInterest);
 
         // check if remainingPrincipal is 0
         if (loan.remainingPrincipal == 0) {
-            // if principal == 0 set nft transfer address to the buyer
-            buyer = buyerAddress;
-            // remove buyer delegate.cash delegation
+            // if principal == 0 set nft transfer address to the borrower
+            borrower = borrowerAddress;
+            // remove borrower delegate.cash delegation
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
-                buyerAddress,
+                borrowerAddress,
                 nftContractAddress,
                 nftId,
                 false
             );
-            // burn buyer nft
+            // burn borrower nft
             _burn(loan.borrowerNftId);
-            // burn seller nft
+            // burn lender nft
             _burn(loan.lenderNftId);
             //emit paymentMade event
             emit PaymentMade(
@@ -320,9 +367,9 @@ contract NiftyApesSellerFinancingFacet is
             );
             // emit loan repaid event
             emit LoanRepaid(nftContractAddress, nftId, loan);
-            // delete buyer nft id pointer
+            // delete borrower nft id pointer
             delete sf.underlyingNfts[loan.borrowerNftId];
-            // delete seller nft id pointer
+            // delete lender nft id pointer
             delete sf.underlyingNfts[loan.lenderNftId];
             // delete loan
             delete sf.loans[nftContractAddress][nftId];
@@ -357,47 +404,71 @@ contract NiftyApesSellerFinancingFacet is
     ) external whenNotPaused nonReentrant {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        _seizeAsset(nftContractAddress, nftId, sf);
+    }
+
+    /// @inheritdoc ISellerFinancing
+    function seizeAssetBatch(
+        address[] memory nftContractAddresses,
+        uint256[] memory nftIds
+    ) external whenNotPaused nonReentrant {
+        uint256 batchLength = nftContractAddresses.length;
+        if (nftIds.length != batchLength) {
+            revert InvalidInputLength();
+        }
+        // get SellerFinancing storage
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        
+        for (uint256 i; i < batchLength; ++i) {
+            _seizeAsset(nftContractAddresses[i], nftIds[i], sf);
+        }
+    }
+    function _seizeAsset(
+        address nftContractAddress,
+        uint256 nftId,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal {
         // instantiate loan
         Loan storage loan = _getLoan(nftContractAddress, nftId, sf);
-        // get buyer
-        address buyerAddress = ownerOf(loan.borrowerNftId);
-        // get seller
-        address sellerAddress = ownerOf(loan.lenderNftId);
+        // get borrower
+        address borrowerAddress = ownerOf(loan.borrowerNftId);
+        // get lender
+        address lenderAddress = ownerOf(loan.lenderNftId);
 
-        _requireIsNotSanctioned(sellerAddress, sf);
+        _requireIsNotSanctioned(lenderAddress, sf);
         // requireMsgSenderIsSeller
-        _requireMsgSenderIsValidCaller(sellerAddress);
+        _requireMsgSenderIsValidCaller(lenderAddress);
         // requireLoanInDefault
         if (_currentTimestamp32() < loan.periodEndTimestamp) {
             revert LoanNotInDefault();
         }
 
-        // remove buyer delegate.cash delegation
+        // remove borrower delegate.cash delegation
         IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
-            buyerAddress,
+            borrowerAddress,
             nftContractAddress,
             nftId,
             false
         );
 
-        // burn buyer nft
+        // burn borrower nft
         _burn(loan.borrowerNftId);
 
-        // burn seller nft
+        // burn lender nft
         _burn(loan.lenderNftId);
 
         //emit asset seized event
         emit AssetSeized(nftContractAddress, nftId, loan);
 
-        // delete buyer nft id pointer
+        // delete borrower nft id pointer
         delete sf.underlyingNfts[loan.borrowerNftId];
-        // delete seller nft id pointer
+        // delete lender nft id pointer
         delete sf.underlyingNfts[loan.lenderNftId];
         // close loan
         delete sf.loans[nftContractAddress][nftId];
 
-        // transfer NFT from this contract to the seller address
-        _transferNft(nftContractAddress, nftId, address(this), sellerAddress);
+        // transfer NFT from this contract to the lender address
+        _transferNft(nftContractAddress, nftId, address(this), lenderAddress);
     }
 
     /// @inheritdoc ISellerFinancing
@@ -411,12 +482,12 @@ contract NiftyApesSellerFinancingFacet is
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         // instantiate loan
         Loan storage loan = _getLoan(nftContractAddress, nftId, sf);
-        // get buyer
-        address buyerAddress = ownerOf(loan.borrowerNftId);
+        // get borrower
+        address borrowerAddress = ownerOf(loan.borrowerNftId);
 
         _requireIsNotSanctioned(msg.sender, sf);
         // requireMsgSenderIsBuyer
-        _requireMsgSenderIsValidCaller(buyerAddress);
+        _requireMsgSenderIsValidCaller(borrowerAddress);
         // requireLoanNotInHardDefault
         _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
 
@@ -434,7 +505,7 @@ contract NiftyApesSellerFinancingFacet is
             sf
         );
 
-        // make payment to close the loan and transfer remainder to the buyer
+        // make payment to close the loan and transfer remainder to the borrower
         _makePayment(nftContractAddress, nftId, saleAmountReceived, sf);
 
         // emit instant sell event
@@ -514,7 +585,7 @@ contract NiftyApesSellerFinancingFacet is
             if (loan.remainingPrincipal < minimumPrincipalPayment) {
                 minimumPrincipalPayment = loan.remainingPrincipal;
             }
-            // calculate % interest to be paid to seller
+            // calculate % interest to be paid to lender
             if (loan.periodInterestRateBps != 0) {
                 periodInterest =
                     ((loan.remainingPrincipal * loan.periodInterestRateBps) / NiftyApesStorage.BASE_BPS) *
