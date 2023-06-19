@@ -58,19 +58,24 @@ abstract contract NiftyApesInternal is
         _hashTypedDataV4(
             keccak256(
                 abi.encode(
+                    // need to update typeHash
                     NiftyApesStorage._OFFER_TYPEHASH,
-                    offer.offerType,
-                    offer.downPaymentAmount,
-                    offer.principalAmount,
-                    offer.minimumPrincipalPerPeriod,
-                    offer.nftId,
-                    offer.nftContractAddress,
-                    offer.periodInterestRateBps,
-                    offer.periodDuration,
-                    offer.expiration,
                     offer.creator,
-                    offer.isCollectionOffer,
-                    offer.collectionOfferLimit
+                    offer.offerType,
+                    offer.item.itemType,
+                    offer.item.token,
+                    offer.item.identifier,
+                    offer.item.amount,
+                    offer.terms.itemType,
+                    offer.terms.downPaymentAmount,
+                    offer.terms.principalAmount,
+                    offer.terms.minimumPrincipalPerPeriod,
+                    offer.terms.periodInterestRateBps,
+                    offer.terms.periodDuration,
+                    offer.marketplaceRecipients,
+                    offer.expiration,
+                    offer.collectionOfferLimit,
+                    offer.creatorOfferNonce
                 )
             )
         );
@@ -106,7 +111,7 @@ abstract contract NiftyApesInternal is
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal {
         sf.cancelledOrFinalized[signature] = true;
-        emit OfferSignatureUsed(offer.nftContractAddress, offer.nftId, offer, signature);
+        emit OfferSignatureUsed(offer.item.token, offer.item.identifier, offer, signature);
     }
     
     function _commonLoanChecks(
@@ -117,7 +122,7 @@ abstract contract NiftyApesInternal is
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal returns (address lender) {
         // check for collection offer
-        if (!offer.isCollectionOffer) {
+        if (offer.item.identifier != ~uint256(0)) {
             if (nftId != offer.nftId) {
                 revert NftIdsMustMatch();
             }
@@ -137,35 +142,40 @@ abstract contract NiftyApesInternal is
             lender = offer.creator;
         }
 
+
+        // add check that offer.item.itemType is either 721 or 1155
+        // add check that offer.terms.itemType is either NATIVE or 20
         _requireIsNotSanctioned(lender, sf);
         _requireIsNotSanctioned(borrower, sf);
         _requireIsNotSanctioned(msg.sender, sf);
         _requireOfferNotExpired(offer);
         // requireOfferisValid
-        _requireNonZeroAddress(offer.nftContractAddress);
-        if (IERC1155SupplyUpgradeable(offer.nftContractAddress).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
+        _requireNonZeroAddress(offer.item.token);
+
+        // update this check, maybe not needed anymore? 
+        if (IERC1155SupplyUpgradeable(offer.item.token).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
                 _requireNonFungibleToken(
-                    offer.nftContractAddress,
+                    offer.item.token,
                     nftId
                 );
             }        
             // require1MinsMinimumDuration
-        if (offer.periodDuration < 1 minutes) {
+        if (offer.terms.periodDuration < 1 minutes) {
             revert InvalidPeriodDuration();
         }
         // requireNonZeroPrincipalAmount
-        if (offer.principalAmount == 0) {
+        if (offer.terms.principalAmount == 0) {
             revert PrincipalAmountZero();
         }
         // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
-        if (offer.principalAmount < offer.minimumPrincipalPerPeriod) {
+        if (offer.terms.principalAmount < offer.terms.minimumPrincipalPerPeriod) {
             revert InvalidMinimumPrincipalPerPeriod(
-                offer.minimumPrincipalPerPeriod,
-                offer.principalAmount
+                offer.terms.minimumPrincipalPerPeriod,
+                offer.terms.principalAmount
             );
         }
         // requireNotSellerFinancingTicket
-        if (offer.nftContractAddress == address(this)) {
+        if (offer.item.token == address(this)) {
             revert CannotBuySellerFinancingTicket();
         }
     }
@@ -179,33 +189,33 @@ abstract contract NiftyApesInternal is
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal {
         // instantiate loan
-        Loan storage loan = _getLoan(offer.nftContractAddress, nftId, sf);
+        Loan storage loan = _getLoan(sf.loanNonce, sf);
 
         // mint borrower nft
-        _safeMint(borrower, sf.loanNftNonce);
+        _safeMint(borrower, sf.loanNonce);
         _setTokenURI(
-            sf.loanNftNonce,
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
+            sf.loanNonce,
+            IERC721MetadataUpgradeable(offer.item.token).tokenURI(nftId)
         );
-        sf.loanNftNonce++;
+        sf.loanNonce++;
 
         // mint lender nft
-        _safeMint(lender, sf.loanNftNonce);
-        sf.loanNftNonce++;
+        _safeMint(lender, sf.loanNonce);
+        sf.loanNonce++;
 
         // create loan
-        _createLoan(loan, offer, nftId, sf.loanNftNonce - 1, sf.loanNftNonce - 2, sf);
+        _createLoan(loan, offer, nftId, sf.loanNonce - 1, sf.loanNonce - 2, sf);
 
         // add borrower delegate.cash delegation
         IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
             borrower,
-            offer.nftContractAddress,
+            offer.item.token,
             nftId,
             true
         );
 
         // emit loan executed event
-        emit LoanExecuted(offer.nftContractAddress, nftId, signature, loan);
+        emit LoanExecuted(offer.item.token, nftId, signature, loan);
     }
 
     function _createLoan(
@@ -218,24 +228,12 @@ abstract contract NiftyApesInternal is
     ) internal {
         loan.lenderNftId = lenderNftId;
         loan.borrowerNftId = borrowerNftId;
-        loan.remainingPrincipal = uint128(offer.principalAmount);
-        loan.periodEndTimestamp = _currentTimestamp32() + offer.periodDuration;
+        loan.remainingPrincipal = uint128(offer.terms.principalAmount);
+        loan.periodEndTimestamp = _currentTimestamp32() + offer.terms.periodDuration;
         loan.periodBeginTimestamp = _currentTimestamp32();
-        loan.minimumPrincipalPerPeriod = offer.minimumPrincipalPerPeriod;
-        loan.periodInterestRateBps = offer.periodInterestRateBps;
-        loan.periodDuration = offer.periodDuration;
-
-        // instantiate underlying nft pointer
-        UnderlyingNft storage borrowerUnderlyingNft = _getUnderlyingNft(borrowerNftId, sf);
-        // set underlying nft values
-        borrowerUnderlyingNft.nftContractAddress = offer.nftContractAddress;
-        borrowerUnderlyingNft.nftId = nftId;
-
-        // instantiate underlying nft pointer
-        UnderlyingNft storage lenderUnderlyingNft = _getUnderlyingNft(lenderNftId, sf);
-        // set underlying nft values
-        lenderUnderlyingNft.nftContractAddress = offer.nftContractAddress;
-        lenderUnderlyingNft.nftId = nftId;
+        loan.minimumPrincipalPerPeriod = offer.terms.minimumPrincipalPerPeriod;
+        loan.periodInterestRateBps = offer.terms.periodInterestRateBps;
+        loan.periodDuration = offer.terms.periodDuration;
     }
 
     function _callERC1271isValidSignature(
@@ -249,6 +247,7 @@ abstract contract NiftyApesInternal is
         return bytes4(data) == 0x1626ba7e;
     }
 
+    // can probably update to be more specific based in itemType
     function _transferCollateral(
         address nftContractAddress,
         uint256 nftId,
@@ -320,47 +319,45 @@ abstract contract NiftyApesInternal is
             interfaceId == type(IERC1155ReceiverUpgradeable).interfaceId;
     }
 
-    function _requireNonFungibleToken(
-        address nftContractAddress,
-        uint256 nftId
-    ) internal view {
-        if (IERC1155SupplyUpgradeable(nftContractAddress).totalSupply(nftId) != 1){
-            revert NotNonFungibleToken(nftContractAddress, nftId);
-        }
-    }
-
     function _requireSigner(address signer, address expected) internal pure {
         if (signer != expected) {
             revert InvalidSigner(signer, expected);
         }
     }
 
-    function _getUnderlyingNft(
-        uint256 niftyApesTicketId,
-        NiftyApesStorage.SellerFinancingStorage storage sf
-    ) internal view returns (UnderlyingNft storage) {
-        return sf.underlyingNfts[niftyApesTicketId];
-    }
-
-    function _requireNonZeroAddress(address given) internal pure {
+        function _requireNonZeroAddress(address given) internal pure {
         if (given == address(0)) {
             revert ZeroAddress();
         }
     }
 
-    function _getLoan(
-        address nftContractAddress,
-        uint256 nftId,
-        NiftyApesStorage.SellerFinancingStorage storage sf
-    ) internal view returns (Loan storage) {
-        return sf.loans[nftContractAddress][nftId];
-    }
 
     function _requireExpectedOfferType(Offer memory offer, OfferType expectedOfferType) internal pure {
         if (offer.offerType != expectedOfferType) {
             revert InvalidOfferType(offer.offerType, expectedOfferType);
         }
     }
+
+    function _getUnderlyingNft(
+        uint256 loanNonce,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal view returns (Item memory item) {
+           Loan memory loan = _getLoan(loanNonce);
+        return (loan.item);
+    }
+
+    // can supply the specific, even loanNonce or loanNonce + 1
+    function _getLoan(
+        uint256 loanNonce,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal view returns (Loan storage) {
+        if (loanNonce % 2 == 0 ){
+            return sf.loans[loanNonce];
+        } else {
+            return sf.loans[loanNonce - 1];
+        }
+    }
+
 
     function _transfer(address from, address to, uint256 tokenId) internal override {
         // get SellerFinancing storage
@@ -369,22 +366,25 @@ abstract contract NiftyApesInternal is
         _requireIsNotSanctioned(to, sf);
         // if the token is a borrower seller financing ticket
         if (tokenId % 2 == 0) {
+
+            // need to update this underlying NFT and token delegation
+
             // get underlying nft
-            UnderlyingNft memory underlyingNft = _getUnderlyingNft(tokenId, sf);
+            Item memory item = _getUnderlyingNft(tokenId, sf);
 
             // remove from delegate.cash delegation
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
                 from,
-                underlyingNft.nftContractAddress,
-                underlyingNft.nftId,
+                item.token,
+                item.identifier,
                 false
             );
 
             // add to delegate.cash delegation
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
                 to,
-                underlyingNft.nftContractAddress,
-                underlyingNft.nftId,
+                item.token,
+                item.identifier,
                 true
             );
         }

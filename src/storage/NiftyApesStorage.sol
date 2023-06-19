@@ -27,9 +27,9 @@ library NiftyApesStorage {
     struct SellerFinancingStorage {
         // slot values given below are relative the actual slot position determined by the slot for `SELLER_FINANCING_STORAGE_POSITION`
 
-        // increments by two for each loan, once for borrowerNftId, once for lenderNftId
+        /// increments by two for each loan, once for borrowerNftId, once for lenderNftId
         /// slot0
-        uint256 loanNftNonce;
+        uint256 loanNonce;
         /// @dev The stored address for the royalties engine
         /// slot1
         address royaltiesEngineContractAddress;
@@ -45,16 +45,10 @@ library NiftyApesStorage {
         /// @dev The status of sanctions checks
         /// slot4
         bool sanctionsPause;
-        /// @dev A mapping for a NFT to a loan .
-        ///      The mapping has to be broken into two parts since an NFT is denominated by its address (first part)
-        ///      and its nftId (second part) in our code base.
+        /// @dev A mapping for a loanNonce to a loan.
+        ///      Loans are stored at even loanNonce values, but can be queried at the even value or value + 1 using getLoan()
         /// slot5
-        mapping(address => mapping(uint256 => INiftyApesStructs.Loan)) loans;
-        /// @dev A mapping for a Seller Financing Ticket to an underlying NFT Asset .
-        ///      This mapping enables the protocol to query a loan by Seller Financing Ticket Id.
-        /// slot6
-        mapping(uint256 => INiftyApesStructs.UnderlyingNft) underlyingNfts;
-        /// @dev A mapping for a signed offer to a collection offer counter
+        mapping(uint256 => INiftyApesStructs.Loan) loans;
         /// slot7
         mapping(bytes => uint64) collectionOfferCounters;
         /// @dev A mapping to mark a signature as used.

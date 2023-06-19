@@ -24,7 +24,6 @@ contract NiftyApesLendingFacet is
     function borrow(
         Offer memory offer,
         bytes calldata signature,
-        address borrower,
         uint256 nftId
     ) external whenNotPaused nonReentrant returns (uint256 ethReceived) {
         // validate offerType
@@ -33,7 +32,7 @@ contract NiftyApesLendingFacet is
         // get storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         
-        address lender = _commonLoanChecks(offer, signature, borrower, nftId, sf);
+        address lender = _commonLoanChecks(offer, signature, msg.sender, nftId, sf);
 
         // cache this contract eth balance before the weth conversion
         uint256 contractBalanceBefore = address(this).balance;
@@ -56,19 +55,18 @@ contract NiftyApesLendingFacet is
         // calculate ethReceived
         ethReceived = address(this).balance - contractBalanceBefore;
 
-        // transfer nft from borrower to this contract, revert on failure
-        _transferCollateral(offer.nftContractAddress, nftId, borrower, address(this));
+        // transfer nft from msg.sender to this contract, revert on failure
+        _transferCollateral(offer.nftContractAddress, nftId, msg.sender, address(this));
 
-        _executeLoan(offer, signature, borrower, lender, nftId, sf);
+        _executeLoan(offer, signature, msg.sender, lender, nftId, sf);
 
         // payout borrower
-        payable(borrower).sendValue(ethReceived);
+        payable(msg.sender).sendValue(ethReceived);
     }
 
     function buyWith3rdPartyFinancing(
         Offer memory offer,
         bytes calldata signature,
-        address borrower,
         uint256 nftId,
         bytes calldata data
     ) external whenNotPaused nonReentrant {
@@ -78,7 +76,7 @@ contract NiftyApesLendingFacet is
         // get storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         
-        address lender = _commonLoanChecks(offer, signature, borrower, nftId, sf);
+        address lender = _commonLoanChecks(offer, signature, msg.sender, nftId, sf);
 
         // decode seaport order data
         ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
@@ -97,7 +95,7 @@ contract NiftyApesLendingFacet is
 
         // transferFrom downPayment from buyer
         asset.safeTransferFrom(
-            borrower,
+            msg.sender,
             address(this),
             totalConsiderationAmount - offer.principalAmount
         );
@@ -110,6 +108,6 @@ contract NiftyApesLendingFacet is
             revert SeaportOrderNotFulfilled();
         }
 
-        _executeLoan(offer, signature, borrower, lender, nftId, sf);
+        _executeLoan(offer, signature, msg.sender, lender, nftId, sf);
     }
 }
