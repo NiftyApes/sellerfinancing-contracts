@@ -14,20 +14,20 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
 
     function assertionsForExecutedLoan(Offer memory offer, address expectedBuyer) private {
         // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
+        assertEq(boredApeYachtClub.ownerOf(offer.item.identifier), address(sellerFinancing));
         // require delegate.cash has buyer delegation
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(SANCTIONED_ADDRESS),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             true
         );
         // loan auction exists
         assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.item.identifier).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
@@ -35,14 +35,14 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
+        assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.terms.minimumPrincipalPerPeriod);
+        assertEq(loan.periodInterestRateBps, offer.terms.periodInterestRateBps);
+        assertEq(loan.periodDuration, offer.terms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.terms.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
@@ -53,7 +53,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.terms.principalAmount + offer.terms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         vm.startPrank(owner);
         marketplaceIntegration.pauseSanctions();
@@ -61,11 +61,11 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         vm.stopPrank();
 
         vm.startPrank(SANCTIONED_ADDRESS);
-        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.nftId
+            offer.item.identifier
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer, SANCTIONED_ADDRESS);
@@ -80,11 +80,11 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
             )
         );
         vm.startPrank(SANCTIONED_ADDRESS);
-        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.nftId
+            offer.item.identifier
         );
         vm.stopPrank();
     }

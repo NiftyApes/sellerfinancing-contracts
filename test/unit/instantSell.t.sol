@@ -18,20 +18,20 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
+        assertEq(boredApeYachtClub.ownerOf(offer.item.identifier), address(sellerFinancing));
         // require delegate.cash has buyer delegation
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             true
         );
         // loan exists
         assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.item.identifier).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
@@ -39,20 +39,20 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
+        assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.terms.minimumPrincipalPerPeriod);
+        assertEq(loan.periodInterestRateBps, offer.terms.periodInterestRateBps);
+        assertEq(loan.periodDuration, offer.terms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.terms.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
     function assertionsForClosedLoan(Offer memory offer, address expectedNftOwner) private {
         // expected address has NFT
-        assertEq(boredApeYachtClub.ownerOf(offer.nftId), expectedNftOwner);
+        assertEq(boredApeYachtClub.ownerOf(offer.item.identifier), expectedNftOwner);
 
         // require delegate.cash buyer delegation has been revoked
         assertEq(
@@ -60,14 +60,14 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             false
         );
 
         // loan doesn't exist anymore
         assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.item.identifier).periodBeginTimestamp,
             0
         );
         // buyer NFT burned
@@ -83,7 +83,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.nftContractAddress, offer.nftId, offer.downPaymentAmount);
+        ).getRoyalty(offer.item.token, offer.item.identifier, offer.terms.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -96,15 +96,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         (address payable[] memory recipients2, uint256[] memory amounts2) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
         ).getRoyalty(
-                offer.nftContractAddress,
-                offer.nftId,
+                offer.item.token,
+                offer.item.identifier,
                 (loan.remainingPrincipal + periodInterest)
             );
 
@@ -124,8 +124,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -140,19 +140,19 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectEmit(true, true, false, false);
         emit PaymentMade(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             loan.remainingPrincipal + periodInterest,
             royaltiesInInstantSell,
             periodInterest,
             loan
         );
         vm.expectEmit(true, true, false, false);
-        emit InstantSell(offer.nftContractAddress, offer.nftId, 0);
+        emit InstantSell(offer.item.token, offer.item.identifier, 0);
 
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             minProfitAmount,
             abi.encode(order[0])
         );
@@ -161,7 +161,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         assertionsForClosedLoan(offer, buyer2);
         assertEq(
             address(buyer1).balance,
-            (buyer1BalanceBefore - offer.downPaymentAmount + minProfitAmount)
+            (buyer1BalanceBefore - offer.terms.downPaymentAmount + minProfitAmount)
         );
     }
 
@@ -183,7 +183,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -196,8 +196,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -229,8 +229,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             0,
             abi.encode(order[0])
         );
@@ -239,7 +239,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         assertionsForClosedLoan(offer, buyer2);
         assertEq(
             address(buyer1).balance,
-            (buyer1BalanceBefore - offer.downPaymentAmount)
+            (buyer1BalanceBefore - offer.terms.downPaymentAmount)
         );
     }
 
@@ -261,7 +261,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.nftContractAddress, offer.nftId, offer.downPaymentAmount);
+        ).getRoyalty(offer.item.token, offer.item.identifier, offer.terms.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -274,15 +274,15 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         (address payable[] memory recipients2, uint256[] memory amounts2) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
         ).getRoyalty(
-                offer.nftContractAddress,
-                offer.nftId,
+                offer.item.token,
+                offer.item.identifier,
                 (loan.remainingPrincipal + periodInterest)
             );
 
@@ -297,8 +297,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 bidPrice = (loan.remainingPrincipal + periodInterest + minProfitAmount);
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             false
@@ -312,8 +312,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             minProfitAmount,
             abi.encode(order[0])
         );
@@ -323,7 +323,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 buyer1BalanceAfter = address(buyer1).balance;
         assertEq(
             buyer1BalanceAfter,
-            (buyer1BalanceBefore - offer.downPaymentAmount + minProfitAmount)
+            (buyer1BalanceBefore - offer.terms.downPaymentAmount + minProfitAmount)
         );
     }
 
@@ -344,7 +344,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         skip(loan.periodDuration * 2);
 
@@ -359,8 +359,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -375,8 +375,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             minProfitAmount,
             abi.encode(order[0])
         );
@@ -400,7 +400,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -413,8 +413,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -441,8 +441,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             )
         );
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             minProfitAmount,
             abi.encode(order[0])
         );
@@ -466,7 +466,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -479,8 +479,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -491,8 +491,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             abi.encodeWithSelector(INiftyApesErrors.InvalidCaller.selector, buyer2, buyer1)
         );
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             minProfitAmount,
             abi.encode(order[0])
         );
@@ -518,7 +518,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -533,8 +533,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -543,8 +543,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             minProfitAmount,
             abi.encode(order[0])
         );
@@ -569,7 +569,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -577,8 +577,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -594,7 +594,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 ISeaport.ItemType.ERC721
             )
         );
-        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
+        sellerFinancing.instantSell(offer.item.token, offer.item.identifier, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -616,7 +616,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -624,8 +624,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -638,10 +638,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 INiftyApesErrors.InvalidConsiderationToken.selector,
                 0,
                 address(1),
-                offer.nftContractAddress
+                offer.item.token
             )
         );
-        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
+        sellerFinancing.instantSell(offer.item.token, offer.item.identifier, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -663,7 +663,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -671,8 +671,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -684,10 +684,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             abi.encodeWithSelector(
                 INiftyApesErrors.InvalidConsideration0Identifier.selector,
                 1,
-                offer.nftId
+                offer.item.identifier
             )
         );
-        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
+        sellerFinancing.instantSell(offer.item.token, offer.item.identifier, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -709,7 +709,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -717,8 +717,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -733,7 +733,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 ISeaport.ItemType.ERC20
             )
         );
-        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
+        sellerFinancing.instantSell(offer.item.token, offer.item.identifier, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -755,7 +755,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -763,8 +763,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -779,7 +779,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 WETH_ADDRESS
             )
         );
-        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
+        sellerFinancing.instantSell(offer.item.token, offer.item.identifier, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -801,7 +801,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -809,8 +809,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -826,7 +826,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 ISeaport.ItemType.ERC20
             )
         );
-        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
+        sellerFinancing.instantSell(offer.item.token, offer.item.identifier, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -848,7 +848,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -856,8 +856,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 bidPrice = ((loan.remainingPrincipal + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -873,7 +873,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 WETH_ADDRESS
             )
         );
-        sellerFinancing.instantSell(offer.nftContractAddress, offer.nftId, 0, abi.encode(order[0]));
+        sellerFinancing.instantSell(offer.item.token, offer.item.identifier, 0, abi.encode(order[0]));
         vm.stopPrank();
     }
 
@@ -896,7 +896,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -909,8 +909,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -931,8 +931,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             )
         );
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             minProfitAmount + 1,
             abi.encode(order[0])
         );
@@ -957,7 +957,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
        
         createOfferAndBuyWithSellerFinancing(offer);
         
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
             loan
@@ -969,8 +969,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             bidPrice,
             buyer2,
             true
@@ -1000,8 +1000,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
             )
         );
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             0,
             abi.encode(order[0])
         );

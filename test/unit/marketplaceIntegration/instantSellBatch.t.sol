@@ -35,7 +35,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
             block.timestamp
         );
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, nftId);
         // buyer NFT minted to buyer
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.borrowerNftId), buyer1);
         // seller NFT minted to seller
@@ -44,16 +44,16 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         //buyer nftId has tokenURI same as original nft
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId),
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
+            IERC721MetadataUpgradeable(offer.item.token).tokenURI(nftId)
         );
         Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId));
 
         // check loan struct values
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
+        assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.terms.minimumPrincipalPerPeriod);
+        assertEq(loan.periodInterestRateBps, offer.terms.periodInterestRateBps);
+        assertEq(loan.periodDuration, offer.terms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.terms.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
@@ -91,17 +91,17 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.nftId);
+        assertionsForExecutedLoan(offer, offer.item.identifier);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
+        nftContractAddresses[0] = offer.item.token;
 
         uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        nftIds[0] = offer.item.identifier;
 
         uint256[] memory minProfitAmounts = new uint256[](1);
         minProfitAmounts[0] = 1 ether;
@@ -142,10 +142,10 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.nftId, buyer2, 0);
+        assertionsForClosedLoan(offer.item.identifier, buyer2, 0);
         assertEq(
             address(buyer1).balance,
-            (buyer1BalanceBefore - offer.downPaymentAmount + minProfitAmounts[0])
+            (buyer1BalanceBefore - offer.terms.downPaymentAmount + minProfitAmounts[0])
         );
     }
 
@@ -181,13 +181,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -198,21 +198,21 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         assertionsForExecutedLoan(offer, nftIds[0]);
         assertionsForExecutedLoan(offer, nftIds[1]);
 
-        Loan memory loan0 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[0]);
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[1]);
+        Loan memory loan0 = sellerFinancing.getLoan(offer.item.token, nftIds[0]);
+        Loan memory loan1 = sellerFinancing.getLoan(offer.item.token, nftIds[1]);
 
         (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loan0);
         (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loan1);
 
         address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
+        nftContractAddresses[0] = offer.item.token;
+        nftContractAddresses[1] = offer.item.token;
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[0] = 1 ether;
         minProfitAmounts[1] = 2 ether;
 
-        uint256 expectedBuyer1BalanceAfterLoanIsClosed = (buyer1BalanceBefore - 2 * offer.downPaymentAmount + minProfitAmounts[0] + minProfitAmounts[1]);
+        uint256 expectedBuyer1BalanceAfterLoanIsClosed = (buyer1BalanceBefore - 2 * offer.terms.downPaymentAmount + minProfitAmounts[0] + minProfitAmounts[1]);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPriceLoan0 = ((loan0.remainingPrincipal + periodInterestLoan0 + minProfitAmounts[0]) *
@@ -303,13 +303,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -320,15 +320,15 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         assertionsForExecutedLoan(offer, nftIds[0]);
         assertionsForExecutedLoan(offer, nftIds[1]);
 
-        Loan memory loan0 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[0]);
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[1]);
+        Loan memory loan0 = sellerFinancing.getLoan(offer.item.token, nftIds[0]);
+        Loan memory loan1 = sellerFinancing.getLoan(offer.item.token, nftIds[1]);
 
         (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loan0);
         (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loan1);
 
         address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
+        nftContractAddresses[0] = offer.item.token;
+        nftContractAddresses[1] = offer.item.token;
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[0] = 1 ether;
@@ -425,13 +425,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -442,15 +442,15 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         assertionsForExecutedLoan(offer, nftIds[0]);
         assertionsForExecutedLoan(offer, nftIds[1]);
 
-        Loan memory loan0 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[0]);
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[1]);
+        Loan memory loan0 = sellerFinancing.getLoan(offer.item.token, nftIds[0]);
+        Loan memory loan1 = sellerFinancing.getLoan(offer.item.token, nftIds[1]);
 
         (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loan0);
         (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loan1);
 
         address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
+        nftContractAddresses[0] = offer.item.token;
+        nftContractAddresses[1] = offer.item.token;
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[0] = 1 ether;
@@ -547,13 +547,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -564,14 +564,14 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         assertionsForExecutedLoan(offer, nftIds[0]);
         assertionsForExecutedLoan(offer, nftIds[1]);
 
-        Loan memory loan0 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[0]);
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[1]);
+        Loan memory loan0 = sellerFinancing.getLoan(offer.item.token, nftIds[0]);
+        Loan memory loan1 = sellerFinancing.getLoan(offer.item.token, nftIds[1]);
 
         (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loan0);
 
         address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
+        nftContractAddresses[0] = offer.item.token;
+        nftContractAddresses[1] = offer.item.token;
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[0] = 1 ether;
@@ -659,13 +659,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -676,14 +676,14 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         assertionsForExecutedLoan(offer, nftIds[0]);
         assertionsForExecutedLoan(offer, nftIds[1]);
 
-        Loan memory loan0 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[0]);
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[1]);
+        Loan memory loan0 = sellerFinancing.getLoan(offer.item.token, nftIds[0]);
+        Loan memory loan1 = sellerFinancing.getLoan(offer.item.token, nftIds[1]);
 
         (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loan1);
 
         address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
+        nftContractAddresses[0] = offer.item.token;
+        nftContractAddresses[1] = offer.item.token;
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[1] = 2 ether;
@@ -771,13 +771,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -788,15 +788,15 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         assertionsForExecutedLoan(offer, nftIds[0]);
         assertionsForExecutedLoan(offer, nftIds[1]);
 
-        Loan memory loan0 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[0]);
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftIds[1]);
+        Loan memory loan0 = sellerFinancing.getLoan(offer.item.token, nftIds[0]);
+        Loan memory loan1 = sellerFinancing.getLoan(offer.item.token, nftIds[1]);
 
         (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loan0);
         (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loan1);
 
         address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
+        nftContractAddresses[0] = offer.item.token;
+        nftContractAddresses[1] = offer.item.token;
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[0] = 1 ether;
@@ -873,18 +873,18 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, ISellerFinancingEven
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.nftId);
+        assertionsForExecutedLoan(offer, offer.item.identifier);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
         address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
+        nftContractAddresses[0] = offer.item.token;
+        nftContractAddresses[1] = offer.item.token;
 
         uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        nftIds[0] = offer.item.identifier;
 
         uint256[] memory minProfitAmounts = new uint256[](1);
         minProfitAmounts[0] = 1 ether;

@@ -111,10 +111,10 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         _requireIsNotSanctioned(buyer);
 
         // calculate marketplace fee
-        uint256 marketplaceFeeAmount = ((offer.principalAmount + offer.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
+        uint256 marketplaceFeeAmount = ((offer.terms.principalAmount + offer.terms.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
 
-        if (msg.value < offer.downPaymentAmount + marketplaceFeeAmount) {
-            revert InsufficientMsgValue(msg.value, offer.downPaymentAmount + marketplaceFeeAmount);
+        if (msg.value < offer.terms.downPaymentAmount + marketplaceFeeAmount) {
+            revert InsufficientMsgValue(msg.value, offer.terms.downPaymentAmount + marketplaceFeeAmount);
         }
 
         // send marketplace fee to marketplace fee recipient
@@ -159,10 +159,10 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             INiftyApesStructs.Offer memory offer = offers[i];
 
             // calculate marketplace fee for ith offer
-            uint256 marketplaceFeeAmount = ((offer.principalAmount + offer.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
+            uint256 marketplaceFeeAmount = ((offer.terms.principalAmount + offer.terms.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
 
             // if remaining value is not sufficient to execute ith offer
-            if (msg.value - valueConsumed < offer.downPaymentAmount + marketplaceFeeAmount) {
+            if (msg.value - valueConsumed < offer.terms.downPaymentAmount + marketplaceFeeAmount) {
                 // if partial execution is allowed then move to next offer
                 if (partialExecution) {
                     continue;
@@ -171,21 +171,21 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
                 else {
                     revert InsufficientMsgValue(
                         msg.value,
-                        valueConsumed + offer.downPaymentAmount + marketplaceFeeAmount
+                        valueConsumed + offer.terms.downPaymentAmount + marketplaceFeeAmount
                     );
                 }
             }
             // try executing current offer,
             try
                 ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
-                    value: offer.downPaymentAmount
+                    value: offer.terms.downPaymentAmount
                 }(offer, signatures[i], buyer, nftIds[i])
             {
                 // if successful
                 // increment marketplaceFeeAccumulated
                 marketplaceFeeAccumulated += marketplaceFeeAmount;
                 // increment valueConsumed
-                valueConsumed += offer.downPaymentAmount + marketplaceFeeAmount;
+                valueConsumed += offer.terms.downPaymentAmount + marketplaceFeeAmount;
             } catch {
                 // if failed
                 // if partial execution is not allowed, revert

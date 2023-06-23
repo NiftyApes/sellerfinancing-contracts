@@ -19,20 +19,20 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
 
     function assertionsForExecutedLoan(Offer memory offer) private {
         // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
+        assertEq(boredApeYachtClub.ownerOf(offer.item.identifier), address(sellerFinancing));
         // require delegate.cash has buyer delegation
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             true
         );
         // loan exists
         assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
+            sellerFinancing.getLoan(address(boredApeYachtClub), offer.item.identifier).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
@@ -40,14 +40,14 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
+        assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.terms.minimumPrincipalPerPeriod);
+        assertEq(loan.periodInterestRateBps, offer.terms.periodInterestRateBps);
+        assertEq(loan.periodDuration, offer.terms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.terms.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
@@ -57,7 +57,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId);
@@ -67,7 +67,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             false
         );
@@ -77,7 +77,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             true
         );
@@ -89,7 +89,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId, bytes(""));
@@ -99,7 +99,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             false
         );
@@ -109,7 +109,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             true
         );
@@ -122,7 +122,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loan.borrowerNftId);
@@ -132,7 +132,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             false
         );
@@ -142,7 +142,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             true
         );
@@ -154,7 +154,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
 
         vm.prank(buyer1);
         vm.expectRevert(
@@ -176,7 +176,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             false
         );
@@ -186,7 +186,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
                 SANCTIONED_ADDRESS,
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.item.identifier
             ),
             true
         );

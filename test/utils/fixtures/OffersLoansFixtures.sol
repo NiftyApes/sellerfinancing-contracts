@@ -156,7 +156,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function seller1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.item.identifier);
         vm.stopPrank();
 
         return signOffer(seller1_private_key, offer);
@@ -164,7 +164,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function lender1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(lender1);
-        weth.approve(address(sellerFinancing), offer.principalAmount);
+        weth.approve(address(sellerFinancing), offer.terms.principalAmount);
         vm.stopPrank();
 
         return signOffer(lender1_private_key, offer);
@@ -174,11 +174,11 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.item.identifier
         );
         vm.stopPrank();
     }

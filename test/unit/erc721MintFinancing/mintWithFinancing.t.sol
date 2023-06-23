@@ -36,21 +36,21 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
+        Loan memory loan = sellerFinancing.getLoan(offer.item.token, nftId);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
+        assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.terms.minimumPrincipalPerPeriod);
+        assertEq(loan.periodInterestRateBps, offer.terms.periodInterestRateBps);
+        assertEq(loan.periodDuration, offer.terms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.terms.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
     function _test_mintWithFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
-        offer.nftContractAddress = address(erc721MintFinancing);
+        offer.item.token = address(erc721MintFinancing);
 
         vm.startPrank(seller1);
         erc721MintFinancing.setApprovalForAll(address(sellerFinancing), true);
@@ -60,7 +60,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         uint256[] memory tokenIds = erc721MintFinancing.mintWithFinancing{
-            value: offer.downPaymentAmount
+            value: offer.terms.downPaymentAmount
         }(offer, offerSignature, 1);
         vm.stopPrank();
         assertionsForExecutedLoan(offer, 1);
@@ -81,7 +81,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function _test_mintWithFinancing_3_count(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
-        offer.nftContractAddress = address(erc721MintFinancing);
+        offer.item.token = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
 
         vm.startPrank(seller1);
@@ -92,7 +92,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         uint256[] memory tokenIds = erc721MintFinancing.mintWithFinancing{
-            value: (offer.downPaymentAmount * offer.collectionOfferLimit)
+            value: (offer.terms.downPaymentAmount * offer.collectionOfferLimit)
         }(offer, offerSignature, 3);
         vm.stopPrank();
         assertionsForExecutedLoan(offer, 1);
@@ -117,7 +117,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
-        offer.nftContractAddress = address(erc721MintFinancing);
+        offer.item.token = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
 
         vm.startPrank(seller1);
@@ -130,12 +130,12 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.expectRevert(
             abi.encodeWithSelector(
                 ERC721MintFinancing.InsufficientMsgValue.selector,
-                (offer.downPaymentAmount * offer.collectionOfferLimit) - 1,
-                (offer.downPaymentAmount * offer.collectionOfferLimit)
+                (offer.terms.downPaymentAmount * offer.collectionOfferLimit) - 1,
+                (offer.terms.downPaymentAmount * offer.collectionOfferLimit)
             )
         );
         erc721MintFinancing.mintWithFinancing{
-            value: (offer.downPaymentAmount * offer.collectionOfferLimit) - 1
+            value: (offer.terms.downPaymentAmount * offer.collectionOfferLimit) - 1
         }(offer, offerSignature, 3);
         vm.stopPrank();
     }
@@ -156,7 +156,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
-        offer.nftContractAddress = address(erc721MintFinancing);
+        offer.item.token = address(erc721MintFinancing);
 
         vm.startPrank(seller1);
         erc721MintFinancing.setApprovalForAll(address(sellerFinancing), true);
@@ -173,7 +173,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
                 address(seller1)
             )
         );
-        erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             1
@@ -197,7 +197,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
-        offer.nftContractAddress = address(0);
+        offer.item.token = address(0);
 
         vm.startPrank(seller1);
         erc721MintFinancing.setApprovalForAll(address(sellerFinancing), true);
@@ -213,7 +213,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
                 address(erc721MintFinancing)
             )
         );
-        erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             1
@@ -235,7 +235,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     function _test_mintWithFinancing_reverts_ifCountIs0(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
-        offer.nftContractAddress = address(erc721MintFinancing);
+        offer.item.token = address(erc721MintFinancing);
 
         vm.startPrank(seller1);
         erc721MintFinancing.setApprovalForAll(address(sellerFinancing), true);
@@ -245,7 +245,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         vm.expectRevert(abi.encodeWithSelector(ERC721MintFinancing.CannotMint0.selector));
-        erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             0
@@ -269,7 +269,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
-        offer.nftContractAddress = address(erc721MintFinancing);
+        offer.item.token = address(erc721MintFinancing);
         offer.collectionOfferLimit = 3;
 
         vm.startPrank(seller1);
@@ -281,7 +281,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         uint256 balanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount * 2 }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.terms.downPaymentAmount * 2 }(
             offer,
             offerSignature,
             2
@@ -289,7 +289,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount * 2 }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.terms.downPaymentAmount * 2 }(
             offer,
             offerSignature,
             2
@@ -300,7 +300,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         uint256 balanceDelta = balanceBefore - balanceAfter;
 
         // check that correct value has been spent and sent back
-        assertEq(balanceDelta, offer.downPaymentAmount * offer.collectionOfferLimit);
+        assertEq(balanceDelta, offer.terms.downPaymentAmount * offer.collectionOfferLimit);
     }
 
     function test_fuzz_mintWithFinancing_collectionOfferReachedLimitDuringMint(
@@ -319,7 +319,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
-        offer.nftContractAddress = address(erc721MintFinancing);
+        offer.item.token = address(erc721MintFinancing);
         offer.collectionOfferLimit = 0;
 
         vm.startPrank(seller1);
@@ -332,7 +332,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.expectRevert(
             abi.encodeWithSelector(ERC721MintFinancing.CollectionOfferLimitReached.selector)
         );
-        erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             1

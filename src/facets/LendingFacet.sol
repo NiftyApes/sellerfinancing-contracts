@@ -41,12 +41,12 @@ contract NiftyApesLendingFacet is
         IERC20Upgradeable(sf.wethContractAddress).safeTransferFrom(
             lender,
             address(this),
-            offer.principalAmount
+            offer.terms.principalAmount
         );
 
         // convert weth to eth
         (bool success, ) = sf.wethContractAddress.call(
-            abi.encodeWithSignature("withdraw(uint256)", offer.principalAmount)
+            abi.encodeWithSignature("withdraw(uint256)", offer.terms.principalAmount)
         );
         if (!success) {
             revert WethConversionFailed();
@@ -56,9 +56,11 @@ contract NiftyApesLendingFacet is
         ethReceived = address(this).balance - contractBalanceBefore;
 
         // transfer nft from msg.sender to this contract, revert on failure
-        _transferCollateral(offer.nftContractAddress, nftId, msg.sender, address(this));
+        _transferCollateral(offer.item, msg.sender, address(this));
 
         _executeLoan(offer, signature, msg.sender, lender, nftId, sf);
+
+        // pay out serviceProviderFees
 
         // payout borrower
         payable(msg.sender).sendValue(ethReceived);
@@ -91,14 +93,16 @@ contract NiftyApesLendingFacet is
         }
 
         // transferFrom weth from lender
-        asset.safeTransferFrom(lender, address(this), offer.principalAmount);
-
+        asset.safeTransferFrom(lender, address(this), offer.terms.principalAmount);
+ 
         // transferFrom downPayment from buyer
         asset.safeTransferFrom(
             msg.sender,
             address(this),
-            totalConsiderationAmount - offer.principalAmount
+            totalConsiderationAmount - offer.terms.principalAmount
         );
+
+        // payout serviceProvider Fees
 
         // set allowance for seaport to transferFrom this contract during .fulfillOrder()
         asset.approve(sf.seaportContractAddress, totalConsiderationAmount);

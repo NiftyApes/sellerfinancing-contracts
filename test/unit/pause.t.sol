@@ -23,20 +23,20 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         vm.expectRevert("Pausable: paused");
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.item.identifier
         );
 
         vm.expectRevert("Pausable: paused");
-        sellerFinancing.makePayment{ value: (1) }(offer.nftContractAddress, offer.nftId);
+        sellerFinancing.makePayment{ value: (1) }(offer.item.token, offer.item.identifier);
 
         vm.expectRevert("Pausable: paused");
         sellerFinancing.instantSell(
-            offer.nftContractAddress,
-            offer.nftId,
+            offer.item.token,
+            offer.item.identifier,
             0,
             abi.encode("dummy order", bytes32(0))
         );
@@ -44,6 +44,6 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
 
         vm.startPrank(seller1);
         vm.expectRevert("Pausable: paused");
-        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
     }
 }

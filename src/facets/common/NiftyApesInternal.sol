@@ -123,7 +123,7 @@ abstract contract NiftyApesInternal is
     ) internal returns (address lender) {
         // check for collection offer
         if (offer.item.identifier != ~uint256(0)) {
-            if (nftId != offer.nftId) {
+            if (nftId != offer.item.identifier) {
                 revert NftIdsMustMatch();
             }
             _requireAvailableSignature(signature, sf);
@@ -189,22 +189,22 @@ abstract contract NiftyApesInternal is
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal {
         // instantiate loan
-        Loan storage loan = _getLoan(sf.loanNonce, sf);
+        Loan storage loan = _getLoan(sf.loanId, sf);
 
         // mint borrower nft
-        _safeMint(borrower, sf.loanNonce);
+        _safeMint(borrower, sf.loanId);
         _setTokenURI(
-            sf.loanNonce,
+            sf.loanId,
             IERC721MetadataUpgradeable(offer.item.token).tokenURI(nftId)
         );
-        sf.loanNonce++;
+        sf.loanId++;
 
         // mint lender nft
-        _safeMint(lender, sf.loanNonce);
-        sf.loanNonce++;
+        _safeMint(lender, sf.loanId);
+        sf.loanId++;
 
         // create loan
-        _createLoan(loan, offer, nftId, sf.loanNonce - 1, sf.loanNonce - 2, sf);
+        _createLoan(loan, offer, nftId, sf.loanId - 1, sf.loanId - 2, sf);
 
         // add borrower delegate.cash delegation
         IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
@@ -228,6 +228,10 @@ abstract contract NiftyApesInternal is
     ) internal {
         loan.lenderNftId = lenderNftId;
         loan.borrowerNftId = borrowerNftId;
+        loan.item.itemType = offer.item.itemType;
+        loan.item.token = offer.item.token;
+        loan.item.identifier = nftId;
+        loan.item.amount = offer.item.amount;
         loan.remainingPrincipal = uint128(offer.terms.principalAmount);
         loan.periodEndTimestamp = _currentTimestamp32() + offer.terms.periodDuration;
         loan.periodBeginTimestamp = _currentTimestamp32();
@@ -249,22 +253,19 @@ abstract contract NiftyApesInternal is
 
     // can probably update to be more specific based in itemType
     function _transferCollateral(
-        address nftContractAddress,
-        uint256 nftId,
+        Item item,
         address from,
         address to
     ) internal {
-        if (IERC1155SupplyUpgradeable(nftContractAddress).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
+        if (item.itemType == ERC1155) {
             _transferERC1155Token(
-                nftContractAddress,
-                nftId,
+                item,
                 from,
                 to
             );
         } else {
             _transferNft(
-                nftContractAddress,
-                nftId,
+                item,
                 from,
                 to
             );
@@ -272,21 +273,19 @@ abstract contract NiftyApesInternal is
     }
 
     function _transferNft(
-        address nftContractAddress,
-        uint256 nftId,
+        Item item,
         address from,
         address to
     ) internal {
-        IERC721Upgradeable(nftContractAddress).safeTransferFrom(from, to, nftId);
+        IERC721Upgradeable(item.token).safeTransferFrom(from, to, item.identifier);
     }
 
     function _transferERC1155Token(
-        address nftContractAddress,
-        uint256 nftId,
+        Item item,
         address from,
         address to
     ) internal {
-        IERC1155SupplyUpgradeable(nftContractAddress).safeTransferFrom(from, to, nftId, 1, bytes(""));
+        IERC1155SupplyUpgradeable(item.token).safeTransferFrom(from, to, item.identifier, item.amount, bytes(""));
     }
 
     function _currentTimestamp32() internal view returns (uint32) {
@@ -338,23 +337,24 @@ abstract contract NiftyApesInternal is
         }
     }
 
+    // do we still need this? it was easier to update the contract by leaving it, but could refactor it out. 
     function _getUnderlyingNft(
-        uint256 loanNonce,
+        uint256 loanId,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal view returns (Item memory item) {
-           Loan memory loan = _getLoan(loanNonce);
+           Loan memory loan = _getLoan(loanId);
         return (loan.item);
     }
 
-    // can supply the specific, even loanNonce or loanNonce + 1
+    // can supply the specific, even loanId or loanId + 1
     function _getLoan(
-        uint256 loanNonce,
+        uint256 loanId,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal view returns (Loan storage) {
-        if (loanNonce % 2 == 0 ){
-            return sf.loans[loanNonce];
+        if (loanId % 2 == 0 ){
+            return sf.loans[loanId];
         } else {
-            return sf.loans[loanNonce - 1];
+            return sf.loans[loanId - 1];
         }
     }
 

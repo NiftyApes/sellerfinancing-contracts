@@ -29,7 +29,7 @@ library NiftyApesStorage {
 
         /// increments by two for each loan, once for borrowerNftId, once for lenderNftId
         /// slot0
-        uint256 loanNonce;
+        uint256 loanId;
         /// @dev The stored address for the royalties engine
         /// slot1
         address royaltiesEngineContractAddress;
@@ -45,8 +45,8 @@ library NiftyApesStorage {
         /// @dev The status of sanctions checks
         /// slot4
         bool sanctionsPause;
-        /// @dev A mapping for a loanNonce to a loan.
-        ///      Loans are stored at even loanNonce values, but can be queried at the even value or value + 1 using getLoan()
+        /// @dev A mapping for a loanId to a loan.
+        ///      Loans are stored at even loanId values, but can be queried at the even value or value + 1 using getLoan()
         /// slot5
         mapping(uint256 => INiftyApesStructs.Loan) loans;
         /// slot7
