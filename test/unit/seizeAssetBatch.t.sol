@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../src/interfaces/niftyapes/INiftyApesEvents.sol";
 
-contract TestSeizeAssetBatch is Test, OffersLoansFixtures, ISellerFinancingEvents {
+contract TestSeizeAssetBatch is Test, OffersLoansFixtures, INiftyApesEvents {
     function setUp() public override {
         super.setUp();
     }
