@@ -23,7 +23,7 @@ interface INiftyApesStructs {
     }
 
     struct Terms {
-        ItemType itemtype;
+        Item item;
 
         // Down payment for NFT financing, ignored for LENDING offers
         uint128 downPaymentAmount;

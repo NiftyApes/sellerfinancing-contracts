@@ -66,7 +66,7 @@ abstract contract NiftyApesInternal is
                     offer.item.token,
                     offer.item.identifier,
                     offer.item.amount,
-                    offer.terms.itemType,
+                    offer.terms.item,
                     offer.terms.downPaymentAmount,
                     offer.terms.principalAmount,
                     offer.terms.minimumPrincipalPerPeriod,
@@ -142,6 +142,7 @@ abstract contract NiftyApesInternal is
             lender = offer.creator;
         }
 
+        // review 1155 implementations and checks
 
         // add check that offer.item.itemType is either 721 or 1155
         // add check that offer.terms.itemType is either NATIVE or 20
@@ -151,14 +152,7 @@ abstract contract NiftyApesInternal is
         _requireOfferNotExpired(offer);
         // requireOfferisValid
         _requireNonZeroAddress(offer.item.token);
-
-        // update this check, maybe not needed anymore? 
-        if (IERC1155SupplyUpgradeable(offer.item.token).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
-                _requireNonFungibleToken(
-                    offer.item.token,
-                    nftId
-                );
-            }        
+        
             // require1MinsMinimumDuration
         if (offer.terms.periodDuration < 1 minutes) {
             revert InvalidPeriodDuration();
@@ -253,11 +247,11 @@ abstract contract NiftyApesInternal is
 
     // can probably update to be more specific based in itemType
     function _transferCollateral(
-        Item item,
+        Item memory item,
         address from,
         address to
     ) internal {
-        if (item.itemType == ERC1155) {
+        if (item.itemType == ItemType.ERC1155) {
             _transferERC1155Token(
                 item,
                 from,
@@ -273,7 +267,7 @@ abstract contract NiftyApesInternal is
     }
 
     function _transferNft(
-        Item item,
+        Item memory item,
         address from,
         address to
     ) internal {
@@ -281,7 +275,7 @@ abstract contract NiftyApesInternal is
     }
 
     function _transferERC1155Token(
-        Item item,
+        Item memory item,
         address from,
         address to
     ) internal {
@@ -342,7 +336,7 @@ abstract contract NiftyApesInternal is
         uint256 loanId,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal view returns (Item memory item) {
-           Loan memory loan = _getLoan(loanId);
+           Loan memory loan = _getLoan(loanId, sf);
         return (loan.item);
     }
 

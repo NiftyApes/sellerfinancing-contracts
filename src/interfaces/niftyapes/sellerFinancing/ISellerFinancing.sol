@@ -48,8 +48,6 @@ interface ISellerFinancing is
     /// @notice Start a loan as buyer using a signed offer.
     /// @param offer The details of the financing offer
     /// @param signature A signed offerHash
-    /// @param buyer The address of the buyer
-    /// @dev   buyer provided as param to allow for 3rd party marketplace integrations
     function buyWithSellerFinancing(
         INiftyApesStructs.Offer calldata offer,
         bytes memory signature,
@@ -58,40 +56,36 @@ interface ISellerFinancing is
 
     /// @notice Make a partial payment or full repayment of a loan.
     /// @dev Any address may make a payment towards the loan.
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param nftId The id of a specified NFT
-    function makePayment(address nftContractAddress, uint256 nftId) external payable;
+    /// @param loanId The id of a specified loan
+    function makePayment(uint256 loanId) external payable;
 
     /// @notice Seize an asset from a defaulted loan.
     /// @dev    This function is only callable by the seller address
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param nftId The id of a specified NFT
-    function seizeAsset(address nftContractAddress, uint256 nftId) external;
+    /// @param loanId The id of a specified loan
+    function seizeAsset(uint256 loanId) external;
 
     /// @notice Sell the underlying nft and repay the loan using the proceeds of the sale.
     ///         Transfer remaining funds to the buyer
     /// @dev    This function is only callable by the buyer address
     /// @dev    This function only supports valid Seaport orders
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param nftId The id of a specified NFT
+    /// @param loanId The id of a specified loan
     /// @param minProfitAmount Minimum amount to accept for buyer's profit. Provides slippage control.
     /// @param data Order encoded as bytes
     function instantSell(
-        address nftContractAddress,
-        uint256 nftId,
+        uint256 loanId,
         uint256 minProfitAmount,
         bytes calldata data
     ) external;
 
-    /// @notice Returns a loan identified by a given nft.
-    /// @param loanId
+    /// @notice Returns a loan identified by a given loanId.
+    /// @param loanId The id of a specified loan
     function getLoan(uint256 loanId) external view returns (INiftyApesStructs.Loan memory);
 
-    /// @notice Returns the underlying nft of a specified a seller financing ticket id.
-    /// @param sellerFinancingTicketId The id of a specified seller financing ticket id
+    /// @notice Returns the underlying nft of a specified loanId.
+    /// @param loanId The id of a specified loan
     function getUnderlyingNft(
-        uint256 sellerFinancingTicketId
-    ) external view returns (address nftContractAddress, uint256 nftId);
+        uint256 loanId
+    ) external view returns (INiftyApesStructs.Item memory);
 
     /// @notice Returns minimum payment required for the current period and current period interest
     /// @dev    This function calculates a sum of current and late payment values if applicable

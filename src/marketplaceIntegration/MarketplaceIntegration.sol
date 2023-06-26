@@ -99,16 +99,13 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @notice Start a loan as buyer using a signed offer.
     /// @param offer The details of the financing offer
     /// @param signature Signature from the offer creator
-    /// @param buyer The address of the buyer
     /// @param nftId The nftId of the nft the buyer intends to buy
     function buyWithSellerFinancing(
         INiftyApesStructs.Offer memory offer,
         bytes calldata signature,
-        address buyer,
         uint256 nftId
     ) external payable whenNotPaused {
         _requireIsNotSanctioned(msg.sender);
-        _requireIsNotSanctioned(buyer);
 
         // calculate marketplace fee
         uint256 marketplaceFeeAmount = ((offer.terms.principalAmount + offer.terms.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
@@ -123,25 +120,22 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         // execute buyWithSellerFinancing
         ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
             value: msg.value - marketplaceFeeAmount
-        }(offer, signature, buyer, nftId);
+        }(offer, signature, nftId);
     }
 
     /// @notice Execute loan offers in batch for buyer
     /// @param offers The list of the offers to execute
     /// @param signatures The list of corresponding signatures from the offer creators
-    /// @param buyer The address of the buyer
     /// @param nftIds The nftIds of the nfts the buyer intends to buy
     /// @param partialExecution If set to true, will continue to attempt transaction executions regardless
     ///        if previous transactions have failed or had insufficient value available
     function buyWithSellerFinancingBatch(
         INiftyApesStructs.Offer[] memory offers,
         bytes[] calldata signatures,
-        address buyer,
         uint256[] calldata nftIds,
         bool partialExecution
     ) external payable whenNotPaused {
         _requireIsNotSanctioned(msg.sender);
-        _requireIsNotSanctioned(buyer);
 
         uint256 offersLength = offers.length;
 
@@ -179,7 +173,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             try
                 ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
                     value: offer.terms.downPaymentAmount
-                }(offer, signatures[i], buyer, nftIds[i])
+                }(offer, signatures[i], nftIds[i])
             {
                 // if successful
                 // increment marketplaceFeeAccumulated
@@ -205,39 +199,36 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     }
     
     /// @notice Execute instantSell on all the NFTs in the provided input
-    /// @param nftContractAddresses The list of all the nft contract addresses
-    /// @param nftIds The list of all the nft IDs
+    /// @param loanIds The list of all the loan IDs
     /// @param minProfitAmounts List of minProfitAmount for each `instantSell` call
     /// @param data The list of data to be passed to each `instantSell` call
     /// @param partialExecution If set to true, will continue to attempt next request in the loop
     ///        when one `instantSell` or transfer ticket call fails
     function instantSellBatch(
-        address[] memory nftContractAddresses,
-        uint256[] memory nftIds,
+        uint256[] memory loanIds,
         uint256[] memory minProfitAmounts,
         bytes[] calldata data,
         bool partialExecution
     ) external whenNotPaused {
         _requireIsNotSanctioned(msg.sender);
 
-        uint256 executionCount = nftContractAddresses.length;
+        uint256 executionCount = loanIds.length;
         // requireLengthOfAllInputArraysAreEqual
-        if(nftIds.length != executionCount || minProfitAmounts.length != executionCount || data.length != executionCount) {
+        if(minProfitAmounts.length != executionCount || data.length != executionCount) {
             revert InvalidInputLength();
         }
         
         uint256 contractBalanceBefore = address(this).balance;
         for (uint256 i; i < executionCount; ++i) {
-            // intantiate NFT details
-            address nftContractAddress = nftContractAddresses[i];
-            uint256 nftId = nftIds[i];
+            // intantiate loan details
+            uint256 loanId = loanIds[i];
             // fetech active loan details
-            INiftyApesStructs.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
+            INiftyApesStructs.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(loanId);
             // transfer buyerNft from caller to this contract.
             // this call also ensures that loan exists and caller is the current buyer
             try IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.borrowerNftId) {
                 // call instantSell to close the loan
-                try ISellerFinancing(sellerFinancingContractAddress).instantSell(nftContractAddress, nftId, minProfitAmounts[i], data[i]) {} 
+                try ISellerFinancing(sellerFinancingContractAddress).instantSell(loan.borrowerNftId, minProfitAmounts[i], data[i]) {} 
                 catch {
                     if (!partialExecution) {
                         revert InstantSellCallRevertedAt(i);

@@ -11,7 +11,6 @@ interface ILending
     /// @param offer        The details of the lending offer
     /// @param signature    A signed offerHash
     /// @param nftId        The id of a specified NFT
-    /// @dev   borrower provided as param to allow for 3rd party marketplace integrations
     function borrow(
         INiftyApesStructs.Offer memory offer,
         bytes calldata signature,
@@ -23,7 +22,6 @@ interface ILending
     /// @param signature    A signed offerHash
     /// @param nftId        The id of a specified NFT
     /// @param data         Seaport Lsiting Order data encoded as bytes
-    /// @dev   borrower provided as param to allow for 3rd party marketplace integrations
     function buyWith3rdPartyFinancing(
         INiftyApesStructs.Offer memory offer,
         bytes calldata signature,
