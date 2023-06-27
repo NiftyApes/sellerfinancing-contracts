@@ -54,16 +54,17 @@ abstract contract NiftyApesInternal is
             offer.downPaymentAmount,
             offer.principalAmount,
             offer.minimumPrincipalPerPeriod,
-            offer.nftId
+            offer.nftId,
+            offer.nftContractAddress
         );
         bytes memory secondHalfEncoding = abi.encode(
-            offer.nftContractAddress,
             offer.periodInterestRateBps,
             offer.periodDuration,
             offer.expiration,
             offer.creator,
             offer.isCollectionOffer,
-            offer.collectionOfferLimit
+            offer.collectionOfferLimit,
+            offer.payRoyalties
         );
     return
         _hashTypedDataV4(
@@ -216,6 +217,9 @@ abstract contract NiftyApesInternal is
         loan.minimumPrincipalPerPeriod = offer.minimumPrincipalPerPeriod;
         loan.periodInterestRateBps = offer.periodInterestRateBps;
         loan.periodDuration = offer.periodDuration;
+        if (offer.offerType == OfferType.SELLER_FINANCING) {
+            loan.payRoyalties = offer.payRoyalties;
+        }
 
         // instantiate underlying nft pointer
         UnderlyingNft storage borrowerUnderlyingNft = _getUnderlyingNft(borrowerNftId, sf);

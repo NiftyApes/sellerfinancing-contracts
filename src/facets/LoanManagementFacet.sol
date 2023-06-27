@@ -238,13 +238,16 @@ contract NiftyApesLoanManagementFacet is
             amountReceived = totalPossiblePayment;
         }
 
-        uint256 totalRoyaltiesPaid = _payRoyalties(
-            nftContractAddress,
-            nftId,
-            borrowerAddress,
-            amountReceived,
-            sf
-        );
+        uint256 totalRoyaltiesPaid;
+        if (loan.payRoyalties) {
+            totalRoyaltiesPaid = _payRoyalties(
+                nftContractAddress,
+                nftId,
+                borrowerAddress,
+                amountReceived,
+                sf
+            );
+        }
 
         // payout lender
         _conditionalSendValue(lenderAddress, borrowerAddress, amountReceived - totalRoyaltiesPaid, sf);

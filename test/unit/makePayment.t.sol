@@ -51,6 +51,45 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
+    function assertionsForExecutedLoanThrough3rdPartyLender(Offer memory offer, uint256 nftId) private {
+        // sellerFinancing contract has NFT
+        assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
+        // require delegate.cash has buyer delegation
+        assertEq(
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(borrower1),
+                address(sellerFinancing),
+                address(boredApeYachtClub),
+                nftId
+            ),
+            true
+        );
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
+        assertEq(
+            loan.periodBeginTimestamp,
+            block.timestamp
+        );
+        // borrower NFT minted to borrower1
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.borrowerNftId), borrower1);
+        // lender NFT minted to lender1
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.lenderNftId), lender1);
+
+        
+        //buyer nftId has tokenURI same as original nft
+        assertEq(
+            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId),
+            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
+        );
+
+        // check loan struct values
+        assertEq(loan.remainingPrincipal, offer.principalAmount);
+        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
+        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
+        assertEq(loan.periodDuration, offer.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
+        assertEq(loan.periodBeginTimestamp, block.timestamp);
+    }
+
     function assertionsForClosedLoan(Offer memory offer, address expectedNftOwner) private {
         // expected address has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.nftId), expectedNftOwner);
@@ -156,6 +195,184 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_makePayment_fullRepayment_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_makePayment_fullRepayment_simplest_case(fixedForSpeed);
+    }
+
+    function _test_makePayment_fullRepayment_withoutRoyalties(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        offer.payRoyalties = false;
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+
+        createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.nftContractAddress,
+                offer.nftId,
+                loan.remainingPrincipal + periodInterest,
+                0,
+                periodInterest,
+                loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit LoanRepaid(offer.nftContractAddress, offer.nftId, loan);
+        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer1);
+
+        // seller paid out correctly without any royalty deductions
+        assertEq(
+            address(seller1).balance,
+            (sellerBalanceBefore + offer.principalAmount + offer.downPaymentAmount + periodInterest)
+        );
+    }
+
+    function test_fuzz_makePayment_fullRepayment_withoutRoyalties(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_fullRepayment_withoutRoyalties(fuzzed);
+    }
+
+    function test_unit_makePayment_fullRepayment_withoutRoyalties() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_fullRepayment_withoutRoyalties(fixedForSpeed);
+    }
+
+    function _test_makePayment_after_borrow(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
+        
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
+        sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.nftId
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.nftId);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        uint256 lender1BalanceBefore = address(lender1).balance;
+
+        vm.startPrank(borrower1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.nftContractAddress,
+                offer.nftId,
+                loan.remainingPrincipal + periodInterest,
+                0,
+                periodInterest,
+                loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit LoanRepaid(offer.nftContractAddress, offer.nftId, loan);
+        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, borrower1);
+
+        // lender received principal plus interest balance without any royalty deductions
+        assertEq(
+            address(lender1).balance,
+            (lender1BalanceBefore + offer.principalAmount + periodInterest)
+        );
+    }
+
+    function test_fuzz_makePayment_after_borrow(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_after_borrow(fuzzed);
+    }
+
+    function test_unit_makePayment_after_borrow() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_after_borrow(fixedForSpeed);
+    }
+
+    function _test_makePayment_after_borrow_payRoyaltiesIgnored_whenSetToTrue(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
+        offer.payRoyalties = true;
+
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
+        sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.nftId
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.nftId);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        uint256 lender1BalanceBefore = address(lender1).balance;
+
+        vm.startPrank(borrower1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.nftContractAddress,
+                offer.nftId,
+                loan.remainingPrincipal + periodInterest,
+                0,
+                periodInterest,
+                loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit LoanRepaid(offer.nftContractAddress, offer.nftId, loan);
+        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, borrower1);
+
+        // lender received principal plus interest balance without any royalty deductions
+        assertEq(
+            address(lender1).balance,
+            (lender1BalanceBefore + offer.principalAmount + periodInterest)
+        );
+    }
+
+    function test_fuzz_makePayment_after_borrow_payRoyaltiesIgnored_whenSetToTrue(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_after_borrow_payRoyaltiesIgnored_whenSetToTrue(fuzzed);
+    }
+
+    function test_unit_makePayment_after_borrow_payRoyaltiesIgnored_whenSetToTrue() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_after_borrow_payRoyaltiesIgnored_whenSetToTrue(fixedForSpeed);
     }
 
     function _test_makePayment_returns_anyExtraAmountNotReqToCloseTheLoan(

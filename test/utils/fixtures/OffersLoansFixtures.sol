@@ -126,7 +126,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                 periodDuration: fuzzed.periodDuration,
                 expiration: fuzzed.expiration,
                 collectionOfferLimit: fixedFields.collectionOfferLimit,
-                creatorOfferNonce: fixedFields.creatorOfferNonce
+                creatorOfferNonce: fixedFields.creatorOfferNonce,
+                payRoyalties: true
             });
     }
 
@@ -148,7 +149,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                 periodDuration: fuzzed.periodDuration,
                 expiration: fuzzed.expiration,
                 collectionOfferLimit: fixedFields.collectionOfferLimit,
-                creatorOfferNonce: fixedFields.creatorOfferNonce
+                creatorOfferNonce: fixedFields.creatorOfferNonce,
+                payRoyalties: false
             });
     }
 
