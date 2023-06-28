@@ -102,6 +102,36 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         _test_buyWithSellerFinancing_simplest_case(fixedForSpeed);
     }
 
+    function _test_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        offer.payRoyalties = false;
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+
+        createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.nftId);
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+
+        // seller paid out correctly without any royalty deductions
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.downPaymentAmount)
+        );
+    }
+
+    function test_fuzz_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(fixedForSpeed);
+    }
+
+
     function _test_buyWithSellerFinancing_returnsExtraAmountMoreThanDownpayment(
         FuzzedOfferFields memory fuzzed
     ) private {

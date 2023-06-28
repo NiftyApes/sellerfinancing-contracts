@@ -47,14 +47,17 @@ contract NiftyApesLoanExecutionFacet is
         // transfer nft from seller to this contract, revert on failure
         _transferNft(offer.nftContractAddress, nftId, seller, address(this));
 
-        uint256 totalRoyaltiesPaid = _payRoyalties(
-            offer.nftContractAddress,
-            nftId,
-            buyer,
-            offer.downPaymentAmount,
-            sf
-        );
-
+        uint256 totalRoyaltiesPaid;
+        if (offer.payRoyalties) {
+            totalRoyaltiesPaid = _payRoyalties(
+                offer.nftContractAddress,
+                nftId,
+                buyer,
+                offer.downPaymentAmount,
+                sf
+            );
+        }
+        
         // payout seller
         payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
 

@@ -39,6 +39,9 @@ interface INiftyApesStructs {
         bool isCollectionOffer;
         // collection offer usage limit, ignored if not collection offer
         uint64 collectionOfferLimit;
+        // royalties will be paid from the buyer payments if offerType is SELLER_FINANCING 
+        // and this set to true. Ignored in all other cases
+        bool payRoyalties;
     }
 
     struct Loan {
@@ -62,6 +65,8 @@ interface INiftyApesStructs {
         uint32 periodEndTimestamp;
         // Timestamp of period beginning
         uint32 periodBeginTimestamp;
+        // Pay royalties from loan payments if set to true
+        bool payRoyalties;
     }
 
     struct UnderlyingNft {

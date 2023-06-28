@@ -18,7 +18,7 @@ library NiftyApesStorage {
     /// @dev Constant typeHash for EIP-712 hashing of Offer struct
     bytes32 constant _OFFER_TYPEHASH =
         keccak256(
-            "Offer(uint128 price,uint32 creatorOfferNonce,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,bool isCollectionOffer,uint64 collectionOfferLimit)"
+            "Offer(uint128 price,uint32 creatorOfferNonce,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,bool isCollectionOffer,uint64 collectionOfferLimit,bool payRoyalties)"
         );
 
     bytes32 constant SELLER_FINANCING_STORAGE_POSITION =
