@@ -40,7 +40,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
         assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
@@ -57,7 +57,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId);
@@ -89,7 +89,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId, bytes(""));
@@ -122,7 +122,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loan.borrowerNftId);
@@ -154,7 +154,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, ISellerFinancingEven
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.prank(buyer1);
         vm.expectRevert(

@@ -39,6 +39,9 @@ interface ISellerFinancing is
     /// @notice Returns value stored in `wethContractAddress`
     function wethContractAddress() external returns (address);
 
+    /// @notice Returns current, unused loanId value
+    function getCurrentLoanIdNonce() external returns (uint256);
+
     /// @notice Withdraw a given offer
     /// @dev    Calling this method allows users to withdraw a given offer by cancelling their signature on chain
     /// @param offer The offer to withdraw
@@ -48,11 +51,12 @@ interface ISellerFinancing is
     /// @notice Start a loan as buyer using a signed offer.
     /// @param offer The details of the financing offer
     /// @param signature A signed offerHash
+    /// @return loanId The id of the newly created loan
     function buyWithSellerFinancing(
         INiftyApesStructs.Offer calldata offer,
         bytes memory signature,
         uint256 nftId
-    ) external payable;
+    ) external payable returns (uint256 loanId);
 
     /// @notice Make a partial payment or full repayment of a loan.
     /// @dev Any address may make a payment towards the loan.

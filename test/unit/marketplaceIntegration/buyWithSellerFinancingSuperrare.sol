@@ -36,7 +36,7 @@ contract TestBuyWithSellerFinancingMarketplace is Test, OffersLoansFixtures {
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
         assertEq(loan.remainingPrincipal, offer.terms.principalAmount);

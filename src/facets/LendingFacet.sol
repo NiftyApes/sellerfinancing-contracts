@@ -25,7 +25,7 @@ contract NiftyApesLendingFacet is
         Offer memory offer,
         bytes calldata signature,
         uint256 nftId
-    ) external whenNotPaused nonReentrant returns (uint256 ethReceived) {
+    ) external whenNotPaused nonReentrant returns (uint256 loanId, uint256 ethReceived) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
 
@@ -64,6 +64,8 @@ contract NiftyApesLendingFacet is
 
         // payout borrower
         payable(msg.sender).sendValue(ethReceived);
+
+        return (sf.loanId - 2, ethReceived);
     }
 
     function buyWith3rdPartyFinancing(
@@ -71,7 +73,7 @@ contract NiftyApesLendingFacet is
         bytes calldata signature,
         uint256 nftId,
         bytes calldata data
-    ) external whenNotPaused nonReentrant {
+    ) external whenNotPaused nonReentrant returns (uint256 loanId) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
 
@@ -113,5 +115,7 @@ contract NiftyApesLendingFacet is
         }
 
         _executeLoan(offer, signature, msg.sender, lender, nftId, sf);
+
+        return sf.loanId - 2;
     }
 }

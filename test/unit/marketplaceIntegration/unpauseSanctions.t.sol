@@ -35,7 +35,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
         assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
@@ -64,7 +64,6 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         marketplaceIntegration.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
-            SANCTIONED_ADDRESS,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -83,7 +82,6 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         marketplaceIntegration.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
-            SANCTIONED_ADDRESS,
             offer.item.identifier
         );
         vm.stopPrank();

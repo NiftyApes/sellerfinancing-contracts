@@ -13,7 +13,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId) private {
+    function assertionsForExecutedLoan(Offer memory offer, uint256 loanId, uint256 nftId) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
         // loan auction exists
@@ -28,11 +28,11 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             true
         );
         assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), nftId).periodBeginTimestamp,
+             sellerFinancing.getLoan(loanId).periodBeginTimestamp,
             block.timestamp
         );
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         // buyer NFT minted to buyer
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.borrowerNftId), buyer1);
         // seller NFT minted to seller
@@ -78,7 +78,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             false
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, offer.item.identifier);
+        assertionsForExecutedLoan(offer, loanId, offer.item.identifier);
 
         uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
 
@@ -100,7 +100,6 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -158,7 +157,6 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 1;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -225,7 +223,6 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -291,7 +288,6 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -358,7 +354,6 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 1;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);
@@ -414,7 +409,6 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
 
         bytes memory offerSignature =  signOffer(seller1_private_key, offer);

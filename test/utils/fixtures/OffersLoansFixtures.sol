@@ -41,6 +41,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     FuzzedOfferFields internal defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
 
+    MarketplaceRecipient[] internal marketplaceRecipients = new MarketplaceRecipient[](0);
+
     function setUp() public virtual override {
         super.setUp();
 
@@ -112,17 +114,30 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         return
             Offer({
                 creator: fixedFields.creator,
-                nftId: fixedFields.nftId,
-                nftContractAddress: fixedFields.nftContractAddress,
                 offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
-                principalAmount: fuzzed.principalAmount,
-                isCollectionOffer: fixedFields.isCollectionOffer,
-                downPaymentAmount: fuzzed.downPaymentAmount,
-                minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
-                periodInterestRateBps: fuzzed.periodInterestRateBps,
-                periodDuration: fuzzed.periodDuration,
+                item: Item({
+                    itemType: ItemType.ERC721,
+                    token: fixedFields.nftContractAddress,
+                    identifier: fixedFields.nftId,
+                    amount: 1
+                }),
+                terms: Terms({
+                    item: Item({
+                        itemType: ItemType.NATIVE,
+                        token: address(0),
+                        identifier: 0,
+                        amount: 0
+                    }),
+                    downPaymentAmount: fuzzed.downPaymentAmount,
+                    principalAmount: fuzzed.principalAmount,
+                    minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
+                    periodInterestRateBps: fuzzed.periodInterestRateBps,
+                    periodDuration: fuzzed.periodDuration
+                }),               
+                marketplaceRecipients: marketplaceRecipients,
                 expiration: fuzzed.expiration,
-                collectionOfferLimit: fixedFields.collectionOfferLimit
+                collectionOfferLimit: fixedFields.collectionOfferLimit,
+                creatorOfferNonce: 0
             });
     }
 
@@ -133,17 +148,30 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         return
             Offer({
                 creator: fixedFields.creator,
-                nftId: fixedFields.nftId,
-                nftContractAddress: fixedFields.nftContractAddress,
                 offerType: INiftyApesStructs.OfferType.LENDING,
-                principalAmount: fuzzed.principalAmount,
-                isCollectionOffer: fixedFields.isCollectionOffer,
-                downPaymentAmount: 0,
-                minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
-                periodInterestRateBps: fuzzed.periodInterestRateBps,
-                periodDuration: fuzzed.periodDuration,
+                 item: Item({
+                    itemType: ItemType.ERC721,
+                    token: fixedFields.nftContractAddress,
+                    identifier: fixedFields.nftId,
+                    amount: 1
+                }),
+                terms: Terms({
+                    item: Item({
+                        itemType: ItemType.NATIVE,
+                        token: address(0),
+                        identifier: 0,
+                        amount: 0
+                    }),
+                    downPaymentAmount: 0,
+                    principalAmount: fuzzed.principalAmount,
+                    minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
+                    periodInterestRateBps: fuzzed.periodInterestRateBps,
+                    periodDuration: fuzzed.periodDuration
+                }),               
+                marketplaceRecipients: marketplaceRecipients,
                 expiration: fuzzed.expiration,
-                collectionOfferLimit: fixedFields.collectionOfferLimit
+                collectionOfferLimit: fixedFields.collectionOfferLimit,
+                creatorOfferNonce: 0
             });
     }
 
@@ -170,14 +198,13 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         return signOffer(lender1_private_key, offer);
     }
 
-    function createOfferAndBuyWithSellerFinancing(Offer memory offer) internal {
+    function createOfferAndBuyWithSellerFinancing(Offer memory offer) internal returns (uint256 loanId){
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
+        loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();

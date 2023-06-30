@@ -16,7 +16,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer) private {
+    function assertionsForExecutedLoan(Offer memory offer, uint256 loanId) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(offer.item.identifier), address(sellerFinancing));
         // require delegate.cash has buyer delegation
@@ -39,7 +39,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
         assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
@@ -93,10 +93,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         }
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -180,10 +180,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -271,10 +271,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
         }
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -341,10 +341,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_post_grace_period(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         skip(loan.periodDuration * 2);
 
@@ -397,10 +397,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -463,10 +463,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function _test_instantSell_reverts_ifCallerIsNotBuyer(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -515,10 +515,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -567,9 +567,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -614,9 +614,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -661,9 +661,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -707,9 +707,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -753,9 +753,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -799,9 +799,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -846,9 +846,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -893,10 +893,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -955,9 +955,9 @@ contract TestInstantSell is Test, OffersLoansFixtures, ISellerFinancingEvents {
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
-        createOfferAndBuyWithSellerFinancing(offer);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
         
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
             loan

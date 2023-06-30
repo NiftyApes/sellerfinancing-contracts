@@ -116,7 +116,7 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             // Execute loan
             ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
                 value: offer.terms.downPaymentAmount
-            }(offer, signature, msg.sender, _tokenIdTracker.current());
+            }(offer, signature, _tokenIdTracker.current());
         }
 
         // if there is a greater number of NFTs requested than available return value

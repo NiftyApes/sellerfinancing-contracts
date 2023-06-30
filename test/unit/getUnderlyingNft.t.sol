@@ -31,14 +31,14 @@ contract TestGetUnderlyingNft is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             signature,
             offer.item.identifier
         );
         vm.stopPrank();
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         Item memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.borrowerNftId);
         Item memory underlyingSeller = sellerFinancing.getUnderlyingNft(loan.lenderNftId);
@@ -55,7 +55,6 @@ contract TestGetUnderlyingNft is
             defaultFixedOfferFields
         );
         uint256 nftId = offer.item.identifier;
-        offer.isCollectionOffer = true;
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), nftId);
@@ -64,14 +63,14 @@ contract TestGetUnderlyingNft is
         bytes memory signature =  signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             signature,
             nftId
         );
         vm.stopPrank();
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         Item memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.borrowerNftId);
         Item memory underlyingSeller = sellerFinancing.getUnderlyingNft(loan.lenderNftId);
@@ -91,14 +90,14 @@ contract TestGetUnderlyingNft is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             signature,
             offer.item.identifier
         );
         vm.stopPrank();
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         Item memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.borrowerNftId);
         Item memory underlyingSeller = sellerFinancing.getUnderlyingNft(loan.lenderNftId);

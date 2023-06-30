@@ -26,7 +26,6 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
 
@@ -44,6 +43,6 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
 
         vm.startPrank(seller1);
         vm.expectRevert("Pausable: paused");
-        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
+        sellerFinancing.seizeAsset(loanId);
     }
 }

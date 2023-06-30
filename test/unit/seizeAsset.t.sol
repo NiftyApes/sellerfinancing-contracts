@@ -37,7 +37,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         assertEq(loan.borrowerNftId, 0);
         assertEq(loan.lenderNftId, 1);
         assertEq(loan.remainingPrincipal, offer.terms.principalAmount);
@@ -79,7 +79,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.warp(loan.periodEndTimestamp + 1);
 
@@ -88,7 +88,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(seller1);
 
-        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
+        sellerFinancing.seizeAsset(loanId);
         vm.stopPrank();
 
         assertionsForClosedLoan(offer, seller1);
@@ -112,7 +112,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(seller1);
         vm.expectRevert(INiftyApesErrors.LoanNotInDefault.selector);
-        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
+        sellerFinancing.seizeAsset(loanId);
         vm.stopPrank();
     }
 
@@ -132,7 +132,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
@@ -147,7 +147,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         vm.startPrank(seller1);
         vm.expectRevert("ERC721: invalid token ID");
-        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
+        sellerFinancing.seizeAsset(loanId);
         vm.stopPrank();
     }
 
@@ -168,7 +168,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         vm.warp(loan.periodEndTimestamp + 1);
 
         vm.prank(owner);
@@ -191,7 +191,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
+        sellerFinancing.seizeAsset(loanId);
         vm.stopPrank();
     }
 
@@ -212,14 +212,14 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         vm.warp(loan.periodEndTimestamp + 1);
 
         vm.startPrank(seller2);
         vm.expectRevert(
             abi.encodeWithSelector(INiftyApesErrors.InvalidCaller.selector, seller2, seller1)
         );
-        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
+        sellerFinancing.seizeAsset(loanId);
         vm.stopPrank();
     }
 

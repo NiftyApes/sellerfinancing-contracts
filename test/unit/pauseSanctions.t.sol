@@ -34,7 +34,7 @@ contract TestPauseSanctions is Test, BaseTest, OffersLoansFixtures {
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         //buyer nftId has tokenURI same as original nft
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId),
@@ -67,7 +67,6 @@ contract TestPauseSanctions is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            SANCTIONED_ADDRESS,
             offer.item.identifier
         );
         vm.stopPrank();

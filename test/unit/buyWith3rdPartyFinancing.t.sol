@@ -17,7 +17,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         super.setUp();
     }
 
-    function assertionsForExecutedLoanThrough3rdPartyLender(Offer memory offer, uint256 nftId) private {
+    function assertionsForExecutedLoanThrough3rdPartyLender(Offer memory offer, uint256 loanId, uint256 nftId) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
@@ -30,7 +30,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
             ),
             true
         );
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         assertEq(
             loan.periodBeginTimestamp,
             block.timestamp
@@ -71,15 +71,14 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         
         vm.startPrank(borrower1);
         weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.terms.principalAmount);
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.item.identifier);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, loanId, offer.item.identifier);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
@@ -119,22 +118,21 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         vm.startPrank(borrower1);
         weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.terms.principalAmount);
         
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(0);
         vm.expectEmit(true, true, false, false);
         emit OfferSignatureUsed(offer.item.token, offer.item.identifier, offer, offerSignature);
 
         vm.expectEmit(true, true, false, false);
         emit LoanExecuted(offer.item.token, offer.item.identifier, offerSignature, loan);
         
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.item.identifier);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, loanId, offer.item.identifier);
     }
 
     function test_fuzz_buyWith3rdPartyFinancing_emits_expectedEvents(
@@ -165,7 +163,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
@@ -185,9 +182,8 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
 
     function _test_buyWith3rdPartyFinancing_collectionOffer_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.item.identifier = 0;
+        offer.item.identifier = ~uint256(0);
         uint256 nftId1 = 8661;
         uint256 nftId2 = 6974;
 
@@ -212,23 +208,21 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         
         vm.startPrank(borrower1);
         weth.approve(address(sellerFinancing), 2*(order1.parameters.consideration[0].endAmount - offer.terms.principalAmount));
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId1 = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             nftId1,
             abi.encode(order1)
         );
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId2 = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             nftId2,
             abi.encode(order2)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1);
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId2);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, loanId1, nftId1);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, loanId2, nftId2);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
@@ -256,10 +250,9 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
 
     function _test_buyWith3rdPartyFinancing_collectionOffer_reverts_if_limitReached(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.isCollectionOffer = true;
         // setting offer limit to one
         offer.collectionOfferLimit = 1;
-        offer.item.identifier = 0;
+        offer.item.identifier = ~uint256(0);
         uint256 nftId1 = 8661;
         uint256 nftId2 = 6974;
 
@@ -284,23 +277,21 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         
         vm.startPrank(borrower1);
         weth.approve(address(sellerFinancing), 2*(order1.parameters.consideration[0].endAmount - offer.terms.principalAmount));
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId1 = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             nftId1,
             abi.encode(order1)
         );
         vm.expectRevert(INiftyApesErrors.CollectionOfferLimitReached.selector);
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId2 = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             nftId2,
             abi.encode(order2)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, loanId1, nftId1);
         // seller21 still owns second nft
         assertEq(boredApeYachtClub.ownerOf(nftId2), seller2);
 
@@ -340,22 +331,21 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         
         vm.startPrank(borrower1);
         weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.terms.principalAmount);
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.item.identifier);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, loanId, offer.item.identifier);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.warp(loan.periodEndTimestamp + 1);
 
         vm.startPrank(lender1);
-        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
+        sellerFinancing.seizeAsset(loanId);
         vm.stopPrank();
 
         vm.startPrank(borrower1);
@@ -369,7 +359,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
@@ -405,7 +394,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
@@ -442,7 +430,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
@@ -478,7 +465,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
@@ -520,7 +506,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );
@@ -561,7 +546,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            SANCTIONED_ADDRESS,
             offer.item.identifier,
             abi.encode(order)
         );
@@ -602,7 +586,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
-            borrower1,
             offer.item.identifier,
             abi.encode(order)
         );

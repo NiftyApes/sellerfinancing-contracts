@@ -130,6 +130,12 @@ contract NiftyApesSellerFinancingFacet is
         return sf.wethContractAddress;
     }
 
+    /// @inheritdoc ISellerFinancing
+    function getCurrentLoanIdNonce() external view returns (uint256) {
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        return sf.loanId;
+    }
+
     function pause() external {
         LibDiamond.enforceIsContractOwner();
         _pause();
@@ -191,7 +197,7 @@ contract NiftyApesSellerFinancingFacet is
         Offer memory offer,
         bytes calldata signature,
         uint256 nftId
-    ) external payable whenNotPaused nonReentrant {
+    ) external payable whenNotPaused nonReentrant returns (uint256 loanId) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.SELLER_FINANCING);
         // requireSufficientMsgValue
@@ -228,6 +234,8 @@ contract NiftyApesSellerFinancingFacet is
         payable(seller).sendValue(offer.terms.downPaymentAmount - totalRoyaltiesPaid);
 
         _executeLoan(offer, signature, msg.sender, seller, nftId, sf);
+
+        return sf.loanId - 2;
     }
 
     // add buyNow function, probably in separate facet

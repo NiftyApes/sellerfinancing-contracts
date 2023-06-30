@@ -16,7 +16,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId) private {
+    function assertionsForExecutedLoan(Offer memory offer, uint256 loanId, uint256 nftId) private {
         // sellerFinancing contract has NFT
         assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
         // loan auction exists
@@ -31,7 +31,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
             true
         );
         assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), nftId).periodBeginTimestamp,
+             sellerFinancing.getLoan(loanId).periodBeginTimestamp,
             block.timestamp
         );
         // buyer NFT minted to buyer
@@ -39,7 +39,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, nftId);
+        Loan memory loan = sellerFinancing.getLoan(0);
         //buyer nftId has tokenURI same as original nft
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId),
@@ -75,8 +75,8 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         uint256 sellerBalanceBefore = address(seller1).balance;
         uint256 royaltiesBalanceBefore = address(recipients1[0]).balance;
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.item.identifier);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, loanId, offer.item.identifier);
 
         uint256 sellerBalanceAfter = address(seller1).balance;
         uint256 royaltiesBalanceAfter = address(recipients1[0]).balance;
@@ -143,7 +143,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(0);
 
         vm.expectEmit(true, true, false, false);
         emit OfferSignatureUsed(offer.item.token, offer.item.identifier, offer, offerSignature);
@@ -155,7 +155,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -175,7 +174,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
     function _test_buyWithSellerFinancing_collection_offer(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 nftId = offer.item.identifier;
-        offer.isCollectionOffer = true;
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -197,7 +195,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
 
         bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, nftId);
+        Loan memory loan = sellerFinancing.getLoan(0);
 
         vm.expectEmit(true, true, false, false);
         emit LoanExecuted(offer.item.token, nftId, offerSignature, loan);
@@ -275,7 +273,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 nftId = offer.item.identifier;
-        offer.isCollectionOffer = true;
 
         vm.startPrank(seller1);
         boredApeYachtClub.approve(address(sellerFinancing), nftId);
@@ -334,7 +331,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -358,21 +354,20 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, offer.item.identifier);
+        assertionsForExecutedLoan(offer, loanId, offer.item.identifier);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.warp(loan.periodEndTimestamp + 1);
 
         vm.startPrank(seller1);
-        sellerFinancing.seizeAsset(offer.item.token, offer.item.identifier);
+        sellerFinancing.seizeAsset(loanId);
         vm.stopPrank();
 
         vm.startPrank(buyer1);
@@ -385,7 +380,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
     }
@@ -414,7 +408,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -443,7 +436,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -506,7 +498,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -541,7 +532,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -574,7 +564,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            SANCTIONED_ADDRESS,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -607,7 +596,6 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
@@ -634,12 +622,11 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         sellerFinancing.buyWithSellerFinancing{ value: offer.terms.downPaymentAmount }(
             offer,
             offerSignature,
-            buyer1,
             offer.item.identifier
         );
         vm.stopPrank();
 
-        Loan memory loan = sellerFinancing.getLoan(offer.item.token, offer.item.identifier);
+        Loan memory loan = sellerFinancing.getLoan(0);
 
         offer.item.token = address(sellerFinancing);
         offer.item.identifier = loan.lenderNftId;
