@@ -162,6 +162,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
                 offer.nftContractAddress,
                 offer.nftId,
                 loan.remainingPrincipal + periodInterest,
+                0,
                 royaltiesPaidInMakePayment,
                 periodInterest,
                 loan
@@ -197,6 +198,97 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_makePayment_fullRepayment_simplest_case(fixedForSpeed);
     }
 
+    function _test_makePayment_fullRepayment_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) private {
+        vm.prank(owner);
+        sellerFinancing.updateProtocolFeeBPS(protocolFeeBPS);
+
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.nftContractAddress, offer.nftId, offer.downPaymentAmount);
+
+        uint256 totalRoyaltiesPaid;
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients.length; i++) {
+            totalRoyaltiesPaid += amounts[i];
+        }
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+        uint256 royaltiesBalanceBefore = address(recipients[0]).balance;
+
+        createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        (recipients, amounts) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(
+                offer.nftContractAddress,
+                offer.nftId,
+                (loan.remainingPrincipal + periodInterest)
+            );
+
+        // payout royalties
+        uint256 royaltiesPaidInMakePayment;
+        for (uint256 i = 0; i < recipients.length; i++) {
+            royaltiesPaidInMakePayment += amounts[i];
+        }
+        totalRoyaltiesPaid += royaltiesPaidInMakePayment;
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.remainingPrincipal + periodInterest);
+        uint256 ownerBalanceBefore = address(owner).balance;
+        vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.nftContractAddress,
+                offer.nftId,
+                loan.remainingPrincipal + periodInterest + protocolFee,
+                protocolFee,
+                royaltiesPaidInMakePayment,
+                periodInterest,
+                loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit LoanRepaid(offer.nftContractAddress, offer.nftId, loan);
+        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest + protocolFee) }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer1);
+
+        // seller paid out correctly
+        assertEq(
+            address(seller1).balance,
+            (sellerBalanceBefore + offer.principalAmount + offer.downPaymentAmount + periodInterest - totalRoyaltiesPaid)
+        );
+
+        // royatlies paid out correctly
+        assertEq(address(recipients[0]).balance, (royaltiesBalanceBefore + totalRoyaltiesPaid));
+
+        // protocol fee received by the owner
+        assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
+    }
+
+    function test_fuzz_makePayment_fullRepayment_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) public validateFuzzedOfferFields(fuzzed) {
+        vm.assume(protocolFeeBPS < 1000);
+        _test_makePayment_fullRepayment_withProtocolFee(fuzzed, protocolFeeBPS);
+    }
+
+    function test_unit_makePayment_fullRepayment_withProtocolFee() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_fullRepayment_withProtocolFee(fixedForSpeed, 150);
+    }
+
     function _test_makePayment_fullRepayment_withoutRoyalties(
         FuzzedOfferFields memory fuzzed
     ) private {
@@ -218,6 +310,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
                 offer.nftContractAddress,
                 offer.nftId,
                 loan.remainingPrincipal + periodInterest,
+                0,
                 0,
                 periodInterest,
                 loan
@@ -281,6 +374,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
                 offer.nftId,
                 loan.remainingPrincipal + periodInterest,
                 0,
+                0,
                 periodInterest,
                 loan
         );
@@ -310,6 +404,78 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_makePayment_after_borrow() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_makePayment_after_borrow(fixedForSpeed);
+    }
+
+    function _test_makePayment_after_borrow_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) private {
+        vm.prank(owner);
+        sellerFinancing.updateProtocolFeeBPS(protocolFeeBPS);
+        
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
+        
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
+        sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.nftId
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.nftId);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.remainingPrincipal + periodInterest);
+
+        uint256 lender1BalanceBefore = address(lender1).balance;
+        uint256 ownerBalanceBefore = address(owner).balance;
+
+        vm.startPrank(borrower1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.nftContractAddress,
+                offer.nftId,
+                loan.remainingPrincipal + periodInterest + protocolFee,
+                protocolFee,
+                0,
+                periodInterest,
+                loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit LoanRepaid(offer.nftContractAddress, offer.nftId, loan);
+        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest + protocolFee) }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, borrower1);
+
+        // lender received principal plus interest balance without any royalty deductions
+        assertEq(
+            address(lender1).balance,
+            (lender1BalanceBefore + offer.principalAmount + periodInterest)
+        );
+
+        // protocol fee received by the owner
+        assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
+    }
+
+    function test_fuzz_makePayment_after_borrow_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) public validateFuzzedOfferFields(fuzzed) {
+        vm.assume(protocolFeeBPS < 1000);
+        _test_makePayment_after_borrow_withProtocolFee(fuzzed, protocolFeeBPS);
+    }
+
+    function test_unit_makePayment_after_borrow_withProtocolFee() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_after_borrow_withProtocolFee(fixedForSpeed, 150);
     }
 
     function _test_makePayment_after_borrow_payRoyaltiesIgnored_whenSetToTrue(
@@ -343,6 +509,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
                 offer.nftContractAddress,
                 offer.nftId,
                 loan.remainingPrincipal + periodInterest,
+                0,
                 0,
                 periodInterest,
                 loan
@@ -447,6 +614,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
                 offer.nftContractAddress,
                 offer.nftId,
                 totalMinimumPayment,
+                0,
                 totalRoyaltiesPaid,
                 periodInterest,
                 loan
@@ -489,6 +657,84 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_makePayment_partialRepayment_simplest_case(fixedForSpeed);
     }
 
+    function _test_makePayment_partialRepayment_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) private {
+        vm.prank(owner);
+        sellerFinancing.updateProtocolFeeBPS(protocolFeeBPS);
+        
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (uint256 totalMinimumPayment, uint256 periodInterest) = sellerFinancing
+            .calculateMinimumPayment(loan);
+
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.minimumPrincipalPerPeriod + periodInterest);
+
+        (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.nftContractAddress, offer.nftId, totalMinimumPayment - protocolFee);
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+        uint256 royaltiesBalanceBefore = address(recipients[0]).balance;
+        uint256 ownerBalanceBefore = address(owner).balance;
+
+        vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.nftContractAddress,
+                offer.nftId,
+                totalMinimumPayment,
+                protocolFee,
+                amounts[0],
+                periodInterest,
+                loan
+        );
+        sellerFinancing.makePayment{ value: totalMinimumPayment }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        Loan memory loanAfter = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+        uint256 royaltiesBalanceAfter = address(recipients[0]).balance;
+
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + totalMinimumPayment - protocolFee - amounts[0])
+        );
+
+        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + amounts[0]));
+
+        assertEq(
+            loanAfter.remainingPrincipal,
+            loan.remainingPrincipal - (totalMinimumPayment - protocolFee - periodInterest)
+        );
+
+        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.periodDuration);
+        assertEq(loanAfter.periodBeginTimestamp, loan.periodBeginTimestamp + loan.periodDuration);
+        // protocol fee received by the owner
+        assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
+    }
+
+    function test_fuzz_makePayment_partialRepayment_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) public validateFuzzedOfferFields(fuzzed) {
+        vm.assume(protocolFeeBPS < 1000);
+        _test_makePayment_partialRepayment_withProtocolFee(fuzzed, protocolFeeBPS);
+    }
+
+    function test_unit_makePayment_partialRepayment_withProtocolFee() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_partialRepayment_withProtocolFee(fixedForSpeed, 150);
+    }
+
     function _test_makePayment_fullRepayment_in_gracePeriod(
         FuzzedOfferFields memory fuzzed
     ) private {
@@ -526,6 +772,55 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_makePayment_fullRepayment_in_gracePeriod() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_makePayment_fullRepayment_in_gracePeriod(fixedForSpeed);
+    }
+
+    function _test_makePayment_fullRepayment_in_gracePeriod_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) private {
+        vm.prank(owner);
+        sellerFinancing.updateProtocolFeeBPS(protocolFeeBPS);
+        
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        skip(loan.periodDuration);
+
+        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        assertEq(totalInterest, 2 * periodInterest);
+
+        uint256 ownerBalanceBefore = address(owner).balance;
+        
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.remainingPrincipal + totalInterest);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + totalInterest + protocolFee) }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer1);
+        // protocol fee received by the owner
+        assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
+    }
+
+    function test_fuzz_makePayment_fullRepayment_in_gracePeriod_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) public validateFuzzedOfferFields(fuzzed) {
+        vm.assume(protocolFeeBPS < 1000);
+        _test_makePayment_fullRepayment_in_gracePeriod_withProtocolFee(fuzzed, protocolFeeBPS);
+    }
+
+    function test_unit_makePayment_fullRepayment_in_gracePeriod_withProtocolFee() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_fullRepayment_in_gracePeriod_withProtocolFee(fixedForSpeed, 150);
     }
 
     function _test_makePayment_reverts_if_post_grace_period(

@@ -7,7 +7,8 @@ interface INiftyApesAdmin {
         address newRoyaltiesEngineAddress,
         address newDelegateRegistryAddress,
         address newSeaportContractAddress,
-        address newWethContractAddress
+        address newWethContractAddress,
+        address newProtocolFeeRecipient
     ) external;
     
     /// @notice Pauses all interactions with the contract.
@@ -52,4 +53,18 @@ interface INiftyApesAdmin {
 
     /// @notice Returns value stored in `wethContractAddress`
     function wethContractAddress() external returns (address);
+
+    /// @notice Updates protocol fee to a new value
+    /// @param newProtocolFeeBPS New protocol fee basis points value
+    function updateProtocolFeeBPS(uint96 newProtocolFeeBPS) external;
+
+    /// @notice Updates protocol fee recipient address
+    /// @param newProtocolFeeRecipient New protocol fee recipient address
+    function updateProtocolFeeRecipient(address newProtocolFeeRecipient) external;
+
+    /// @notice Returns current protocol fee basis points
+    function protocolFeeBPS() external view returns(uint256);
+
+    /// @notice Returns current protocol fee basis points
+    function protocolFeeRecipient() external view returns(address);
 }

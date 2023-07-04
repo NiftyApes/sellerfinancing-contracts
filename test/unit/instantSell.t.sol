@@ -81,17 +81,6 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
     function _test_instantSell_loanClosed_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
-            0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.nftContractAddress, offer.nftId, offer.downPaymentAmount);
-
-        uint256 totalRoyaltiesPaid;
-
-        // payout royalties
-        for (uint256 i = 0; i < recipients1.length; i++) {
-            totalRoyaltiesPaid += amounts1[i];
-        }
-
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         createOfferAndBuyWithSellerFinancing(offer);
         assertionsForExecutedLoan(offer);
@@ -100,7 +89,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
 
-        (address payable[] memory recipients2, uint256[] memory amounts2) = IRoyaltyEngineV1(
+        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
         ).getRoyalty(
                 offer.nftContractAddress,
@@ -110,16 +99,17 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // payout royalties
         uint256 royaltiesInInstantSell;
-        for (uint256 i = 0; i < recipients2.length; i++) {
-            royaltiesInInstantSell += amounts2[i];
+        for (uint256 i = 0; i < recipients1.length; i++) {
+            royaltiesInInstantSell += amounts1[i];
         }
-        totalRoyaltiesPaid += royaltiesInInstantSell;
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.remainingPrincipal + periodInterest);
+
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.remainingPrincipal + periodInterest + minProfitAmount) *
+        uint256 bidPrice = ((loan.remainingPrincipal + periodInterest + protocolFee + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -142,7 +132,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         emit PaymentMade(
             offer.nftContractAddress,
             offer.nftId,
-            loan.remainingPrincipal + periodInterest,
+            loan.remainingPrincipal + periodInterest + protocolFee,
+            protocolFee,
             royaltiesInInstantSell,
             periodInterest,
             loan
@@ -174,6 +165,103 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_instantSell_loanClosed_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_instantSell_loanClosed_simplest_case(fixedForSpeed);
+    }
+
+    function _test_instantSell_loanClosed_withProtocolFee(FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) private {
+        vm.prank(owner);
+        sellerFinancing.updateProtocolFeeBPS(protocolFeeBPS);
+    
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        uint256 buyer1BalanceBefore = address(buyer1).balance;
+        uint256 ownerBalanceBefore = address(owner).balance;
+        createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+
+        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(
+                offer.nftContractAddress,
+                offer.nftId,
+                (loan.remainingPrincipal + periodInterest)
+            );
+
+        // payout royalties
+        uint256 royaltiesInInstantSell;
+        for (uint256 i = 0; i < recipients1.length; i++) {
+            royaltiesInInstantSell += amounts1[i];
+        }
+
+        // set any minimum profit value
+        uint256 minProfitAmount = 1 ether;
+
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.remainingPrincipal + periodInterest);
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = ((loan.remainingPrincipal + periodInterest + protocolFee + minProfitAmount) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.nftContractAddress,
+            offer.nftId,
+            bidPrice,
+            buyer2,
+            true
+        );
+        mintWeth(buyer2, bidPrice);
+
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(WETH_ADDRESS).approve(SEAPORT_CONDUIT, bidPrice);
+        ISeaport(SEAPORT_ADDRESS).validate(order);
+        vm.stopPrank();
+
+        vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+            offer.nftContractAddress,
+            offer.nftId,
+            loan.remainingPrincipal + periodInterest + protocolFee,
+            protocolFee,
+            royaltiesInInstantSell,
+            periodInterest,
+            loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit InstantSell(offer.nftContractAddress, offer.nftId, 0);
+
+        sellerFinancing.instantSell(
+            offer.nftContractAddress,
+            offer.nftId,
+            minProfitAmount,
+            abi.encode(order[0])
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer, buyer2);
+        assertEq(
+            address(buyer1).balance,
+            (buyer1BalanceBefore - offer.downPaymentAmount + minProfitAmount)
+        );
+        // protocol fee received by the owner
+        assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
+    }
+
+    function test_fuzz_instantSell_loanClosed_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) public validateFuzzedOfferFields(fuzzed) {
+        vm.assume(protocolFeeBPS < 1000);
+        _test_instantSell_loanClosed_withProtocolFee(fuzzed, protocolFeeBPS);
+    }
+
+    function test_unit_instantSell_loanClosed_withProtocolFee() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_loanClosed_withProtocolFee(fixedForSpeed, 150);
     }
 
     function _test_instantSell_loanClosed_multipleConsideration(FuzzedOfferFields memory fuzzed) private {

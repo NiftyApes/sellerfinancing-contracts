@@ -18,7 +18,7 @@ interface ILoanManagement
         uint256 sellerFinancingTicketId
     ) external view returns (INiftyApesStructs.UnderlyingNft memory);
 
-    /// @notice Returns minimum payment required for the current period and current period interest
+    /// @notice Returns minimum payment required for the current period and current period interest including protocol fee
     /// @dev    This function calculates a sum of current and late payment values if applicable
     /// @param loan Loan struct details
     /// @return minimumPayment Minimum payment required for the current period
@@ -26,6 +26,11 @@ interface ILoanManagement
     function calculateMinimumPayment(
         INiftyApesStructs.Loan memory loan
     ) external view returns (uint256 minimumPayment, uint256 periodInterest);
+
+    /// @notice Calculates and returns protocol fee on the given loan payment amount
+    /// @dev Explain to a developer any extra details
+    /// @param loanPyamentAmount Payment amout to be paid for an existing loan
+    function calculateProtocolFee(uint256 loanPyamentAmount) external view returns (uint256);
 
     /// @notice Make a partial payment or full repayment of a loan.
     /// @dev Any address may make a payment towards the loan.

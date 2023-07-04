@@ -44,7 +44,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
 
         adminFacet = new NiftyApesAdminFacet();
 
-        bytes4[] memory allAdminSelectors = new bytes4[](12);
+        bytes4[] memory allAdminSelectors = new bytes4[](16);
         allAdminSelectors[0] = adminFacet.updateRoyaltiesEngineContractAddress.selector;
         allAdminSelectors[1] = adminFacet.updateDelegateRegistryContractAddress.selector;
         allAdminSelectors[2] = adminFacet.updateSeaportContractAddress.selector;
@@ -57,6 +57,10 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allAdminSelectors[9] = adminFacet.unpause.selector;
         allAdminSelectors[10] = adminFacet.pauseSanctions.selector;
         allAdminSelectors[11] = adminFacet.unpauseSanctions.selector;
+        allAdminSelectors[12] = adminFacet.updateProtocolFeeBPS.selector;
+        allAdminSelectors[13] = adminFacet.protocolFeeBPS.selector;
+        allAdminSelectors[14] = adminFacet.updateProtocolFeeRecipient.selector;
+        allAdminSelectors[15] = adminFacet.protocolFeeRecipient.selector;
 
         offerFacet = new NiftyApesOfferFacet();
         bytes4[] memory allOfferSelectors = new bytes4[](6);
@@ -90,7 +94,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allLoanExecutionSelectors[15] = loanExecFacet.isApprovedForAll.selector;
         
         loanManagFacet = new NiftyApesLoanManagementFacet();
-        bytes4[] memory allLoanManagementSelectors = new bytes4[](8);
+        bytes4[] memory allLoanManagementSelectors = new bytes4[](9);
         // after loan is created: loan management
         allLoanManagementSelectors[0] = loanManagFacet.makePayment.selector;
         allLoanManagementSelectors[1] = loanManagFacet.seizeAsset.selector;
@@ -100,7 +104,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allLoanManagementSelectors[5] = loanManagFacet.getUnderlyingNft.selector;
         allLoanManagementSelectors[6] = loanManagFacet.makePaymentBatch.selector;
         allLoanManagementSelectors[7] = loanManagFacet.seizeAssetBatch.selector;
-        
+        allLoanManagementSelectors[8] = loanManagFacet.calculateProtocolFee.selector;
 
         IDiamondCut.FacetCut[] memory diamondCuts = new IDiamondCut.FacetCut[](4);
         diamondCuts[0] = IDiamondCut.FacetCut(address(adminFacet), IDiamondCut.FacetCutAction.Add, allAdminSelectors);
@@ -116,7 +120,8 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
                 mainnetRoyaltiesEngineAddress, 
                 mainnetDelegateRegistryAddress,
                 SEAPORT_ADDRESS,
-                WETH_ADDRESS
+                WETH_ADDRESS,
+                owner
             )
         );
 

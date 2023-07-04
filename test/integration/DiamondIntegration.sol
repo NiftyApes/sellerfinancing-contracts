@@ -52,7 +52,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[2].functionSelectors[0], ownershipFacet.transferOwnership.selector);
         assertEq(allFacets[2].functionSelectors[1], ownershipFacet.owner.selector);
 
-        assertEq(allFacets[3].functionSelectors.length, 12);
+        assertEq(allFacets[3].functionSelectors.length, 16);
         assertEq(allFacets[3].functionSelectors[0], adminFacet.updateRoyaltiesEngineContractAddress.selector);
         assertEq(allFacets[3].functionSelectors[1], adminFacet.updateDelegateRegistryContractAddress.selector);
         assertEq(allFacets[3].functionSelectors[2], adminFacet.updateSeaportContractAddress.selector);
@@ -71,7 +71,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[5].functionSelectors[10], loanExecFacet.name.selector);
         assertEq(allFacets[5].functionSelectors[15], loanExecFacet.isApprovedForAll.selector);
 
-        assertEq(allFacets[6].functionSelectors.length, 8);
+        assertEq(allFacets[6].functionSelectors.length, 9);
         assertEq(allFacets[6].functionSelectors[0], loanManagFacet.makePayment.selector);
         assertEq(allFacets[6].functionSelectors[1], loanManagFacet.seizeAsset.selector);
         assertEq(allFacets[6].functionSelectors[6], loanManagFacet.makePaymentBatch.selector);
@@ -98,7 +98,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(facetFunctionSelectors[1], ownershipFacet.owner.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(adminFacet));
-        assertEq(facetFunctionSelectors.length, 12);
+        assertEq(facetFunctionSelectors.length, 16);
         assertEq(facetFunctionSelectors[0], adminFacet.updateRoyaltiesEngineContractAddress.selector);
         assertEq(facetFunctionSelectors[1], adminFacet.updateDelegateRegistryContractAddress.selector);
         assertEq(facetFunctionSelectors[2], adminFacet.updateSeaportContractAddress.selector);
@@ -115,7 +115,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(loanManagFacet));
-        assertEq(facetFunctionSelectors.length, 8);
+        assertEq(facetFunctionSelectors.length, 9);
         // assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
         // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
     }

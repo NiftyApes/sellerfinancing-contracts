@@ -26,12 +26,14 @@ contract NiftyApesAdminFacet is
         address newRoyaltiesEngineContractAddress,
         address newDelegateRegistryContractAddress,
         address newSeaportContractAddress,
-        address newWethContractAddress
+        address newWethContractAddress,
+        address newProtocolFeeRecipient
     ) public initializer {
         _requireNonZeroAddress(newRoyaltiesEngineContractAddress);
         _requireNonZeroAddress(newDelegateRegistryContractAddress);
         _requireNonZeroAddress(newSeaportContractAddress);
         _requireNonZeroAddress(newWethContractAddress);
+        _requireNonZeroAddress(newProtocolFeeRecipient);
 
         EIP712Upgradeable.__EIP712_init("NiftyApes_SellerFinancing", "0.0.1");
         PausableUpgradeable.__Pausable_init();
@@ -53,6 +55,7 @@ contract NiftyApesAdminFacet is
         sf.delegateRegistryContractAddress = newDelegateRegistryContractAddress;
         sf.seaportContractAddress = newSeaportContractAddress;
         sf.wethContractAddress = newWethContractAddress;
+        sf.protocolFeeRecipient = payable(newProtocolFeeRecipient);
     }
 
     /// @inheritdoc INiftyApesAdmin
@@ -139,5 +142,32 @@ contract NiftyApesAdminFacet is
         LibDiamond.enforceIsContractOwner();
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         sf.sanctionsPause = false;
+    }
+
+    /// @inheritdoc INiftyApesAdmin
+    function updateProtocolFeeBPS(uint96 newProtocolFeeBPS) external {
+        LibDiamond.enforceIsContractOwner();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        sf.protocolFeeBPS = newProtocolFeeBPS;
+    }
+
+    /// @inheritdoc INiftyApesAdmin
+    function protocolFeeBPS() external view returns(uint256) {
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        return sf.protocolFeeBPS;
+    }
+
+    /// @inheritdoc INiftyApesAdmin
+    function updateProtocolFeeRecipient(address newProtocolFeeRecipient) external {
+        LibDiamond.enforceIsContractOwner();
+        _requireNonZeroAddress(newProtocolFeeRecipient);
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        sf.protocolFeeRecipient = payable(newProtocolFeeRecipient);
+    }
+
+    /// @inheritdoc INiftyApesAdmin
+    function protocolFeeRecipient() external view returns(address) {
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        return sf.protocolFeeRecipient;
     }
 }
