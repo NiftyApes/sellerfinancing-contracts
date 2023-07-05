@@ -47,17 +47,11 @@ interface ILoanManagement
         bool partialExecution
     ) external payable;
 
-    /// @notice Seize an asset from a defaulted loan.
-    /// @dev    This function is only callable by the seller address
-    /// @param  nftContractAddress The address of the NFT collection
-    /// @param  nftId The id of a specified NFT
-    function seizeAsset(address nftContractAddress, uint256 nftId) external;
-
     /// @notice Seize all assets from the defaulted loans.
     /// @dev    This function is only callable by the seller address of all the given loans
     /// @param  nftContractAddresses The list of addresses of the NFT collections
     /// @param  nftIds The list of ids of the specified NFTs
-    function seizeAssetBatch(
+    function seizeAsset(
         address[] memory nftContractAddresses,
         uint256[] memory nftIds
     ) external;

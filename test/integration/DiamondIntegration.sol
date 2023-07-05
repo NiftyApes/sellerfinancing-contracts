@@ -71,11 +71,10 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[5].functionSelectors[10], loanExecFacet.name.selector);
         assertEq(allFacets[5].functionSelectors[15], loanExecFacet.isApprovedForAll.selector);
 
-        assertEq(allFacets[6].functionSelectors.length, 8);
+        assertEq(allFacets[6].functionSelectors.length, 7);
         assertEq(allFacets[6].functionSelectors[0], loanManagFacet.makePayment.selector);
         assertEq(allFacets[6].functionSelectors[1], loanManagFacet.seizeAsset.selector);
         assertEq(allFacets[6].functionSelectors[6], loanManagFacet.makePaymentBatch.selector);
-        assertEq(allFacets[6].functionSelectors[7], loanManagFacet.seizeAssetBatch.selector);
     }
 
     function test_facetFunctionSelectors_must_return_all_added_selectors_for_each_facet() public {
@@ -115,7 +114,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(loanManagFacet));
-        assertEq(facetFunctionSelectors.length, 8);
+        assertEq(facetFunctionSelectors.length, 7);
         // assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
         // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
     }

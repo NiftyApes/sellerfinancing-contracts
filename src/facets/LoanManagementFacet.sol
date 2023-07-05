@@ -133,16 +133,6 @@ contract NiftyApesLoanManagementFacet is
 
     /// @inheritdoc ILoanManagement
     function seizeAsset(
-        address nftContractAddress,
-        uint256 nftId
-    ) external whenNotPaused nonReentrant {
-        // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        _seizeAsset(nftContractAddress, nftId, sf);
-    }
-
-    /// @inheritdoc ILoanManagement
-    function seizeAssetBatch(
         address[] memory nftContractAddresses,
         uint256[] memory nftIds
     ) external whenNotPaused nonReentrant {

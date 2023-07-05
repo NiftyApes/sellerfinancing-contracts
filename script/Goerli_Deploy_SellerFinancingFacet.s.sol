@@ -84,7 +84,7 @@ contract DeploySellerFinancingFacetGoerli is Script {
         allLoanExecutionSelectors[15] = loanExecFacet.isApprovedForAll.selector;
         
         loanManagFacet = new NiftyApesLoanManagementFacet();
-        bytes4[] memory allLoanManagementSelectors = new bytes4[](8);
+        bytes4[] memory allLoanManagementSelectors = new bytes4[](7);
         // after loan is created: loan management
         allLoanManagementSelectors[0] = loanManagFacet.makePayment.selector;
         allLoanManagementSelectors[1] = loanManagFacet.seizeAsset.selector;
@@ -93,7 +93,6 @@ contract DeploySellerFinancingFacetGoerli is Script {
         allLoanManagementSelectors[4] = loanManagFacet.getLoan.selector;
         allLoanManagementSelectors[5] = loanManagFacet.getUnderlyingNft.selector;
         allLoanManagementSelectors[6] = loanManagFacet.makePaymentBatch.selector;
-        allLoanManagementSelectors[7] = loanManagFacet.seizeAssetBatch.selector;
         
 
         IDiamondCut.FacetCut[] memory diamondCuts = new IDiamondCut.FacetCut[](4);
