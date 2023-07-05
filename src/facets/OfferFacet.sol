@@ -1,26 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
-import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
-import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../storage/NiftyApesStorage.sol";
 import "../interfaces/niftyapes/offerManagement/IOfferManagement.sol";
-import "../interfaces/sanctions/SanctionsList.sol";
-import "../interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
-import "../interfaces/delegateCash/IDelegationRegistry.sol";
-import "../interfaces/seaport/ISeaport.sol";
-import "../lib/ECDSABridge.sol";
 import "./common/NiftyApesInternal.sol";
-import { LibDiamond } from "../diamond/libraries/LibDiamond.sol";
 
 /// @title NiftyApes Seller Financing facet
 /// @custom:version 2.0
