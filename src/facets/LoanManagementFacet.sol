@@ -1,10 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
-import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMathUpgradeable.sol";
 import "../storage/NiftyApesStorage.sol";
 import "../interfaces/niftyapes/loanManagement/ILoanManagement.sol";
@@ -151,16 +147,6 @@ contract NiftyApesLoanManagementFacet is
 
     /// @inheritdoc ILoanManagement
     function seizeAsset(
-        address nftContractAddress,
-        uint256 nftId
-    ) external whenNotPaused nonReentrant {
-        // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        _seizeAsset(nftContractAddress, nftId, sf);
-    }
-
-    /// @inheritdoc ILoanManagement
-    function seizeAssetBatch(
         address[] memory nftContractAddresses,
         uint256[] memory nftIds
     ) external whenNotPaused nonReentrant {
@@ -496,8 +482,8 @@ contract NiftyApesLoanManagementFacet is
         }
     }
 
-    function _calculateProtocolFee(uint256 loanPyamnetAmount, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {
-        return (loanPyamnetAmount * sf.protocolFeeBPS) / NiftyApesStorage.BASE_BPS;
+    function _calculateProtocolFee(uint256 loanPaymentAmount, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {
+        return (loanPaymentAmount * sf.protocolFeeBPS) / NiftyApesStorage.BASE_BPS;
     }
 
     function _calculateProtocolFeeShareFromPaymentReceived(uint256 paymentReceived, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {

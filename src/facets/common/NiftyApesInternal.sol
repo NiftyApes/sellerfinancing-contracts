@@ -20,7 +20,6 @@ import "../../interfaces/sanctions/SanctionsList.sol";
 import "../../interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "../../interfaces/delegateCash/IDelegationRegistry.sol";
 import "../../lib/ECDSABridge.sol";
-import { LibDiamond } from "../../diamond/libraries/LibDiamond.sol";
 
 /// @title NiftyApes abstract contract for common internal functions
 /// @custom:version 2.0

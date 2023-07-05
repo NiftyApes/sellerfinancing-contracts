@@ -310,8 +310,13 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.warp(loan.periodEndTimestamp + 1);
 
+        address[] memory nftContractAddresses = new address[](1);
+        nftContractAddresses[0] = offer.nftContractAddress;
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = offer.nftId;
+
         vm.startPrank(lender1);
-        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
         vm.stopPrank();
 
         vm.startPrank(borrower1);
