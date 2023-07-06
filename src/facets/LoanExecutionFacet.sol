@@ -23,16 +23,16 @@ contract NiftyApesLoanExecutionFacet is
         bytes calldata signature,
         address buyer,
         uint256 nftId
-    ) external payable whenNotPaused nonReentrant {
+    ) external payable whenNotPaused nonReentrant returns (uint256 loanId) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.SELLER_FINANCING);
         // requireSufficientMsgValue
-        if (msg.value < offer.downPaymentAmount) {
-            revert InsufficientMsgValue(msg.value, offer.downPaymentAmount);
+        if (msg.value < offer.loanItem.downPaymentAmount) {
+            revert InsufficientMsgValue(msg.value, offer.loanItem.downPaymentAmount);
         }
         // if msg.value is too high, return excess value
-        if (msg.value > offer.downPaymentAmount) {
-            payable(buyer).sendValue(msg.value - offer.downPaymentAmount);
+        if (msg.value > offer.loanItem.downPaymentAmount) {
+            payable(buyer).sendValue(msg.value - offer.loanItem.downPaymentAmount);
         }
 
         // get SellerFinancing storage
@@ -41,23 +41,26 @@ contract NiftyApesLoanExecutionFacet is
         address seller = _commonLoanChecks(offer, signature, buyer, nftId, sf);
 
         // transfer nft from seller to this contract, revert on failure
-        _transferNft(offer.nftContractAddress, nftId, seller, address(this));
+        offer.collateralItem.identifier = nftId;
+        _transferCollateral(offer.collateralItem, seller, address(this));
 
         uint256 totalRoyaltiesPaid;
         if (offer.payRoyalties) {
             totalRoyaltiesPaid = _payRoyalties(
-                offer.nftContractAddress,
-                nftId,
+                offer.collateralItem.token,
+                offer.collateralItem.identifier,
                 buyer,
-                offer.downPaymentAmount,
+                offer.loanItem.downPaymentAmount,
                 sf
             );
         }
         
         // payout seller
-        payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
+        payable(seller).sendValue(offer.loanItem.downPaymentAmount - totalRoyaltiesPaid);
 
         _executeLoan(offer, signature, buyer, seller, nftId, sf);
+
+        return sf.loanId - 2;
     }
 
     /// @inheritdoc ILoanExecution
@@ -66,7 +69,7 @@ contract NiftyApesLoanExecutionFacet is
         bytes calldata signature,
         address borrower,
         uint256 nftId
-    ) external whenNotPaused nonReentrant returns (uint256 ethReceived) {
+    ) external whenNotPaused nonReentrant returns (uint256 loanId, uint256 ethReceived) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
 
@@ -82,12 +85,12 @@ contract NiftyApesLoanExecutionFacet is
         IERC20Upgradeable(sf.wethContractAddress).safeTransferFrom(
             lender,
             address(this),
-            offer.principalAmount
+            offer.loanItem.principalAmount
         );
 
         // convert weth to eth
         (bool success, ) = sf.wethContractAddress.call(
-            abi.encodeWithSignature("withdraw(uint256)", offer.principalAmount)
+            abi.encodeWithSignature("withdraw(uint256)", offer.loanItem.principalAmount)
         );
         if (!success) {
             revert WethConversionFailed();
@@ -97,12 +100,14 @@ contract NiftyApesLoanExecutionFacet is
         ethReceived = address(this).balance - contractBalanceBefore;
 
         // transfer nft from borrower to this contract, revert on failure
-        IERC721Upgradeable(offer.nftContractAddress).safeTransferFrom(borrower, address(this), nftId);
+        IERC721Upgradeable(offer.collateralItem.token).safeTransferFrom(borrower, address(this), nftId);
 
         _executeLoan(offer, signature, borrower, lender, nftId, sf);
 
         // payout borrower
         payable(borrower).sendValue(ethReceived);
+
+        return (sf.loanId - 2, ethReceived);
     }
 
     /// @inheritdoc ILoanExecution
@@ -112,7 +117,7 @@ contract NiftyApesLoanExecutionFacet is
         address borrower,
         uint256 nftId,
         bytes calldata data
-    ) external whenNotPaused nonReentrant {
+    ) external whenNotPaused nonReentrant returns (uint256 loanId) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
 
@@ -134,13 +139,13 @@ contract NiftyApesLoanExecutionFacet is
         }
 
         // transferFrom weth from lender
-        asset.safeTransferFrom(lender, address(this), offer.principalAmount);
+        asset.safeTransferFrom(lender, address(this), offer.loanItem.principalAmount);
 
         // transferFrom downPayment from buyer
         asset.safeTransferFrom(
             borrower,
             address(this),
-            totalConsiderationAmount - offer.principalAmount
+            totalConsiderationAmount - offer.loanItem.principalAmount
         );
 
         // set allowance for seaport to transferFrom this contract during .fulfillOrder()
@@ -152,5 +157,7 @@ contract NiftyApesLoanExecutionFacet is
         }
 
         _executeLoan(offer, signature, borrower, lender, nftId, sf);
+
+        return sf.loanId - 2;
     }
 }

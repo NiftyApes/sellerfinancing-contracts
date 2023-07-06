@@ -16,7 +16,7 @@ interface ILoanExecution
         bytes memory signature,
         address buyer,
         uint256 nftId
-    ) external payable;
+    ) external payable returns (uint256 loanId);
 
     /// @notice Start a loan as a borrower using a signed Lending Offer from a lender.
     /// @param offer        The details of the lending offer
@@ -29,7 +29,7 @@ interface ILoanExecution
         bytes calldata signature,
         address borrower,
         uint256 nftId
-    ) external returns (uint256 conversionAmountReceived);
+    ) external returns (uint256 loanId, uint256 ethReceived);
 
     /// @notice Executes the NFT purchase and starts a loan using the fund from lender who signed the Lending Offer
     /// @param offer        The details of the lending offer
@@ -44,5 +44,5 @@ interface ILoanExecution
         address borrower,
         uint256 nftId,
         bytes calldata data
-    ) external;
+    ) external returns (uint256 loanId);
 }

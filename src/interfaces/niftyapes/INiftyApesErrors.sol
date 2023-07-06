@@ -14,8 +14,6 @@ interface INiftyApesErrors {
 
     error SanctionedAddress(address account);
 
-    error NotNftOwner(address nftContractAddress, uint256 nftId, address account);
-
     error InvalidSigner(address signer, address expected);
 
     error LoanAlreadyClosed();

@@ -110,7 +110,7 @@ This dynamic prevents a nefarious seller from sending the seller ticket to a con
 
 #### Excessive Ether Funds are Refunded to the Buyer Rather than Msg.sender
 
-8. In `buyWithSellerFinancing()`, if `msg.value` exceeds `offer.downPaymentAmount()`, the refund is issued to the buyer ticket holder rather than the `msg.sender`. This is done so that buyers receive their refund for purchases made through the MarketplaceIntegration contract, which is deployed by a 3rd party and collects a marketplace fee before making an external call to SellerFinancing.buyWithSellerFinancing(). Users interacting directly with the SellerFinancing contract should be aware that excessive payments are sent directly to the buyer ticket holder.
+8. In `buyWithSellerFinancing()`, if `msg.value` exceeds `offer.loanItem.downPaymentAmount()`, the refund is issued to the buyer ticket holder rather than the `msg.sender`. This is done so that buyers receive their refund for purchases made through the MarketplaceIntegration contract, which is deployed by a 3rd party and collects a marketplace fee before making an external call to SellerFinancing.buyWithSellerFinancing(). Users interacting directly with the SellerFinancing contract should be aware that excessive payments are sent directly to the buyer ticket holder.
 
 #### Purchase of Defaulted Buyer Tickets
 
