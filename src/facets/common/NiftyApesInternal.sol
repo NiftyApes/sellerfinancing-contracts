@@ -13,29 +13,27 @@ import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../../storage/NiftyApesStorage.sol";
-import "../../interfaces/niftyapes/lending/ILending.sol";
 import "../../interfaces/niftyapes/INiftyApesErrors.sol";
 import "../../interfaces/niftyapes/INiftyApesStructs.sol";
-import "../../interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../interfaces/niftyapes/INiftyApesEvents.sol";
 import "../../interfaces/sanctions/SanctionsList.sol";
 import "../../interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "../../interfaces/delegateCash/IDelegationRegistry.sol";
 import "../../lib/ECDSABridge.sol";
-import { LibDiamond } from "../../diamond/libraries/LibDiamond.sol";
 
 /// @title NiftyApes abstract contract for common internal functions
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
 abstract contract NiftyApesInternal is
-    PausableUpgradeable,
     ReentrancyGuardUpgradeable,
     EIP712Upgradeable,
-    ERC721URIStorageUpgradeable,
+    PausableUpgradeable,
     ERC721HolderUpgradeable,
+    ERC721URIStorageUpgradeable,
     INiftyApesErrors,
     INiftyApesStructs,
-    ISellerFinancingEvents
+    INiftyApesEvents
 {
     using AddressUpgradeable for address payable;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -55,16 +53,17 @@ abstract contract NiftyApesInternal is
             offer.downPaymentAmount,
             offer.principalAmount,
             offer.minimumPrincipalPerPeriod,
-            offer.nftId
+            offer.nftId,
+            offer.nftContractAddress
         );
         bytes memory secondHalfEncoding = abi.encode(
-            offer.nftContractAddress,
             offer.periodInterestRateBps,
             offer.periodDuration,
             offer.expiration,
             offer.creator,
             offer.isCollectionOffer,
-            offer.collectionOfferLimit
+            offer.collectionOfferLimit,
+            offer.payRoyalties
         );
     return
         _hashTypedDataV4(
@@ -217,6 +216,9 @@ abstract contract NiftyApesInternal is
         loan.minimumPrincipalPerPeriod = offer.minimumPrincipalPerPeriod;
         loan.periodInterestRateBps = offer.periodInterestRateBps;
         loan.periodDuration = offer.periodDuration;
+        if (offer.offerType == OfferType.SELLER_FINANCING) {
+            loan.payRoyalties = offer.payRoyalties;
+        }
 
         // instantiate underlying nft pointer
         UnderlyingNft storage borrowerUnderlyingNft = _getUnderlyingNft(borrowerNftId, sf);
@@ -345,6 +347,70 @@ abstract contract NiftyApesInternal is
         }
 
         super._transfer(from, to, tokenId);
+    }
+
+    function _payRoyalties(
+        address nftContractAddress,
+        uint256 nftId,
+        address from,
+        uint256 amount,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal returns (uint256 totalRoyaltiesPaid) {
+        // query royalty recipients and amounts
+        (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
+            sf.royaltiesEngineContractAddress
+        ).getRoyaltyView(nftContractAddress, nftId, amount);
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients.length; i++) {
+            if (amounts[i] > 0) {
+                _conditionalSendValue(recipients[i], from, amounts[i], sf);
+                totalRoyaltiesPaid += amounts[i];
+            }
+        }
+    }
+
+    /// @dev If "to" is a contract that doesn't accept ETH, send value back to "from" and continue
+    /// otherwise "to" could force a default by sending bearer nft to contract that does not accept ETH
+    function _conditionalSendValue(
+        address to,
+        address from,
+        uint256 amount,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal {
+        if (address(this).balance < amount) {
+            revert InsufficientBalance(amount, address(this).balance);
+        }
+
+        // check if to is sanctioned
+        bool isToSanctioned;
+        if (!sf.sanctionsPause) {
+            SanctionsList sanctionsList = SanctionsList(NiftyApesStorage.SANCTIONS_CONTRACT);
+            isToSanctioned = sanctionsList.isSanctioned(to);
+        }
+
+        // if sanctioned, return value to from
+        if (isToSanctioned) {
+            (bool fromSuccess, ) = from.call{ value: amount }("");
+            // require ETH is successfully sent to either to or from
+            // we do not want ETH hanging in contract.
+            if (!fromSuccess) {
+                revert ConditionSendValueFailed(from, to, amount);
+            }
+        } else {
+            // attempt to send value to to
+            (bool toSuccess, ) = to.call{ value: amount }("");
+
+            // if send fails, return vale to from
+            if (!toSuccess) {
+                (bool fromSuccess, ) = from.call{ value: amount }("");
+                // require ETH is successfully sent to either to or from
+                // we do not want ETH hanging in contract.
+                if (!fromSuccess) {
+                    revert ConditionSendValueFailed(from, to, amount);
+                }
+            }
+        }
     }
 
     function _requireLoanNotInHardDefault(uint32 hardDefaultTimestamp) internal view {

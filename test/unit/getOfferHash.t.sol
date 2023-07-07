@@ -26,12 +26,13 @@ contract TestGetOfferHash is Test, INiftyApesStructs, OffersLoansFixtures {
             periodDuration: 30 days,
             expiration: uint32(1657217355),
             collectionOfferLimit: 1,
-            creatorOfferNonce: 0
+            creatorOfferNonce: 0,
+            payRoyalties: true
         });
 
         bytes32 functionOfferHash = sellerFinancing.getOfferHash(offer);
 
-        bytes32 expectedFunctionHash = 0x69087c47b0f78665d6a717bda5d9043fe4cc24fb2478a56cb218e394ba9e0d76;
+        bytes32 expectedFunctionHash = 0x37ff68ceab842a3a42af72a7568d558561dffb313774144d72771a5e08affd71;
 
         assertEq(functionOfferHash, expectedFunctionHash);
     }

@@ -10,9 +10,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeab
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../src/interfaces/niftyapes/INiftyApesEvents.sol";
 
-contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents {
+contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEvents {
     function setUp() public override {
         super.setUp();
     }
@@ -354,8 +354,13 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, ISellerFinan
 
         vm.warp(loan.periodEndTimestamp + 1);
 
+        address[] memory nftContractAddresses = new address[](1);
+        nftContractAddresses[0] = offer.nftContractAddress;
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = offer.nftId;
+
         vm.startPrank(lender1);
-        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
         vm.stopPrank();
 
         vm.startPrank(borrower1);

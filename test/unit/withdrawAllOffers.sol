@@ -74,7 +74,8 @@ contract TestWithdrawAllOffers is
             periodDuration: 30 days,
             expiration: uint32(1657217355),
             collectionOfferLimit: 1,
-            creatorOfferNonce: 0
+            creatorOfferNonce: 0,
+            payRoyalties: true
         });
 
         Offer memory offer2 = Offer({
@@ -90,7 +91,8 @@ contract TestWithdrawAllOffers is
             periodDuration: 30 days,
             expiration: uint32(1657217355),
             collectionOfferLimit: 1,
-            creatorOfferNonce: 0
+            creatorOfferNonce: 0,
+            payRoyalties: true
         });
         
         bytes32 offerHash1 = sellerFinancing.getOfferHash(offer1);

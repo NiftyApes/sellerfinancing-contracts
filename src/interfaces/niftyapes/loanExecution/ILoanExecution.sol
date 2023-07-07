@@ -2,11 +2,22 @@
 pragma solidity 0.8.18;
 
 import "../INiftyApesStructs.sol";
-import "../INiftyApesErrors.sol";
 
-/// @title The Lending interface for NiftyApes
-interface ILending
+/// @title The LoanManagement interface for NiftyApes
+interface ILoanExecution
 {
+    /// @notice Start a loan as buyer using a signed offer.
+    /// @param offer The details of the financing offer
+    /// @param signature A signed offerHash
+    /// @param buyer The address of the buyer
+    /// @dev   buyer provided as param to allow for 3rd party marketplace integrations
+    function buyWithSellerFinancing(
+        INiftyApesStructs.Offer calldata offer,
+        bytes memory signature,
+        address buyer,
+        uint256 nftId
+    ) external payable;
+
     /// @notice Start a loan as a borrower using a signed Lending Offer from a lender.
     /// @param offer        The details of the lending offer
     /// @param signature    A signed offerHash
