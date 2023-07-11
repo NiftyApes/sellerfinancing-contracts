@@ -66,7 +66,7 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
         INiftyApesStructs.Offer memory offer,
         bytes calldata signature,
         uint256 count
-    ) external payable nonReentrant returns (uint256[] memory tokenIds) {
+    ) external payable nonReentrant returns (uint256[] memory tokenIds, uint256[] memory loanIds) {
         address signer = INiftyApes(sellerFinancingContractAddress).getOfferSigner(
             offer,
             signature
@@ -74,8 +74,6 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
 
         uint64 collectionOfferLimitCount = INiftyApes(sellerFinancingContractAddress)
             .getCollectionOfferCount(signature);
-
-        tokenIds = new uint256[](count);
 
         // requireSignerIsOwner
         if (signer != owner()) {
@@ -103,6 +101,9 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             count,
             (offer.collectionOfferLimit - collectionOfferLimitCount)
         );
+        
+        tokenIds = new uint256[](nftsToMint);
+        loanIds = new uint256[](nftsToMint);
 
         // loop through and mint nfts
         for (uint i; i < nftsToMint; ++i) {
@@ -114,7 +115,7 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             tokenIds[i] = _tokenIdTracker.current();
 
             // Execute loan
-            INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
+            loanIds[i] = INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                 value: offer.loanItem.downPaymentAmount
             }(offer, signature, msg.sender, _tokenIdTracker.current());
         }

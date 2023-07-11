@@ -106,7 +106,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         bytes calldata signature,
         address buyer,
         uint256 nftId
-    ) external payable whenNotPaused {
+    ) external payable whenNotPaused returns (uint256 loanId) {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
@@ -121,7 +121,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         marketplaceFeeRecipient.sendValue(marketplaceFeeAmount);
 
         // execute buyWithSellerFinancing
-        INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
+        return INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
             value: msg.value - marketplaceFeeAmount
         }(offer, signature, buyer, nftId);
     }
@@ -139,22 +139,21 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         address buyer,
         uint256[] calldata nftIds,
         bool partialExecution
-    ) external payable whenNotPaused {
+    ) external payable whenNotPaused returns (uint256[] memory loanIds) {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
-        uint256 offersLength = offers.length;
-
         // requireLengthOfAllInputArraysAreEqual
-        if (offersLength != signatures.length || offersLength != nftIds.length) {
+        if (offers.length != signatures.length || offers.length != nftIds.length) {
             revert InvalidInputLength();
         }
 
         uint256 marketplaceFeeAccumulated;
         uint256 valueConsumed;
+        loanIds = new uint256[](offers.length);
 
         // loop through list of offers to execute
-        for (uint256 i; i < offersLength; ++i) {
+        for (uint256 i; i < offers.length; ++i) {
             // instantiate ith offer
             INiftyApesStructs.Offer memory offer = offers[i];
 
@@ -179,8 +178,9 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             try
                 INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                     value: offer.loanItem.downPaymentAmount
-                }(offer, signatures[i], buyer, nftIds[i])
+                }(offer, signatures[i], buyer, nftIds[i]) returns (uint256 loanId)
             {
+                loanIds[i] = loanId;
                 // if successful
                 // increment marketplaceFeeAccumulated
                 marketplaceFeeAccumulated += marketplaceFeeAmount;
@@ -192,6 +192,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
                 if (!partialExecution) {
                     revert BuyWithSellerFinancingCallRevertedAt(i);
                 }
+                loanIds[i] = ~uint256(0);
             }
         }
 

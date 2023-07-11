@@ -18,82 +18,10 @@ contract TestWithdrawAllOffers is
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId) private {
-        // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
-        // loan auction exists
-        // require delegate.cash has buyer delegation
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(buyer1),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                nftId
-            ),
-            true
-        );
-        assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), nftId).periodBeginTimestamp,
-            block.timestamp
-        );
-        // buyer NFT minted to buyer
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), buyer1);
-        // seller NFT minted to seller
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
-        //buyer nftId has tokenURI same as original nft
-        assertEq(
-            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId),
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
-        );
-        Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId));
-
-        // check loan struct values
-        assertEq(loan.borrowerNftId, 0);
-        assertEq(loan.lenderNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
-        assertEq(loan.periodBeginTimestamp, block.timestamp);
-    }
-
     function test_unit_withdrawAllOffers_invalidatesAllOffersCreated() public {
-        Offer memory offer1 = Offer({
-            creator: seller1,
-            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
-            nftId: 1,
-            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
-            principalAmount: 0.7 ether,
-            isCollectionOffer: false,
-            downPaymentAmount: 0.3 ether,
-            minimumPrincipalPerPeriod: 0.07 ether,
-            periodInterestRateBps: 25,
-            periodDuration: 30 days,
-            expiration: uint32(1657217355),
-            collectionOfferLimit: 1,
-            creatorOfferNonce: 0,
-            payRoyalties: true
-        });
+        Offer memory offer1 = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        Offer memory offer2 = Offer({
-            creator: seller1,
-            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
-            nftId: 1,
-            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
-            principalAmount: 0.7 ether,
-            isCollectionOffer: false,
-            downPaymentAmount: 0.3 ether,
-            minimumPrincipalPerPeriod: 0.07 ether,
-            periodInterestRateBps: 25,
-            periodDuration: 30 days,
-            expiration: uint32(1657217355),
-            collectionOfferLimit: 1,
-            creatorOfferNonce: 0,
-            payRoyalties: true
-        });
+        Offer memory offer2 = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
         
         bytes32 offerHash1 = sellerFinancing.getOfferHash(offer1);
         bytes memory signature1 = sign(seller1_private_key, offerHash1);
@@ -113,11 +41,11 @@ contract TestWithdrawAllOffers is
                 1
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer1.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer1.loanItem.downPaymentAmount }(
             offer1,
             signature1,
             buyer1,
-            offer1.nftId
+            offer1.collateralItem.identifier
         );
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -126,11 +54,11 @@ contract TestWithdrawAllOffers is
                 1
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer2.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer2.loanItem.downPaymentAmount }(
             offer2,
             signature2,
             buyer1,
-            offer2.nftId
+            offer2.collateralItem.identifier
         );
         vm.stopPrank();
     }
@@ -152,11 +80,11 @@ contract TestWithdrawAllOffers is
                 1
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
             offer,
             signature1,
             buyer1,
-            offer.nftId
+            offer.collateralItem.identifier
         );
         vm.stopPrank();
 
@@ -165,13 +93,13 @@ contract TestWithdrawAllOffers is
         bytes memory signature2 = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
             offer,
             signature2,
             buyer1,
-            offer.nftId
+            offer.collateralItem.identifier
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, offer.nftId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
     }
 }

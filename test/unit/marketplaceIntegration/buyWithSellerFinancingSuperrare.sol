@@ -13,59 +13,25 @@ contract TestBuyWithSellerFinancingMarketplace is Test, OffersLoansFixtures {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer) private {
-        // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
-        // require delegate.cash has buyer delegation
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(buyer1),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                offer.nftId
-            ),
-            true
-        );
-        // loan auction exists
-        assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
-            block.timestamp
-        );
-        // buyer NFT minted to buyer
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), buyer1);
-        // seller NFT minted to seller
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
-        assertEq(loan.borrowerNftId, 0);
-        assertEq(loan.lenderNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
-        assertEq(loan.periodBeginTimestamp, block.timestamp);
-    }
-
     function _test_buyWithSellerFinancingMarketplace_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
 
         vm.startPrank(buyer1);
-        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        uint256 loanId = marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.collateralItem.identifier
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
         uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
 
@@ -89,19 +55,19 @@ contract TestBuyWithSellerFinancingMarketplace is Test, OffersLoansFixtures {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 MarketplaceIntegration.InsufficientMsgValue.selector,
-                offer.downPaymentAmount + marketplaceFee - 1,
-                offer.downPaymentAmount + marketplaceFee
+                offer.loanItem.downPaymentAmount + marketplaceFee - 1,
+                offer.loanItem.downPaymentAmount + marketplaceFee
             )
         );
         marketplaceIntegration.buyWithSellerFinancing{
-            value: offer.downPaymentAmount + marketplaceFee - 1
-        }(offer, offerSignature, buyer1, offer.nftId);
+            value: offer.loanItem.downPaymentAmount + marketplaceFee - 1
+        }(offer, offerSignature, buyer1, offer.collateralItem.identifier);
         vm.stopPrank();
     }
 
