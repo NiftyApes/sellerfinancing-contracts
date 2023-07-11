@@ -29,8 +29,8 @@ interface ILoanManagement
 
     /// @notice Calculates and returns protocol fee on the given loan payment amount
     /// @dev Explain to a developer any extra details
-    /// @param loanPyamentAmount Payment amout to be paid for an existing loan
-    function calculateProtocolFee(uint256 loanPyamentAmount) external view returns (uint256);
+    /// @param loanPaymentAmount Payment amout to be paid for an existing loan
+    function calculateProtocolFee(uint256 loanPaymentAmount) external view returns (uint256);
 
     /// @notice Make a partial payment or full repayment of a loan.
     /// @dev Any address may make a payment towards the loan.

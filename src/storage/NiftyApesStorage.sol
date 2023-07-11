@@ -42,7 +42,7 @@ library NiftyApesStorage {
         /// @dev The stored address for the weth contract
         /// slot4
         address wethContractAddress;
-        /// @dev Protocol Fee basis points
+        /// @dev Protocol fee basis points
         /// slot4
         uint96 protocolFeeBPS;
         /// @dev Protocol fee recipient address
@@ -54,22 +54,22 @@ library NiftyApesStorage {
         /// @dev A mapping for a NFT to a loan .
         ///      The mapping has to be broken into two parts since an NFT is denominated by its address (first part)
         ///      and its nftId (second part) in our code base.
-        /// slot7
+        /// slot6
         mapping(address => mapping(uint256 => INiftyApesStructs.Loan)) loans;
         /// @dev A mapping for a Seller Financing Ticket to an underlying NFT Asset .
         ///      This mapping enables the protocol to query a loan by Seller Financing Ticket Id.
-        /// slot8
+        /// slot7
         mapping(uint256 => INiftyApesStructs.UnderlyingNft) underlyingNfts;
         /// @dev A mapping for a signed offer to a collection offer counter
-        /// slot9
+        /// slot8
         mapping(bytes => uint64) collectionOfferCounters;
         /// @dev A mapping to mark a signature as used.
         ///      The mapping allows users to withdraw offers that they made by signature.
-        /// slot10
+        /// slot9
         mapping(bytes => bool) cancelledOrFinalized;
         /// @dev A mapping to store a unique offer nonce value for each user.
         ///      The mapping allows users to withdraw all offers at once by just incrementing the nonce
-        /// slot11
+        /// slot10
         mapping(address => uint32) offerNonce;
     }
 
