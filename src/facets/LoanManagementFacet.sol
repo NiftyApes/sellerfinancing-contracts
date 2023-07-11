@@ -74,10 +74,10 @@ contract NiftyApesLoanManagementFacet is
         }
     }
 
-    function calculateProtocolFee(uint256 loanPyamnetAmount) external view returns (uint256) {
+    function calculateProtocolFee(uint256 loanPaymentAmount) external view returns (uint256) {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        return _calculateProtocolFee(loanPyamnetAmount, sf);
+        return _calculateProtocolFee(loanPaymentAmount, sf);
     }
 
     /// @inheritdoc ILoanManagement
