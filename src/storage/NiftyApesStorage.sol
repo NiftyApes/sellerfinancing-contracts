@@ -42,7 +42,7 @@ library NiftyApesStorage {
         /// @dev The stored address for the weth contract
         /// slot4
         address wethContractAddress;
-        /// @dev Protocol Fee basis points
+        /// @dev Protocol fee basis points
         /// slot4
         uint96 protocolFeeBPS;
         /// @dev Protocol fee recipient address
@@ -53,18 +53,18 @@ library NiftyApesStorage {
         bool sanctionsPause;
         /// @dev A mapping for a loanId to a loan.
         ///      Loans are stored at even loanId values, but can be queried at the even value or value + 1 using getLoan()
-        /// slot7
+        /// slot6
         mapping(uint256 => INiftyApesStructs.Loan) loans;
         /// @dev A mapping for a signed offer to a collection offer counter
-        /// slot9
+        /// slot7
         mapping(bytes => uint64) collectionOfferCounters;
         /// @dev A mapping to mark a signature as used.
         ///      The mapping allows users to withdraw offers that they made by signature.
-        /// slot10
+        /// slot8
         mapping(bytes => bool) cancelledOrFinalized;
         /// @dev A mapping to store a unique offer nonce value for each user.
         ///      The mapping allows users to withdraw all offers at once by just incrementing the nonce
-        /// slot11
+        /// slot9
         mapping(address => uint32) offerNonce;
     }
 

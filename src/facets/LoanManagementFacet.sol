@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "@openzeppelin/contracts/utils/math/SafeMathUpgradeable.sol";
 import "../storage/NiftyApesStorage.sol";
 import "../interfaces/niftyapes/loanManagement/ILoanManagement.sol";
 import "../interfaces/seaport/ISeaport.sol";
@@ -16,7 +15,6 @@ contract NiftyApesLoanManagementFacet is
     ILoanManagement
 {
     using AddressUpgradeable for address payable;
-    using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// @inheritdoc ILoanManagement
@@ -77,10 +75,10 @@ contract NiftyApesLoanManagementFacet is
         }
     }
 
-    function calculateProtocolFee(uint256 loanPyamnetAmount) external view returns (uint256) {
+    function calculateProtocolFee(uint256 loanPaymentAmount) external view returns (uint256) {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        return _calculateProtocolFee(loanPyamnetAmount, sf);
+        return _calculateProtocolFee(loanPaymentAmount, sf);
     }
 
     /// @inheritdoc ILoanManagement
@@ -472,7 +470,7 @@ contract NiftyApesLoanManagementFacet is
     }
 
     function _calculateProtocolFeeShareFromPaymentReceived(uint256 paymentReceived, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {
-        uint256 loanPaymentAmount = paymentReceived.mul(NiftyApesStorage.BASE_BPS).add(NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS - 1).div(NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS);
+        uint256 loanPaymentAmount = ((paymentReceived*NiftyApesStorage.BASE_BPS)+NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS - 1)/(NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS);
         return paymentReceived - loanPaymentAmount;
     }
 
