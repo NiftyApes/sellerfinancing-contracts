@@ -295,10 +295,10 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceAfter = address(buyer1).balance;
 
-        // assert marketplace has gained fee for only one execution
+        // // assert marketplace has gained fee for only one execution
         assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
 
-        // assert buyer balance is deduced from one execution
+        // assert buyer balance is deducted from one execution
         assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.loanItem.downPaymentAmount - marketplaceFee));
     }
 

@@ -227,7 +227,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(expectedborrower),
                 address(sellerFinancing),
-                address(boredApeYachtClub),
+                offer.collateralItem.token,
                 nftId
             ),
             true

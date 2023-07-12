@@ -164,6 +164,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             if (msg.value - valueConsumed < offer.loanItem.downPaymentAmount + marketplaceFeeAmount) {
                 // if partial execution is allowed then move to next offer
                 if (partialExecution) {
+                    loanIds[i] = ~uint256(0);
                     continue;
                 }
                 // else revert

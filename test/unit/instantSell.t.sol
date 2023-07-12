@@ -67,6 +67,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         vm.expectEmit(true, true, false, false);
+        emit InstantSell(offer.collateralItem.token, offer.collateralItem.identifier, 0);
+        vm.expectEmit(true, true, false, false);
         emit PaymentMade(
             offer.collateralItem.token,
             offer.collateralItem.identifier,
@@ -76,8 +78,6 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             periodInterest,
             loan
         );
-        vm.expectEmit(true, true, false, false);
-        emit InstantSell(offer.collateralItem.token, offer.collateralItem.identifier, 0);
 
         sellerFinancing.instantSell(
             loanId,
@@ -160,6 +160,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         vm.expectEmit(true, true, false, false);
+        emit InstantSell(offer.collateralItem.token, offer.collateralItem.identifier, 0);
+        vm.expectEmit(true, true, false, false);
         emit PaymentMade(
             offer.collateralItem.token,
             offer.collateralItem.identifier,
@@ -169,9 +171,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             periodInterest,
             loan
         );
-        vm.expectEmit(true, true, false, false);
-        emit InstantSell(offer.collateralItem.token, offer.collateralItem.identifier, 0);
-
+        
         sellerFinancing.instantSell(
             loanId,
             minProfitAmount,

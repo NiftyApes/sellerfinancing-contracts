@@ -802,8 +802,9 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         ISeaport(SEAPORT_ADDRESS).validate(order);
         vm.stopPrank();
 
-        bytes[] memory data = new bytes[](1);
+        bytes[] memory data = new bytes[](2);
         data[0] = abi.encode(order[0]);
+        data[1] = abi.encode(order[0]);
 
         vm.startPrank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loanIds[0]);
