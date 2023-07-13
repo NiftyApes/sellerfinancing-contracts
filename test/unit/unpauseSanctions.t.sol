@@ -22,7 +22,7 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
         sellerFinancing.pauseSanctions();
 
         vm.startPrank(SANCTIONED_ADDRESS);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
@@ -45,7 +45,7 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
             loanId
         );
         vm.stopPrank();

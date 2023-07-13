@@ -48,34 +48,58 @@ abstract contract NiftyApesInternal is
     constructor() initializer {}
 
     function _getOfferHash(Offer memory offer) internal view returns (bytes32) {
+        bytes32 collateralItemHash = keccak256(
+            abi.encode(
+                NiftyApesStorage._COLLATERAL_ITEM_TYPEHASH,
+                offer.collateralItem.itemType,
+                offer.collateralItem.token,
+                offer.collateralItem.identifier,
+                offer.collateralItem.amount
+            )
+        );
+
+        bytes32 loanTermsHash = keccak256(
+            abi.encode(
+                NiftyApesStorage._LOAN_TERMS_TYPEHASH,
+                offer.loanTerms.itemType,
+                offer.loanTerms.token,
+                offer.loanTerms.identifier,
+                offer.loanTerms.principalAmount,
+                offer.loanTerms.minimumPrincipalPerPeriod,
+                offer.loanTerms.downPaymentAmount,
+                offer.loanTerms.periodInterestRateBps,
+                offer.loanTerms.periodDuration
+            )
+        );
+
+        // Creating a hash for each MarketplaceRecipient
+        bytes32[] memory marketplaceRecipientHashes = new bytes32[](offer.marketplaceRecipients.length);
+        for (uint i; i < offer.marketplaceRecipients.length; ++i) {
+            marketplaceRecipientHashes[i] = keccak256(
+                abi.encode(
+                    NiftyApesStorage._MARKETPLACE_RECIPIENT_TYPEHASH,
+                    offer.marketplaceRecipients[i].recipient,
+                    offer.marketplaceRecipients[i].amount
+                )
+            );
+        }
+        // Generate a final hash for the array of MarketplaceRecipient by hashing the concatenation of all hashes
+        bytes32 marketplaceRecipientsHash = keccak256(abi.encodePacked(marketplaceRecipientHashes));
+
         return _hashTypedDataV4(
             keccak256(
                 abi.encode(
                     NiftyApesStorage._OFFER_TYPEHASH,
                     offer.offerType,
-                    abi.encode(
-                        offer.collateralItem.itemType,
-                        offer.collateralItem.token,
-                        offer.collateralItem.identifier,
-                        offer.collateralItem.amount
-                    ),
-                    abi.encode(
-                        offer.loanItem.itemType,
-                        offer.loanItem.token,
-                        offer.loanItem.identifier,
-                        offer.loanItem.principalAmount,
-                        offer.loanItem.minimumPrincipalPerPeriod,
-                        offer.loanItem.downPaymentAmount
-                    ),
+                    collateralItemHash,
+                    loanTermsHash,
                     offer.creator,
-                    offer.periodInterestRateBps,
-                    offer.periodDuration,
                     offer.expiration,
                     offer.isCollectionOffer,
                     offer.collectionOfferLimit,
                     offer.creatorOfferNonce,
                     offer.payRoyalties,
-                    offer.marketplaceRecipients
+                    marketplaceRecipientsHash
                 )
             )
         );
@@ -150,18 +174,18 @@ abstract contract NiftyApesInternal is
         // requireOfferisValid
         _requireNonZeroAddress(offer.collateralItem.token);
         // require1MinsMinimumDuration
-        if (offer.periodDuration < 1 minutes) {
+        if (offer.loanTerms.periodDuration < 1 minutes) {
             revert InvalidPeriodDuration();
         }
         // requireNonZeroPrincipalAmount
-        if (offer.loanItem.principalAmount == 0) {
+        if (offer.loanTerms.principalAmount == 0) {
             revert PrincipalAmountZero();
         }
         // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
-        if (offer.loanItem.principalAmount < offer.loanItem.minimumPrincipalPerPeriod) {
+        if (offer.loanTerms.principalAmount < offer.loanTerms.minimumPrincipalPerPeriod) {
             revert InvalidMinimumPrincipalPerPeriod(
-                offer.loanItem.minimumPrincipalPerPeriod,
-                offer.loanItem.principalAmount
+                offer.loanTerms.minimumPrincipalPerPeriod,
+                offer.loanTerms.principalAmount
             );
         }
         // requireNotSellerFinancingTicket
@@ -220,14 +244,14 @@ abstract contract NiftyApesInternal is
         loan.collateralItem.identifier = nftId;
         loan.collateralItem.amount = offer.collateralItem.amount;
 
-        loan.loanItem.itemType = offer.loanItem.itemType;
-        loan.loanItem.principalAmount = uint128(offer.loanItem.principalAmount);
-        loan.loanItem.minimumPrincipalPerPeriod = offer.loanItem.minimumPrincipalPerPeriod;
+        loan.loanTerms.itemType = offer.loanTerms.itemType;
+        loan.loanTerms.principalAmount = uint128(offer.loanTerms.principalAmount);
+        loan.loanTerms.minimumPrincipalPerPeriod = offer.loanTerms.minimumPrincipalPerPeriod;
 
-        loan.periodEndTimestamp = _currentTimestamp32() + offer.periodDuration;
+        loan.periodEndTimestamp = _currentTimestamp32() + offer.loanTerms.periodDuration;
         loan.periodBeginTimestamp = _currentTimestamp32();
-        loan.periodInterestRateBps = offer.periodInterestRateBps;
-        loan.periodDuration = offer.periodDuration;
+        loan.loanTerms.periodInterestRateBps = offer.loanTerms.periodInterestRateBps;
+        loan.loanTerms.periodDuration = offer.loanTerms.periodDuration;
         if (offer.offerType == OfferType.SELLER_FINANCING) {
             loan.payRoyalties = offer.payRoyalties;
         }

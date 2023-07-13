@@ -31,7 +31,7 @@ contract TestGetUnderlyingNft is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature,
             buyer1,
@@ -63,7 +63,7 @@ contract TestGetUnderlyingNft is
         bytes memory signature =  signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature,
             buyer1,
@@ -89,7 +89,7 @@ contract TestGetUnderlyingNft is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature,
             buyer1,
@@ -111,7 +111,7 @@ contract TestGetUnderlyingNft is
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
-            value: ((offer.loanItem.principalAmount + periodInterest))
+            value: ((offer.loanTerms.principalAmount + periodInterest))
         }(loanId);
         vm.stopPrank();
 

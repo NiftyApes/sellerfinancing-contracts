@@ -82,7 +82,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.startPrank(buyer1);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
             loanId
         );
         vm.stopPrank();
@@ -205,13 +205,13 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        uint256 loanId1 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId1 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId1
         );
-        uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,

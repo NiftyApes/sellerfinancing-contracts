@@ -24,7 +24,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanItem.downPaymentAmount);
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanTerms.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -48,7 +48,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         ).getRoyalty(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                (loan.loanItem.principalAmount + periodInterest)
+                (loan.loanTerms.principalAmount + periodInterest)
             );
 
         // payout royalties
@@ -62,7 +62,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         emit PaymentMade(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                loan.loanItem.principalAmount + periodInterest,
+                loan.loanTerms.principalAmount + periodInterest,
                 0,
                 royaltiesPaidInMakePayment,
                 periodInterest,
@@ -70,7 +70,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.identifier, loan);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
             loanId
         );
         vm.stopPrank();
@@ -80,7 +80,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         // seller paid out correctly
         assertEq(
             address(seller1).balance,
-            (sellerBalanceBefore + offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount + periodInterest - totalRoyaltiesPaid)
+            (sellerBalanceBefore + offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount + periodInterest - totalRoyaltiesPaid)
         );
 
         // royatlies paid out correctly
@@ -108,7 +108,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanItem.downPaymentAmount);
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanTerms.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -131,7 +131,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         ).getRoyalty(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                (loan.loanItem.principalAmount + periodInterest)
+                (loan.loanTerms.principalAmount + periodInterest)
             );
 
         // payout royalties
@@ -140,14 +140,14 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
             royaltiesPaidInMakePayment += amounts[i];
         }
         totalRoyaltiesPaid += royaltiesPaidInMakePayment;
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanItem.principalAmount + periodInterest);
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest);
         uint256 ownerBalanceBefore = address(owner).balance;
         vm.startPrank(buyer1);
         vm.expectEmit(true, true, false, false);
         emit PaymentMade(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                loan.loanItem.principalAmount + periodInterest + protocolFee,
+                loan.loanTerms.principalAmount + periodInterest + protocolFee,
                 protocolFee,
                 royaltiesPaidInMakePayment,
                 periodInterest,
@@ -155,7 +155,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.identifier, loan);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest + protocolFee) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest + protocolFee) }(
             loanId
         );
         vm.stopPrank();
@@ -165,7 +165,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         // seller paid out correctly
         assertEq(
             address(seller1).balance,
-            (sellerBalanceBefore + offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount + periodInterest - totalRoyaltiesPaid)
+            (sellerBalanceBefore + offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount + periodInterest - totalRoyaltiesPaid)
         );
 
         // protocol fee received by the owner
@@ -204,7 +204,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         emit PaymentMade(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                loan.loanItem.principalAmount + periodInterest,
+                loan.loanTerms.principalAmount + periodInterest,
                 0,
                 0,
                 periodInterest,
@@ -212,7 +212,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.identifier, loan);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
             loanId
         );
         vm.stopPrank();
@@ -222,7 +222,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         // seller paid out correctly without any royalty deductions
         assertEq(
             address(seller1).balance,
-            (sellerBalanceBefore + offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount + periodInterest)
+            (sellerBalanceBefore + offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount + periodInterest)
         );
     }
 
@@ -266,7 +266,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         emit PaymentMade(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                loan.loanItem.principalAmount + periodInterest,
+                loan.loanTerms.principalAmount + periodInterest,
                 0,
                 0,
                 periodInterest,
@@ -274,7 +274,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.identifier, loan);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
             loanId
         );
         vm.stopPrank();
@@ -284,7 +284,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         // lender received principal plus interest balance without any royalty deductions
         assertEq(
             address(lender1).balance,
-            (lender1BalanceBefore + offer.loanItem.principalAmount + periodInterest)
+            (lender1BalanceBefore + offer.loanTerms.principalAmount + periodInterest)
         );
     }
 
@@ -323,7 +323,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanItem.principalAmount + periodInterest);
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest);
 
         uint256 lender1BalanceBefore = address(lender1).balance;
         uint256 ownerBalanceBefore = address(owner).balance;
@@ -333,7 +333,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         emit PaymentMade(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                loan.loanItem.principalAmount + periodInterest + protocolFee,
+                loan.loanTerms.principalAmount + periodInterest + protocolFee,
                 protocolFee,
                 0,
                 periodInterest,
@@ -341,7 +341,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.identifier, loan);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest + protocolFee) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest + protocolFee) }(
             loanId
         );
         vm.stopPrank();
@@ -351,7 +351,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         // lender received principal plus interest balance without any royalty deductions
         assertEq(
             address(lender1).balance,
-            (lender1BalanceBefore + offer.loanItem.principalAmount + periodInterest)
+            (lender1BalanceBefore + offer.loanTerms.principalAmount + periodInterest)
         );
 
         // protocol fee received by the owner
@@ -400,7 +400,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         emit PaymentMade(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                loan.loanItem.principalAmount + periodInterest,
+                loan.loanTerms.principalAmount + periodInterest,
                 0,
                 0,
                 periodInterest,
@@ -408,7 +408,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.identifier, loan);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
             loanId
         );
         vm.stopPrank();
@@ -418,7 +418,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         // lender received principal plus interest balance without any royalty deductions
         assertEq(
             address(lender1).balance,
-            (lender1BalanceBefore + offer.loanItem.principalAmount + periodInterest)
+            (lender1BalanceBefore + offer.loanTerms.principalAmount + periodInterest)
         );
     }
 
@@ -454,7 +454,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
-            value: ((loan.loanItem.principalAmount + periodInterest) + extraAmountToBeSent)
+            value: ((loan.loanTerms.principalAmount + periodInterest) + extraAmountToBeSent)
         }(loanId);
         vm.stopPrank();
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);
@@ -462,7 +462,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 buyer1BalanceAfterPayment = address(buyer1).balance;
         assertEq(
             buyer1BalanceAfterPayment,
-            (buyer1BalanceBeforePayment - (loan.loanItem.principalAmount + periodInterest))
+            (buyer1BalanceBeforePayment - (loan.loanTerms.principalAmount + periodInterest))
         );
     }
 
@@ -527,12 +527,12 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
 
         assertEq(
-            loanAfter.loanItem.principalAmount,
-            loan.loanItem.principalAmount - (totalMinimumPayment - periodInterest)
+            loanAfter.loanTerms.principalAmount,
+            loan.loanTerms.principalAmount - (totalMinimumPayment - periodInterest)
         );
 
-        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.periodDuration);
-        assertEq(loanAfter.periodBeginTimestamp, loan.periodBeginTimestamp + loan.periodDuration);
+        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.loanTerms.periodDuration);
+        assertEq(loanAfter.periodBeginTimestamp, loan.periodBeginTimestamp + loan.loanTerms.periodDuration);
     }
 
     function test_fuzz_makePayment_partialRepayment_simplest_case(
@@ -562,7 +562,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         (uint256 totalMinimumPayment, uint256 periodInterest) = sellerFinancing
             .calculateMinimumPayment(loanId);
 
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanItem.minimumPrincipalPerPeriod + periodInterest);
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.minimumPrincipalPerPeriod + periodInterest);
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -601,12 +601,12 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + amounts[0]));
 
         assertEq(
-            loanAfter.loanItem.principalAmount,
-            loan.loanItem.principalAmount - (totalMinimumPayment - protocolFee - periodInterest)
+            loanAfter.loanTerms.principalAmount,
+            loan.loanTerms.principalAmount - (totalMinimumPayment - protocolFee - periodInterest)
         );
 
-        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.periodDuration);
-        assertEq(loanAfter.periodBeginTimestamp, loan.periodBeginTimestamp + loan.periodDuration);
+        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.loanTerms.periodDuration);
+        assertEq(loanAfter.periodBeginTimestamp, loan.periodBeginTimestamp + loan.loanTerms.periodDuration);
         // protocol fee received by the owner
         assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
     }
@@ -635,14 +635,14 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
-        skip(loan.periodDuration);
+        skip(loan.loanTerms.periodDuration);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         assertEq(totalInterest, 2 * periodInterest);
 
         vm.startPrank(buyer1);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + totalInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + totalInterest) }(
             loanId
         );
         vm.stopPrank();
@@ -676,7 +676,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
-        skip(loan.periodDuration);
+        skip(loan.loanTerms.periodDuration);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
@@ -684,10 +684,10 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         uint256 ownerBalanceBefore = address(owner).balance;
         
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanItem.principalAmount + totalInterest);
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + totalInterest);
 
         vm.startPrank(buyer1);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + totalInterest + protocolFee) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + totalInterest + protocolFee) }(
             loanId
         );
         vm.stopPrank();
@@ -721,7 +721,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
-        skip(loan.periodDuration * 2);
+        skip(loan.loanTerms.periodDuration * 2);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
@@ -729,7 +729,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.SoftGracePeriodEnded.selector);
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + totalInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + totalInterest) }(
             loanId
         );
         vm.stopPrank();
@@ -758,15 +758,15 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
-        skip(loan.periodDuration);
+        skip(loan.loanTerms.periodDuration);
 
         (uint256 totalMinimumPayment, uint256 totalInterest) = sellerFinancing
             .calculateMinimumPayment(loanId);
 
-        vm.assume(loan.loanItem.principalAmount > 2 * loan.loanItem.minimumPrincipalPerPeriod);
+        vm.assume(loan.loanTerms.principalAmount > 2 * loan.loanTerms.minimumPrincipalPerPeriod);
 
         assertEq(totalInterest, 2 * periodInterest);
-        assertEq(totalMinimumPayment, 2 * loan.loanItem.minimumPrincipalPerPeriod + totalInterest);
+        assertEq(totalMinimumPayment, 2 * loan.loanTerms.minimumPrincipalPerPeriod + totalInterest);
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -795,14 +795,14 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
 
         assertEq(
-            loanAfter.loanItem.principalAmount,
-            loan.loanItem.principalAmount - (totalMinimumPayment - totalInterest)
+            loanAfter.loanTerms.principalAmount,
+            loan.loanTerms.principalAmount - (totalMinimumPayment - totalInterest)
         );
 
-        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + 2 * loan.periodDuration);
+        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + 2 * loan.loanTerms.periodDuration);
         assertEq(
             loanAfter.periodBeginTimestamp,
-            loan.periodBeginTimestamp + 2 * loan.periodDuration
+            loan.periodBeginTimestamp + 2 * loan.loanTerms.periodDuration
         );
     }
 
@@ -836,7 +836,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.makePayment{ value: (loan.loanItem.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
             loanId
         );
         vm.stopPrank();
@@ -871,7 +871,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
-            value: (loan.loanItem.principalAmount + periodInterest)
+            value: (loan.loanTerms.principalAmount + periodInterest)
         }(loanId);
         vm.stopPrank();
 
@@ -914,12 +914,12 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectRevert(
             abi.encodeWithSelector(
                 INiftyApesErrors.AmountReceivedLessThanRequiredMinimumPayment.selector,
-                loan.loanItem.minimumPrincipalPerPeriod + periodInterest - 1,
-                loan.loanItem.minimumPrincipalPerPeriod + periodInterest
+                loan.loanTerms.minimumPrincipalPerPeriod + periodInterest - 1,
+                loan.loanTerms.minimumPrincipalPerPeriod + periodInterest
             )
         );
         sellerFinancing.makePayment{
-            value: (loan.loanItem.minimumPrincipalPerPeriod + periodInterest - 1)
+            value: (loan.loanTerms.minimumPrincipalPerPeriod + periodInterest - 1)
         }(loanId);
         vm.stopPrank();
     }
@@ -965,7 +965,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         ).getRoyalty(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                (loan.loanItem.principalAmount + periodInterest)
+                (loan.loanTerms.principalAmount + periodInterest)
             );
 
         // payout royalties
@@ -978,7 +978,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
-            value: (loan.loanItem.principalAmount + periodInterest)
+            value: (loan.loanTerms.principalAmount + periodInterest)
         }(loanId);
         vm.stopPrank();
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);

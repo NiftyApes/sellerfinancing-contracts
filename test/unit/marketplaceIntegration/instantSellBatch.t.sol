@@ -38,7 +38,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         minProfitAmounts[0] = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + periodInterest + minProfitAmounts[0]) *
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + minProfitAmounts[0]) *
             40 +
             38) / 39;
 
@@ -75,7 +75,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer2, 0);
         assertEq(
             address(buyer1).balance,
-            (buyer1BalanceBefore - offer.loanItem.downPaymentAmount + minProfitAmounts[0])
+            (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount + minProfitAmounts[0])
         );
     }
 
@@ -109,13 +109,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         uint256[] memory loanIds = new uint256[](2);
-        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -136,13 +136,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         minProfitAmounts[0] = 1 ether;
         minProfitAmounts[1] = 2 ether;
 
-        uint256 expectedBuyer1BalanceAfterLoanIsClosed = (buyer1BalanceBefore - 2 * offer.loanItem.downPaymentAmount + minProfitAmounts[0] + minProfitAmounts[1]);
+        uint256 expectedBuyer1BalanceAfterLoanIsClosed = (buyer1BalanceBefore - 2 * offer.loanTerms.downPaymentAmount + minProfitAmounts[0] + minProfitAmounts[1]);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.loanItem.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.loanTerms.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
             40 +
             38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.loanItem.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.loanTerms.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -224,13 +224,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         uint256[] memory loanIds = new uint256[](2);
-        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -252,10 +252,10 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         minProfitAmounts[1] = 2 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.loanItem.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.loanTerms.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
             40 +
             38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.loanItem.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.loanTerms.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -340,13 +340,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         
         vm.startPrank(buyer1);
         uint256[] memory loanIds = new uint256[](2);
-        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -370,10 +370,10 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         minProfitAmounts[1] = 2 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.loanItem.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.loanTerms.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
             40 +
             38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.loanItem.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.loanTerms.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -458,13 +458,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         
         vm.startPrank(buyer1);
         uint256[] memory loanIds = new uint256[](2);
-        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -484,7 +484,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         minProfitAmounts[0] = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.loanItem.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.loanTerms.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
             40 +
             38) / 39;
 
@@ -564,13 +564,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         
         vm.startPrank(buyer1);
         uint256[] memory loanIds = new uint256[](2);
-        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -592,7 +592,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         minProfitAmounts[1] = 2 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan1 = ((loan1.loanItem.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.loanTerms.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -672,13 +672,13 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         
         vm.startPrank(buyer1);
         uint256[] memory loanIds = new uint256[](2);
-        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftIds[0]
         );
-        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -702,10 +702,10 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         minProfitAmounts[1] = 2 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.loanItem.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
+        uint256 bidPriceLoan0 = ((loan0.loanTerms.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
             40 +
             38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.loanItem.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
+        uint256 bidPriceLoan1 = ((loan1.loanTerms.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
             40 +
             38) / 39;
 
@@ -784,7 +784,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         minProfitAmounts[0] = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + periodInterest + minProfitAmounts[0]) *
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + minProfitAmounts[0]) *
             40 +
             38) / 39;
 

@@ -121,17 +121,17 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                     identifier: fixedFields.nftId,
                     amount: 0
                 }),
-                loanItem: LoanItem({
+                loanTerms: LoanTerms({
                     itemType: ItemType.NATIVE,
                     token: address(0),
                     identifier: 0,
                     principalAmount: fuzzed.principalAmount,
                     minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
-                    downPaymentAmount: fuzzed.downPaymentAmount
+                    downPaymentAmount: fuzzed.downPaymentAmount,
+                    periodInterestRateBps: fuzzed.periodInterestRateBps,
+                    periodDuration: fuzzed.periodDuration
                 }),
                 creator: fixedFields.creator,
-                periodInterestRateBps: fuzzed.periodInterestRateBps,
-                periodDuration: fuzzed.periodDuration,
                 expiration: fuzzed.expiration,
                 isCollectionOffer: fixedFields.isCollectionOffer,
                 collectionOfferLimit: fixedFields.collectionOfferLimit,
@@ -154,17 +154,17 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                     identifier: fixedFields.nftId,
                     amount: 0
                 }),
-                loanItem: LoanItem({
+                loanTerms: LoanTerms({
                     itemType: ItemType.NATIVE,
                     token: address(0),
                     identifier: 0,
                     principalAmount: fuzzed.principalAmount,
                     minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
-                    downPaymentAmount: 0
+                    downPaymentAmount: 0,
+                    periodInterestRateBps: fuzzed.periodInterestRateBps,
+                    periodDuration: fuzzed.periodDuration
                 }),
                 creator: lender1,
-                periodInterestRateBps: fuzzed.periodInterestRateBps,
-                periodDuration: fuzzed.periodDuration,
                 expiration: fuzzed.expiration,
                 isCollectionOffer: fixedFields.isCollectionOffer,
                 collectionOfferLimit: fixedFields.collectionOfferLimit,
@@ -191,7 +191,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function lender1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(lender1);
-        weth.approve(address(sellerFinancing), offer.loanItem.principalAmount);
+        weth.approve(address(sellerFinancing), offer.loanTerms.principalAmount);
         vm.stopPrank();
 
         return signOffer(lender1_private_key, offer);
@@ -201,7 +201,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -249,11 +249,11 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(nftId)
         );
         // check loan struct values
-        assertEq(loan.loanItem.principalAmount, offer.loanItem.principalAmount);
-        assertEq(loan.loanItem.minimumPrincipalPerPeriod, offer.loanItem.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
+        assertEq(loan.loanTerms.principalAmount, offer.loanTerms.principalAmount);
+        assertEq(loan.loanTerms.minimumPrincipalPerPeriod, offer.loanTerms.minimumPrincipalPerPeriod);
+        assertEq(loan.loanTerms.periodInterestRateBps, offer.loanTerms.periodInterestRateBps);
+        assertEq(loan.loanTerms.periodDuration, offer.loanTerms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.loanTerms.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
@@ -317,11 +317,11 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         );
 
         // check loan struct values
-        assertEq(loan.loanItem.principalAmount, offer.loanItem.principalAmount);
-        assertEq(loan.loanItem.minimumPrincipalPerPeriod, offer.loanItem.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
+        assertEq(loan.loanTerms.principalAmount, offer.loanTerms.principalAmount);
+        assertEq(loan.loanTerms.minimumPrincipalPerPeriod, offer.loanTerms.minimumPrincipalPerPeriod);
+        assertEq(loan.loanTerms.periodInterestRateBps, offer.loanTerms.periodInterestRateBps);
+        assertEq(loan.loanTerms.periodDuration, offer.loanTerms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.loanTerms.periodDuration);
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 

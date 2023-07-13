@@ -15,11 +15,27 @@ library NiftyApesStorage {
     /// @notice The base value for fees in the protocol.
     uint256 constant BASE_BPS = 10_000;
 
-    /// @dev Constant typeHash for EIP-712 hashing of Offer struct
-    bytes32 constant _OFFER_TYPEHASH =
-        keccak256(
-            "Offer(OfferType offerType,CollateralItem collateralItem,LoanItem loanItem,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,bool isCollectionOffer,uint64 collectionOfferLimit,uint32 creatorOfferNonce,bool payRoyalties,MarketplaceRecipient[] marketplaceRecipients)"
-        );
+    bytes32 constant _COLLATERAL_ITEM_TYPEHASH = keccak256(
+        "CollateralItem(ItemType itemType,address token,uint256 identifier,uint256 amount)"
+    );
+
+    bytes32 constant _LOAN_TERMS_TYPEHASH = keccak256(
+        "LoanTerms(ItemType itemType,address token,uint256 identifier,uint128 principalAmount,uint128 minimumPrincipalPerPeriod,uint128 downPaymentAmount,uint32 periodInterestRateBps,uint32 periodDuration)"
+    );
+
+    bytes32 constant _MARKETPLACE_RECIPIENT_TYPEHASH = keccak256(
+        "MarketplaceRecipient(address recipient,uint256 amount)"
+    );
+
+    bytes32 constant _OFFER_TYPEHASH = keccak256(
+        "Offer(OfferType offerType,CollateralItem collateralItem,LoanTerms loanTerms,address creator,uint32 expiration,bool isCollectionOffer,uint64 collectionOfferLimit,uint32 creatorOfferNonce,bool payRoyalties,MarketplaceRecipient[] marketplaceRecipients)"
+    );
+
+    // /// @dev Constant typeHash for EIP-712 hashing of Offer struct
+    // bytes32 constant _OFFER_TYPEHASH =
+    //     keccak256(
+    //         "Offer(OfferType offerType,CollateralItem collateralItem,LoanTerms loanTerms,address creator,uint32 expiration,bool isCollectionOffer,uint64 collectionOfferLimit,uint32 creatorOfferNonce,bool payRoyalties,MarketplaceRecipient[] marketplaceRecipients)"
+    //     );
 
     bytes32 constant SELLER_FINANCING_STORAGE_POSITION =
         keccak256("diamond.standard.seller.financing");

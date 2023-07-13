@@ -43,12 +43,12 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         // lender1 balance reduced by loan principal amount
         assertEq(
             lender1BalanceAfter,
-            (lender1BalanceBefore - offer.loanItem.principalAmount)
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
         );
 
         // borrower1 balance increased by loan principal amount
-        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanItem.principalAmount);
-        assertEq(ethRecieved, offer.loanItem.principalAmount);
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
+        assertEq(ethRecieved, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_simplest_case(
@@ -86,7 +86,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
         assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
-        assertEq(ethRecieved, offer.loanItem.principalAmount);
+        assertEq(ethRecieved, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_emits_expectedEvents(
@@ -142,7 +142,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         
         bytes memory offerSignature = lender1CreateOffer(offer);
         vm.startPrank(lender1);
-        weth.approve(address(sellerFinancing), offer.loanItem.principalAmount*2);
+        weth.approve(address(sellerFinancing), offer.loanTerms.principalAmount*2);
         vm.stopPrank();
 
         vm.prank(SANCTIONED_ADDRESS);
@@ -172,14 +172,14 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         // lender1 balance reduced by two times the loan principal amount
         assertEq(
             lender1BalanceAfter,
-            (lender1BalanceBefore - 2 * offer.loanItem.principalAmount)
+            (lender1BalanceBefore - 2 * offer.loanTerms.principalAmount)
         );
 
         // borrower1 balance increased by two times the loan principal amount
-        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + 2 * offer.loanItem.principalAmount);
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + 2 * offer.loanTerms.principalAmount);
 
-        assertEq(ethRecieved1, offer.loanItem.principalAmount);
-        assertEq(ethRecieved2, offer.loanItem.principalAmount);
+        assertEq(ethRecieved1, offer.loanTerms.principalAmount);
+        assertEq(ethRecieved2, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_collection_offer_case(
@@ -206,7 +206,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         
         bytes memory offerSignature = lender1CreateOffer(offer);
         vm.startPrank(lender1);
-        weth.approve(address(sellerFinancing), offer.loanItem.principalAmount*2);
+        weth.approve(address(sellerFinancing), offer.loanTerms.principalAmount*2);
         vm.stopPrank();
 
         vm.prank(SANCTIONED_ADDRESS);
@@ -239,12 +239,12 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         // lender1 balance reduced by only one loan principal amount
         assertEq(
             lender1BalanceAfter,
-            (lender1BalanceBefore - offer.loanItem.principalAmount)
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
         );
 
         // borrower1 balance increased by only one loan principal amount
-        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanItem.principalAmount);
-        assertEq(ethRecieved1, offer.loanItem.principalAmount);
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
+        assertEq(ethRecieved1, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_collection_offer_reverts_if_limitReached(
@@ -273,7 +273,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
         assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
-        assertEq(ethRecieved, offer.loanItem.principalAmount);
+        assertEq(ethRecieved, offer.loanTerms.principalAmount);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -345,7 +345,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
     function _test_borrow_reverts_if_invalidPeriodDuration(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.periodDuration = 1 minutes - 1;
+        offer.loanTerms.periodDuration = 1 minutes - 1;
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
@@ -373,7 +373,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
     function _test_borrow_reverts_if_principalAmount_isZero(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.loanItem.principalAmount = 0;
+        offer.loanTerms.principalAmount = 0;
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
@@ -400,15 +400,15 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
     function _test_borrow_reverts_if_invalidMinPrincipalPerPeriod(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.loanItem.minimumPrincipalPerPeriod = uint128(offer.loanItem.principalAmount + 1);
+        offer.loanTerms.minimumPrincipalPerPeriod = uint128(offer.loanTerms.principalAmount + 1);
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 INiftyApesErrors.InvalidMinimumPrincipalPerPeriod.selector,
-                offer.loanItem.minimumPrincipalPerPeriod,
-                offer.loanItem.principalAmount
+                offer.loanTerms.minimumPrincipalPerPeriod,
+                offer.loanTerms.principalAmount
             )
         );
         sellerFinancing.borrow(

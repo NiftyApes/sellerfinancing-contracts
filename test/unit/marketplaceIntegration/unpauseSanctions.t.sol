@@ -19,7 +19,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         vm.startPrank(owner);
         marketplaceIntegration.pauseSanctions();
@@ -27,7 +27,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         vm.stopPrank();
 
         vm.startPrank(SANCTIONED_ADDRESS);
-        uint256 loanId = marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount + marketplaceFee }(
+        uint256 loanId = marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
@@ -46,7 +46,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
             )
         );
         vm.startPrank(SANCTIONED_ADDRESS);
-        marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,

@@ -26,7 +26,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         (uint256[] memory tokenIds, uint256[] memory loanIds) = erc721MintFinancing.mintWithFinancing{
-            value: offer.loanItem.downPaymentAmount
+            value: offer.loanTerms.downPaymentAmount
         }(offer, offerSignature, 1);
         vm.stopPrank();
         assertionsForExecutedLoan(offer, tokenIds[0], buyer1, loanIds[0]);
@@ -58,7 +58,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         (uint256[] memory tokenIds, uint256[] memory loanIds) = erc721MintFinancing.mintWithFinancing{
-            value: (offer.loanItem.downPaymentAmount * offer.collectionOfferLimit)
+            value: (offer.loanTerms.downPaymentAmount * offer.collectionOfferLimit)
         }(offer, offerSignature, 3);
         vm.stopPrank();
         assertionsForExecutedLoan(offer, tokenIds[0], buyer1, loanIds[0]);
@@ -96,12 +96,12 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.expectRevert(
             abi.encodeWithSelector(
                 ERC721MintFinancing.InsufficientMsgValue.selector,
-                (offer.loanItem.downPaymentAmount * offer.collectionOfferLimit) - 1,
-                (offer.loanItem.downPaymentAmount * offer.collectionOfferLimit)
+                (offer.loanTerms.downPaymentAmount * offer.collectionOfferLimit) - 1,
+                (offer.loanTerms.downPaymentAmount * offer.collectionOfferLimit)
             )
         );
         erc721MintFinancing.mintWithFinancing{
-            value: (offer.loanItem.downPaymentAmount * offer.collectionOfferLimit) - 1
+            value: (offer.loanTerms.downPaymentAmount * offer.collectionOfferLimit) - 1
         }(offer, offerSignature, 3);
         vm.stopPrank();
     }
@@ -139,7 +139,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
                 address(seller1)
             )
         );
-        erc721MintFinancing.mintWithFinancing{ value: offer.loanItem.downPaymentAmount }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             1
@@ -179,7 +179,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
                 address(erc721MintFinancing)
             )
         );
-        erc721MintFinancing.mintWithFinancing{ value: offer.loanItem.downPaymentAmount }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             1
@@ -211,7 +211,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         vm.expectRevert(abi.encodeWithSelector(ERC721MintFinancing.CannotMint0.selector));
-        erc721MintFinancing.mintWithFinancing{ value: offer.loanItem.downPaymentAmount }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             0
@@ -247,7 +247,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         uint256 balanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        erc721MintFinancing.mintWithFinancing{ value: offer.loanItem.downPaymentAmount * 2 }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.loanTerms.downPaymentAmount * 2 }(
             offer,
             offerSignature,
             2
@@ -255,7 +255,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        erc721MintFinancing.mintWithFinancing{ value: offer.loanItem.downPaymentAmount * 2 }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.loanTerms.downPaymentAmount * 2 }(
             offer,
             offerSignature,
             2
@@ -266,7 +266,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         uint256 balanceDelta = balanceBefore - balanceAfter;
 
         // check that correct value has been spent and sent back
-        assertEq(balanceDelta, offer.loanItem.downPaymentAmount * offer.collectionOfferLimit);
+        assertEq(balanceDelta, offer.loanTerms.downPaymentAmount * offer.collectionOfferLimit);
     }
 
     function test_fuzz_mintWithFinancing_collectionOfferReachedLimitDuringMint(
@@ -298,7 +298,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.expectRevert(
             abi.encodeWithSelector(ERC721MintFinancing.CollectionOfferLimitReached.selector)
         );
-        erc721MintFinancing.mintWithFinancing{ value: offer.loanItem.downPaymentAmount }(
+        erc721MintFinancing.mintWithFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             1

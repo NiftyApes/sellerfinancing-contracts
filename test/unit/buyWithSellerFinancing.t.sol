@@ -21,7 +21,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanItem.downPaymentAmount);
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanTerms.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -42,7 +42,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         // seller paid out correctly
         assertEq(
             sellerBalanceAfter,
-            (sellerBalanceBefore + offer.loanItem.downPaymentAmount - totalRoyaltiesPaid)
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid)
         );
 
         // royatlies paid out correctly
@@ -74,7 +74,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         // seller paid out correctly without any royalty deductions
         assertEq(
             sellerBalanceAfter,
-            (sellerBalanceBefore + offer.loanItem.downPaymentAmount)
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount)
         );
     }
 
@@ -100,7 +100,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         uint256 extraAmount = 1234;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount + extraAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount + extraAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -108,9 +108,9 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         );
         vm.stopPrank();
 
-        // assert only offer.loanItem.downPaymentAmount is consumed and extraAmount is returned
+        // assert only offer.loanTerms.downPaymentAmount is consumed and extraAmount is returned
         uint256 buyer1BalanceAfter = address(buyer1).balance;
-        assertEq(buyer1BalanceAfter, buyer1BalanceBefore - offer.loanItem.downPaymentAmount);
+        assertEq(buyer1BalanceAfter, buyer1BalanceBefore - offer.loanTerms.downPaymentAmount);
     }
 
     function test_fuzz_buyWithSellerFinancing_returnsExtraAmountMoreThanDownpayment(
@@ -140,7 +140,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.identifier, offerSignature, loan);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -167,7 +167,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.collateralItem.token, nftId, offer.loanItem.downPaymentAmount);
+        ).getRoyalty(offer.collateralItem.token, nftId, offer.loanTerms.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -191,7 +191,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         emit LoanExecuted(offer.collateralItem.token, nftId, offerSignature, loan);
 
         vm.startPrank(buyer1);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -207,7 +207,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         // seller paid out correctly
         assertEq(
             sellerBalanceAfter,
-            (sellerBalanceBefore + offer.loanItem.downPaymentAmount - totalRoyaltiesPaid)
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid)
         );
 
         // royatlies paid out correctly
@@ -234,7 +234,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.NftIdsMustMatch.selector);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -272,7 +272,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -284,7 +284,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.CollectionOfferLimitReached.selector);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -319,7 +319,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
 
         vm.startPrank(buyer1);
         vm.expectRevert("ERC721: transfer caller is not owner nor approved");
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -346,7 +346,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -373,7 +373,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
                 offerSignature
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -402,7 +402,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.OfferExpired.selector);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -426,12 +426,12 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.periodDuration = 1 minutes - 1;
+        offer.loanTerms.periodDuration = 1 minutes - 1;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.InvalidPeriodDuration.selector);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -461,11 +461,11 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         vm.expectRevert(
             abi.encodeWithSelector(
                 INiftyApesErrors.InsufficientMsgValue.selector,
-                offer.loanItem.downPaymentAmount - 1,
-                offer.loanItem.downPaymentAmount
+                offer.loanTerms.downPaymentAmount - 1,
+                offer.loanTerms.downPaymentAmount
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount - 1 }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount - 1 }(
             offer,
             offerSignature,
             buyer1,
@@ -489,12 +489,12 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.loanItem.principalAmount = 0;
+        offer.loanTerms.principalAmount = 0;
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.PrincipalAmountZero.selector);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -518,18 +518,18 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.loanItem.minimumPrincipalPerPeriod = uint128(offer.loanItem.principalAmount + 1);
+        offer.loanTerms.minimumPrincipalPerPeriod = uint128(offer.loanTerms.principalAmount + 1);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 INiftyApesErrors.InvalidMinimumPrincipalPerPeriod.selector,
-                offer.loanItem.minimumPrincipalPerPeriod,
-                offer.loanItem.principalAmount
+                offer.loanTerms.minimumPrincipalPerPeriod,
+                offer.loanTerms.principalAmount
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -562,7 +562,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
@@ -595,7 +595,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -622,7 +622,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
@@ -637,7 +637,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
 
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.CannotBuySellerFinancingTicket.selector);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature2,
             buyer1,

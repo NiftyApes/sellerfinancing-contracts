@@ -27,12 +27,12 @@ contract NiftyApesLoanExecutionFacet is
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.SELLER_FINANCING);
         // requireSufficientMsgValue
-        if (msg.value < offer.loanItem.downPaymentAmount) {
-            revert InsufficientMsgValue(msg.value, offer.loanItem.downPaymentAmount);
+        if (msg.value < offer.loanTerms.downPaymentAmount) {
+            revert InsufficientMsgValue(msg.value, offer.loanTerms.downPaymentAmount);
         }
         // if msg.value is too high, return excess value
-        if (msg.value > offer.loanItem.downPaymentAmount) {
-            payable(buyer).sendValue(msg.value - offer.loanItem.downPaymentAmount);
+        if (msg.value > offer.loanTerms.downPaymentAmount) {
+            payable(buyer).sendValue(msg.value - offer.loanTerms.downPaymentAmount);
         }
 
         // get SellerFinancing storage
@@ -50,13 +50,13 @@ contract NiftyApesLoanExecutionFacet is
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
                 buyer,
-                offer.loanItem.downPaymentAmount,
+                offer.loanTerms.downPaymentAmount,
                 sf
             );
         }
         
         // payout seller
-        payable(seller).sendValue(offer.loanItem.downPaymentAmount - totalRoyaltiesPaid);
+        payable(seller).sendValue(offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid);
 
         _executeLoan(offer, signature, buyer, seller, nftId, sf);
 
@@ -85,12 +85,12 @@ contract NiftyApesLoanExecutionFacet is
         IERC20Upgradeable(sf.wethContractAddress).safeTransferFrom(
             lender,
             address(this),
-            offer.loanItem.principalAmount
+            offer.loanTerms.principalAmount
         );
 
         // convert weth to eth
         (bool success, ) = sf.wethContractAddress.call(
-            abi.encodeWithSignature("withdraw(uint256)", offer.loanItem.principalAmount)
+            abi.encodeWithSignature("withdraw(uint256)", offer.loanTerms.principalAmount)
         );
         if (!success) {
             revert WethConversionFailed();
@@ -139,13 +139,13 @@ contract NiftyApesLoanExecutionFacet is
         }
 
         // transferFrom weth from lender
-        asset.safeTransferFrom(lender, address(this), offer.loanItem.principalAmount);
+        asset.safeTransferFrom(lender, address(this), offer.loanTerms.principalAmount);
 
         // transferFrom downPayment from buyer
         asset.safeTransferFrom(
             borrower,
             address(this),
-            totalConsiderationAmount - offer.loanItem.principalAmount
+            totalConsiderationAmount - offer.loanTerms.principalAmount
         );
 
         // set allowance for seaport to transferFrom this contract during .fulfillOrder()

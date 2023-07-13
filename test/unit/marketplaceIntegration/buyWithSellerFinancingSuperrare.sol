@@ -19,12 +19,12 @@ contract TestBuyWithSellerFinancingMarketplace is Test, OffersLoansFixtures {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
 
         vm.startPrank(buyer1);
-        uint256 loanId = marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount + marketplaceFee }(
+        uint256 loanId = marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             buyer1,
@@ -55,18 +55,18 @@ contract TestBuyWithSellerFinancingMarketplace is Test, OffersLoansFixtures {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 MarketplaceIntegration.InsufficientMsgValue.selector,
-                offer.loanItem.downPaymentAmount + marketplaceFee - 1,
-                offer.loanItem.downPaymentAmount + marketplaceFee
+                offer.loanTerms.downPaymentAmount + marketplaceFee - 1,
+                offer.loanTerms.downPaymentAmount + marketplaceFee
             )
         );
         marketplaceIntegration.buyWithSellerFinancing{
-            value: offer.loanItem.downPaymentAmount + marketplaceFee - 1
+            value: offer.loanTerms.downPaymentAmount + marketplaceFee - 1
         }(offer, offerSignature, buyer1, offer.collateralItem.identifier);
         vm.stopPrank();
     }

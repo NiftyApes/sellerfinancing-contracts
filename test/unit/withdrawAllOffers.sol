@@ -41,7 +41,7 @@ contract TestWithdrawAllOffers is
                 1
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer1.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer1.loanTerms.downPaymentAmount }(
             offer1,
             signature1,
             buyer1,
@@ -54,7 +54,7 @@ contract TestWithdrawAllOffers is
                 1
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer2.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer2.loanTerms.downPaymentAmount }(
             offer2,
             signature2,
             buyer1,
@@ -80,7 +80,7 @@ contract TestWithdrawAllOffers is
                 1
             )
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature1,
             buyer1,
@@ -93,7 +93,7 @@ contract TestWithdrawAllOffers is
         bytes memory signature2 = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature2,
             buyer1,

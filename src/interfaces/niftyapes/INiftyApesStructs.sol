@@ -22,16 +22,20 @@ interface INiftyApesStructs {
         uint256 amount;
     }
 
-    struct LoanItem {
+    struct LoanTerms {
         ItemType itemType;
         address token;
         uint256 identifier;
         // Loan amount
-        uint256 principalAmount;
+        uint128 principalAmount;
         // Minimum amount of total principal to be paid each period
         uint128 minimumPrincipalPerPeriod;
         // Down payment for NFT financing, ignored for LENDING offers
         uint128 downPaymentAmount;
+        // Interest rate basis points to be paid against remainingPrincipal per period
+        uint32 periodInterestRateBps;
+        // Number of seconds per period
+        uint32 periodDuration;
     }
 
     struct MarketplaceRecipient {
@@ -46,14 +50,10 @@ interface INiftyApesStructs {
         // SLOT 0, 1, 2
         CollateralItem collateralItem;
         // SLOT 3, 4, 5, 6
-        LoanItem loanItem;
+        LoanTerms loanTerms;
         // SLOT 7
         // Offer creator
         address creator;
-        // Interest rate basis points to be paid against remainingPrincipal per period
-        uint32 periodInterestRateBps;
-        // Number of seconds per period
-        uint32 periodDuration;
         // Timestamp of offer expiration
         uint32 expiration;
         // SLOT 8
@@ -76,14 +76,10 @@ interface INiftyApesStructs {
         // Buyer loan receipt nftId
         uint256 loanId;
         // SLOT 1, 2, 3, 4
-        LoanItem loanItem;
+        LoanTerms loanTerms;
         // SLOT 5, 6, 7
         CollateralItem collateralItem;
         // SLOT 8
-        // Interest rate basis points to be paid against remainingPrincipal per period
-        uint32 periodInterestRateBps;
-        // Number of seconds per period
-        uint32 periodDuration;
         // Timestamp of period end
         uint32 periodEndTimestamp;
         // Timestamp of period beginning

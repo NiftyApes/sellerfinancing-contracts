@@ -32,7 +32,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         ).getRoyalty(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                (loan.loanItem.principalAmount + periodInterest)
+                (loan.loanTerms.principalAmount + periodInterest)
             );
 
         // payout royalties
@@ -44,10 +44,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanItem.principalAmount + periodInterest);
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + periodInterest + protocolFee + minProfitAmount) *
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + protocolFee + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -72,7 +72,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         emit PaymentMade(
             offer.collateralItem.token,
             offer.collateralItem.identifier,
-            loan.loanItem.principalAmount + periodInterest + protocolFee,
+            loan.loanTerms.principalAmount + periodInterest + protocolFee,
             protocolFee,
             royaltiesInInstantSell,
             periodInterest,
@@ -89,7 +89,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer2, loanId);
         assertEq(
             address(buyer1).balance,
-            (buyer1BalanceBefore - offer.loanItem.downPaymentAmount + minProfitAmount)
+            (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount + minProfitAmount)
         );
     }
 
@@ -125,7 +125,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         ).getRoyalty(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                (loan.loanItem.principalAmount + periodInterest)
+                (loan.loanTerms.principalAmount + periodInterest)
             );
 
         // payout royalties
@@ -137,10 +137,10 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanItem.principalAmount + periodInterest);
+        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + periodInterest + protocolFee + minProfitAmount) *
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + protocolFee + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -165,7 +165,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         emit PaymentMade(
             offer.collateralItem.token,
             offer.collateralItem.identifier,
-            loan.loanItem.principalAmount + periodInterest + protocolFee,
+            loan.loanTerms.principalAmount + periodInterest + protocolFee,
             protocolFee,
             royaltiesInInstantSell,
             periodInterest,
@@ -182,7 +182,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer2, loanId);
         assertEq(
             address(buyer1).balance,
-            (buyer1BalanceBefore - offer.loanItem.downPaymentAmount + minProfitAmount)
+            (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount + minProfitAmount)
         );
         // protocol fee received by the owner
         assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
@@ -215,7 +215,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 considerationAmount2 = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + periodInterest + considerationAmount2) *
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + considerationAmount2) *
             40 +
             38) / 39;
 
@@ -262,7 +262,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer2, loanId);
         assertEq(
             address(buyer1).balance,
-            (buyer1BalanceBefore - offer.loanItem.downPaymentAmount)
+            (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount)
         );
     }
 
@@ -284,7 +284,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanItem.downPaymentAmount);
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanTerms.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -306,7 +306,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         ).getRoyalty(
                 offer.collateralItem.token,
                 offer.collateralItem.identifier,
-                (loan.loanItem.principalAmount + periodInterest)
+                (loan.loanTerms.principalAmount + periodInterest)
             );
 
         // payout royalties
@@ -317,7 +317,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
-        uint256 bidPrice = (loan.loanItem.principalAmount + periodInterest + minProfitAmount);
+        uint256 bidPrice = (loan.loanTerms.principalAmount + periodInterest + minProfitAmount);
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
@@ -345,7 +345,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 buyer1BalanceAfter = address(buyer1).balance;
         assertEq(
             buyer1BalanceAfter,
-            (buyer1BalanceBefore - offer.loanItem.downPaymentAmount + minProfitAmount)
+            (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount + minProfitAmount)
         );
     }
 
@@ -368,7 +368,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        skip(loan.periodDuration * 2);
+        skip(loan.loanTerms.periodDuration * 2);
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
@@ -376,7 +376,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.loanItem.principalAmount + totalInterest) + minProfitAmount) *
+        uint256 bidPrice = (((loan.loanTerms.principalAmount + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -429,7 +429,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.loanItem.principalAmount + totalInterest) + minProfitAmount) *
+        uint256 bidPrice = (((loan.loanTerms.principalAmount + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -494,7 +494,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.loanItem.principalAmount + totalInterest) + minProfitAmount) *
+        uint256 bidPrice = (((loan.loanTerms.principalAmount + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -541,13 +541,13 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
-        vm.warp(loan.periodEndTimestamp + loan.periodDuration + 1);
+        vm.warp(loan.periodEndTimestamp + loan.loanTerms.periodDuration + 1);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.loanItem.principalAmount + totalInterest) + minProfitAmount) *
+        uint256 bidPrice = (((loan.loanTerms.principalAmount + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -592,7 +592,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + totalInterest) * 40 + 38) / 39;
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
@@ -639,7 +639,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + totalInterest) * 40 + 38) / 39;
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
@@ -686,7 +686,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + totalInterest) * 40 + 38) / 39;
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
@@ -732,7 +732,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + totalInterest) * 40 + 38) / 39;
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
@@ -778,7 +778,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + totalInterest) * 40 + 38) / 39;
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
@@ -824,7 +824,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + totalInterest) * 40 + 38) / 39;
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
@@ -871,7 +871,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + totalInterest) * 40 + 38) / 39;
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
@@ -922,7 +922,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 minProfitAmount = 1 ether;
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = (((loan.loanItem.principalAmount + totalInterest) + minProfitAmount) *
+        uint256 bidPrice = (((loan.loanTerms.principalAmount + totalInterest) + minProfitAmount) *
             40 +
             38) / 39;
 
@@ -944,8 +944,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectRevert(
             abi.encodeWithSelector(
                 INiftyApesErrors.InsufficientAmountReceivedFromSale.selector,
-                loan.loanItem.principalAmount + totalInterest + minProfitAmount,
-                loan.loanItem.principalAmount + totalInterest + minProfitAmount + 1
+                loan.loanTerms.principalAmount + totalInterest + minProfitAmount,
+                loan.loanTerms.principalAmount + totalInterest + minProfitAmount + 1
             )
         );
         sellerFinancing.instantSell(
@@ -981,7 +981,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         );
 
         // adding 2.5% opnesea fee amount
-        uint256 bidPrice = ((loan.loanItem.principalAmount + totalInterest) *
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) *
             40 +
             38) / 39;
 

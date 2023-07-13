@@ -19,7 +19,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         Offer[] memory offers = new Offer[](1);
         offers[0] = offer;
@@ -29,7 +29,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         nftIds[0] = offer.collateralItem.identifier;
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         vm.startPrank(buyer1);
-        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: offer.loanItem.downPaymentAmount + marketplaceFee }(
+        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: offer.loanTerms.downPaymentAmount + marketplaceFee }(
             offers,
             offerSignatures,
             buyer1,
@@ -72,7 +72,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
 
@@ -86,7 +86,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanItem.downPaymentAmount + 2 * marketplaceFee }(
+        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanTerms.downPaymentAmount + 2 * marketplaceFee }(
             offers,
             offerSignatures,
             buyer1,
@@ -130,7 +130,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
@@ -145,7 +145,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanItem.downPaymentAmount + 2 * marketplaceFee }(
+        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanTerms.downPaymentAmount + 2 * marketplaceFee }(
             offers,
             offerSignatures,
             buyer1,
@@ -157,7 +157,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         // assert nftIds[1] is still owned by seller1
         assertEq(boredApeYachtClub.ownerOf(nftIds[1]), address(seller1));
         Loan memory loan = sellerFinancing.getLoan(loanIds[1]);
-        assertEq(loan.loanItem.principalAmount, 0);
+        assertEq(loan.loanTerms.principalAmount, 0);
 
         uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceAfter = address(buyer1).balance;
@@ -166,7 +166,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
 
         // assert buyer balance is deduced from one execution
-        assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.loanItem.downPaymentAmount - marketplaceFee));
+        assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount - marketplaceFee));
     }
 
     function test_fuzz_buyWithSellerFinancingMarketplaceBatch_partialExecution_withSecondOfferInvalid(
@@ -196,7 +196,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
@@ -211,7 +211,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanItem.downPaymentAmount + 2 * marketplaceFee }(
+        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanTerms.downPaymentAmount + 2 * marketplaceFee }(
             offers,
             offerSignatures,
             buyer1,
@@ -223,7 +223,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         // assert nftIds[0] is still owned by seller1, because it didn't approve the NFT
         assertEq(boredApeYachtClub.ownerOf(nftIds[0]), address(seller1));
         Loan memory loan = sellerFinancing.getLoan(loanIds[0]);
-        assertEq(loan.loanItem.principalAmount, 0);
+        assertEq(loan.loanTerms.principalAmount, 0);
 
         uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceAfter = address(buyer1).balance;
@@ -232,7 +232,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
 
         // assert buyer balance is deduced from one execution
-        assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.loanItem.downPaymentAmount - marketplaceFee));
+        assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount - marketplaceFee));
     }
 
     function test_fuzz_buyWithSellerFinancingMarketplaceBatch_partialExecution_withFirstOfferInvalid(
@@ -263,7 +263,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceBefore = address(buyer1).balance;
@@ -278,7 +278,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         nftIds[0] = 8661;
         nftIds[1] = 6974;
         vm.startPrank(buyer1);
-        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanItem.downPaymentAmount + 2 * marketplaceFee - 1}(
+        uint256[] memory loanIds = marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanTerms.downPaymentAmount + 2 * marketplaceFee - 1}(
             offers,
             offerSignatures,
             buyer1,
@@ -290,7 +290,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         // assert nftIds[1] is still owned by seller1
         assertEq(boredApeYachtClub.ownerOf(nftIds[1]), address(seller1));
         Loan memory loan = sellerFinancing.getLoan(loanIds[1]);
-        assertEq(loan.loanItem.principalAmount, 0);
+        assertEq(loan.loanTerms.principalAmount, 0);
 
         uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
         uint256 buyer1BalanceAfter = address(buyer1).balance;
@@ -299,7 +299,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
 
         // assert buyer balance is deducted from one execution
-        assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.loanItem.downPaymentAmount - marketplaceFee));
+        assertEq(buyer1BalanceAfter, (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount - marketplaceFee));
     }
 
     function test_fuzz_buyWithSellerFinancingMarketplaceBatch_partialExecution_withLessValueSentThanRequired(
@@ -330,7 +330,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         Offer[] memory offers = new Offer[](2);
         offers[0] = offer;
@@ -348,7 +348,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
                 1
             )
         );
-        marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanItem.downPaymentAmount + 2 * marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanTerms.downPaymentAmount + 2 * marketplaceFee }(
             offers,
             offerSignatures,
             buyer1,
@@ -386,7 +386,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         boredApeYachtClub.approve(address(sellerFinancing), 6974);
         vm.stopPrank();
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         Offer[] memory offers = new Offer[](2);
         offers[0] = offer;
@@ -401,11 +401,11 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         vm.expectRevert(
             abi.encodeWithSelector(
                 MarketplaceIntegration.InsufficientMsgValue.selector,
-                2 * offer.loanItem.downPaymentAmount + 2 * marketplaceFee - 1,
-                2 * offer.loanItem.downPaymentAmount + 2 * marketplaceFee
+                2 * offer.loanTerms.downPaymentAmount + 2 * marketplaceFee - 1,
+                2 * offer.loanTerms.downPaymentAmount + 2 * marketplaceFee
             )
         );
-        marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanItem.downPaymentAmount + 2 * marketplaceFee - 1}(
+        marketplaceIntegration.buyWithSellerFinancingBatch{ value: 2 * offer.loanTerms.downPaymentAmount + 2 * marketplaceFee - 1}(
             offers,
             offerSignatures,
             buyer1,
@@ -432,7 +432,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         Offer[] memory offers = new Offer[](2);
         offers[0] = offer;
@@ -446,7 +446,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
 
         vm.startPrank(buyer1);
         vm.expectRevert(MarketplaceIntegration.InvalidInputLength.selector);
-        marketplaceIntegration.buyWithSellerFinancingBatch{ value: offer.loanItem.downPaymentAmount * 2 + marketplaceFee * 2}(
+        marketplaceIntegration.buyWithSellerFinancingBatch{ value: offer.loanTerms.downPaymentAmount * 2 + marketplaceFee * 2}(
             offers,
             offerSignatures,
             buyer1,

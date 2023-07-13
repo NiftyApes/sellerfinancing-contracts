@@ -54,19 +54,19 @@ contract NiftyApesLoanManagementFacet is
         if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
             // calculate periods passed
             uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) /
-                loan.periodDuration) + 1;
+                loan.loanTerms.periodDuration) + 1;
 
             // calculate minimum principal to be paid
-            uint256 minimumPrincipalPayment = loan.loanItem.minimumPrincipalPerPeriod * numPeriodsPassed;
+            uint256 minimumPrincipalPayment = loan.loanTerms.minimumPrincipalPerPeriod * numPeriodsPassed;
 
             // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
-            if (loan.loanItem.principalAmount < minimumPrincipalPayment) {
-                minimumPrincipalPayment = loan.loanItem.principalAmount;
+            if (loan.loanTerms.principalAmount < minimumPrincipalPayment) {
+                minimumPrincipalPayment = loan.loanTerms.principalAmount;
             }
             // calculate % interest to be paid to lender
-            if (loan.periodInterestRateBps != 0) {
+            if (loan.loanTerms.periodInterestRateBps != 0) {
                 periodInterest =
-                    ((loan.loanItem.principalAmount * loan.periodInterestRateBps) / NiftyApesStorage.BASE_BPS) *
+                    ((loan.loanTerms.principalAmount * loan.loanTerms.periodInterestRateBps) / NiftyApesStorage.BASE_BPS) *
                     numPeriodsPassed;
             }
 
@@ -176,12 +176,12 @@ contract NiftyApesLoanManagementFacet is
         // requireMsgSenderIsBuyer
         _requireMsgSenderIsValidCaller(borrowerAddress);
         // requireLoanNotInHardDefault
-        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
+        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.loanTerms.periodDuration);
 
         // calculate period interest
         (, uint256 periodInterest) = _calculateMinimumPayment(loan, sf);
         // calculate total payment required to close the loan
-        uint256 totalPaymentRequired = loan.loanItem.principalAmount + periodInterest + _calculateProtocolFee(loan.loanItem.principalAmount + periodInterest, sf);
+        uint256 totalPaymentRequired = loan.loanTerms.principalAmount + periodInterest + _calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest, sf);
 
         // sell the asset to get sufficient funds to repay loan
         uint256 saleAmountReceived = _sellAsset(
@@ -209,13 +209,13 @@ contract NiftyApesLoanManagementFacet is
         _requireIsNotSanctioned(borrowerAddress, sf);
         _requireIsNotSanctioned(msg.sender, sf);
         // requireLoanNotInHardDefault
-        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
+        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.loanTerms.periodDuration);
 
         // get minimum payment and period interest values
         (uint256 totalMinimumPayment, uint256 periodInterest) = _calculateMinimumPayment(loan, sf);
 
         // calculate the total possible payment
-        uint256 totalPossiblePayment = loan.loanItem.principalAmount + periodInterest + _calculateProtocolFee(loan.loanItem.principalAmount + periodInterest, sf);
+        uint256 totalPossiblePayment = loan.loanTerms.principalAmount + periodInterest + _calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest, sf);
 
         //require amountReceived to be larger than the total minimum payment
         if (amountReceived < totalMinimumPayment) {
@@ -252,10 +252,10 @@ contract NiftyApesLoanManagementFacet is
         _conditionalSendValue(ownerOf(loan.loanId + 1), borrowerAddress, amountReceived - protocolFeeAmount - totalRoyaltiesPaid, sf);
 
         // update loan struct
-        loan.loanItem.principalAmount -= uint128(amountReceived - protocolFeeAmount - periodInterest);
+        loan.loanTerms.principalAmount -= uint128(amountReceived - protocolFeeAmount - periodInterest);
 
         // check if remainingPrincipal is 0
-        if (loan.loanItem.principalAmount == 0) {
+        if (loan.loanTerms.principalAmount == 0) {
             // remove borrower delegate.cash delegation
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
                 borrowerAddress,
@@ -289,10 +289,10 @@ contract NiftyApesLoanManagementFacet is
             // if in the current period, else prior to period begin and end should remain the same
             if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
                 uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) /
-                    loan.periodDuration) + 1;
+                    loan.loanTerms.periodDuration) + 1;
                 // increment the currentPeriodBegin and End Timestamps equal to the periodDuration times numPeriodsPassed
-                loan.periodBeginTimestamp += loan.periodDuration * uint32(numPeriodsPassed);
-                loan.periodEndTimestamp += loan.periodDuration * uint32(numPeriodsPassed);
+                loan.periodBeginTimestamp += loan.loanTerms.periodDuration * uint32(numPeriodsPassed);
+                loan.periodEndTimestamp += loan.loanTerms.periodDuration * uint32(numPeriodsPassed);
             }
 
             //emit paymentMade event

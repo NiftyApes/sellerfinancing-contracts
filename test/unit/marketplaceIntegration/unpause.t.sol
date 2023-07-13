@@ -18,14 +18,14 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.loanItem.principalAmount + offer.loanItem.downPaymentAmount)* SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount)* SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         vm.prank(owner);
         marketplaceIntegration.pause();
 
         vm.startPrank(buyer1);
         vm.expectRevert("Pausable: paused");
-        marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             buyer1,
@@ -37,7 +37,7 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
         marketplaceIntegration.unpause();
 
         vm.startPrank(buyer1);
-        uint256 loanId = marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanItem.downPaymentAmount + marketplaceFee }(
+        uint256 loanId = marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             buyer1,
