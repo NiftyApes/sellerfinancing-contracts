@@ -105,7 +105,7 @@ contract TestGetUnderlyingNft is
         assertEq(underlyingSeller.token, offer.collateralItem.token);
         assertEq(underlyingSeller.identifier, offer.collateralItem.identifier);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(
             loanId
         );
 

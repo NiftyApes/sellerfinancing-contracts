@@ -33,7 +33,7 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.prank(owner);
         sellerFinancing.unpauseSanctions();

@@ -79,7 +79,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(

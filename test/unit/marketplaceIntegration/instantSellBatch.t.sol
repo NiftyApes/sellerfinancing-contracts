@@ -30,7 +30,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanIds[0]);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
 
         
 
@@ -129,8 +129,8 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan0 = sellerFinancing.getLoan(loanIds[0]);
         Loan memory loan1 = sellerFinancing.getLoan(loanIds[1]);
 
-        (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
-        (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
+        (, uint256 periodInterestLoan0,) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterestLoan1,) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[0] = 1 ether;
@@ -244,8 +244,8 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan0 = sellerFinancing.getLoan(loanIds[0]);
         Loan memory loan1 = sellerFinancing.getLoan(loanIds[1]);
 
-        (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
-        (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
+        (, uint256 periodInterestLoan0,) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterestLoan1,) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[0] = 1 ether;
@@ -360,8 +360,8 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan0 = sellerFinancing.getLoan(loanIds[0]);
         Loan memory loan1 = sellerFinancing.getLoan(loanIds[1]);
 
-        (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
-        (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
+        (, uint256 periodInterestLoan0,) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterestLoan1,) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
 
         
 
@@ -478,7 +478,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan0 = sellerFinancing.getLoan(loanIds[0]);
         Loan memory loan1 = sellerFinancing.getLoan(loanIds[1]);
 
-        (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterestLoan0,) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
 
         uint256[] memory minProfitAmounts = new uint256[](2);
         minProfitAmounts[0] = 1 ether;
@@ -584,7 +584,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan0 = sellerFinancing.getLoan(loanIds[0]);
         Loan memory loan1 = sellerFinancing.getLoan(loanIds[1]);
 
-        (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
+        (, uint256 periodInterestLoan1,) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
 
         
 
@@ -692,8 +692,8 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan0 = sellerFinancing.getLoan(loanIds[0]);
         Loan memory loan1 = sellerFinancing.getLoan(loanIds[1]);
 
-        (, uint256 periodInterestLoan0) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
-        (, uint256 periodInterestLoan1) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
+        (, uint256 periodInterestLoan0,) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterestLoan1,) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
 
         
 
@@ -776,7 +776,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanIds[0]);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
 
         
 

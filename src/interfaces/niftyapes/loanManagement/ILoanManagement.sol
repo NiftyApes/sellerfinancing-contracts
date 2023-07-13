@@ -24,12 +24,7 @@ interface ILoanManagement
     /// @return periodInterest Unpaid interest amount for the current period
     function calculateMinimumPayment(
         uint256 loanId
-    ) external view returns (uint256 minimumPayment, uint256 periodInterest);
-
-    /// @notice Calculates and returns protocol fee on the given loan payment amount
-    /// @dev Explain to a developer any extra details
-    /// @param loanPaymentAmount Payment amout to be paid for an existing loan
-    function calculateProtocolFee(uint256 loanPaymentAmount) external view returns (uint256);
+    ) external view returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount);
 
     /// @notice Make a partial payment or full repayment of a loan.
     /// @dev Any address may make a payment towards the loan.
