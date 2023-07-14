@@ -74,9 +74,7 @@ contract NiftyApesLoanManagementFacet is
                 protocolFeeAmount = _calculateProtocolFee(loan.loanTerms.principalAmount, sf) *
                     numPeriodsPassed;
             }
-
-            minimumPayment = minimumPrincipalPayment + periodInterest;
-            minimumPayment += protocolFeeAmount;
+            minimumPayment = minimumPrincipalPayment + periodInterest + protocolFeeAmount;
         }
     }
 
@@ -464,11 +462,6 @@ contract NiftyApesLoanManagementFacet is
 
     function _calculateProtocolFee(uint256 loanPaymentAmount, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {
         return (loanPaymentAmount * sf.protocolFeeBPS) / NiftyApesStorage.BASE_BPS;
-    }
-
-    function _calculateProtocolFeeShareFromPaymentReceived(uint256 paymentReceived, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {
-        uint256 loanPaymentAmount = ((paymentReceived*NiftyApesStorage.BASE_BPS)+NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS - 1)/(NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS);
-        return paymentReceived - loanPaymentAmount;
     }
 
     function _sendProtocolFeeToRecipient(uint256 amount, NiftyApesStorage.SellerFinancingStorage storage sf) private {
