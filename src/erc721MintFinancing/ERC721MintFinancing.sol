@@ -7,7 +7,7 @@ import "@openzeppelin-norm/contracts/security/ReentrancyGuard.sol";
 
 import "@openzeppelin-norm/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-norm/contracts/utils/Counters.sol";
-import "../interfaces/niftyapes/sellerFinancing/ISellerFinancing.sol";
+import "../interfaces/niftyapes/INiftyApes.sol";
 
 /// @title ERC721MintFinancing
 /// @custom:version 1.0
@@ -67,12 +67,12 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
         bytes calldata signature,
         uint256 count
     ) external payable nonReentrant returns (uint256[] memory tokenIds) {
-        address signer = ISellerFinancing(sellerFinancingContractAddress).getOfferSigner(
+        address signer = INiftyApes(sellerFinancingContractAddress).getOfferSigner(
             offer,
             signature
         );
 
-        uint64 collectionOfferLimitCount = ISellerFinancing(sellerFinancingContractAddress)
+        uint64 collectionOfferLimitCount = INiftyApes(sellerFinancingContractAddress)
             .getCollectionOfferCount(signature);
 
         tokenIds = new uint256[](count);
@@ -114,7 +114,7 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             tokenIds[i] = _tokenIdTracker.current();
 
             // Execute loan
-            ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
+            INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                 value: offer.downPaymentAmount
             }(offer, signature, msg.sender, _tokenIdTracker.current());
         }

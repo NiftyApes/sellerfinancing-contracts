@@ -15,22 +15,28 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         super.setUp();
     }
 
-    function test_facetAddresses_must_return_all_five_facets_addresses() public {
+    function test_facetAddresses_must_return_all_seven_facets_addresses() public {
         address[] memory allfacetAddresses = diamondLoupe.facetAddresses();
-        assertEq(allfacetAddresses.length, 5);
+        assertEq(allfacetAddresses.length, 7);
         assertEq(allfacetAddresses[0], address(diamondCutFacet));
         assertEq(allfacetAddresses[1], address(diamondLoupeFacet));
         assertEq(allfacetAddresses[2], address(ownershipFacet));
-        assertEq(allfacetAddresses[3], address(sellerFinancingFacet));
+        assertEq(allfacetAddresses[3], address(adminFacet));
+        assertEq(allfacetAddresses[4], address(offerFacet));
+        assertEq(allfacetAddresses[5], address(loanExecFacet));
+        assertEq(allfacetAddresses[6], address(loanManagFacet));
     }
 
-    function test_facets_must_return_all_five_facets_addresses_with_their_functionSelectors() public {
+    function test_facets_must_return_all_seven_facets_addresses_with_their_functionSelectors() public {
         IDiamondLoupe.Facet[] memory allFacets = diamondLoupe.facets();
-        assertEq(allFacets.length, 5);
+        assertEq(allFacets.length, 7);
         assertEq(allFacets[0].facetAddress, address(diamondCutFacet));
         assertEq(allFacets[1].facetAddress, address(diamondLoupeFacet));
         assertEq(allFacets[2].facetAddress, address(ownershipFacet));
-        assertEq(allFacets[3].facetAddress, address(sellerFinancingFacet));
+        assertEq(allFacets[3].facetAddress, address(adminFacet));
+        assertEq(allFacets[4].facetAddress, address(offerFacet));
+        assertEq(allFacets[5].facetAddress, address(loanExecFacet));
+        assertEq(allFacets[6].facetAddress, address(loanManagFacet));
 
         assertEq(allFacets[0].functionSelectors.length, 1);
         assertEq(allFacets[0].functionSelectors[0], diamondCutFacet.diamondCut.selector);
@@ -46,18 +52,29 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[2].functionSelectors[0], ownershipFacet.transferOwnership.selector);
         assertEq(allFacets[2].functionSelectors[1], ownershipFacet.owner.selector);
 
-        assertEq(allFacets[3].functionSelectors.length, 39);
-        assertEq(allFacets[3].functionSelectors[0], sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector);
-        assertEq(allFacets[3].functionSelectors[1], sellerFinancingFacet.updateDelegateRegistryContractAddress.selector);
-        assertEq(allFacets[3].functionSelectors[2], sellerFinancingFacet.updateSeaportContractAddress.selector);
-        assertEq(allFacets[3].functionSelectors[10], sellerFinancingFacet.pauseSanctions.selector);
-        assertEq(allFacets[3].functionSelectors[20], sellerFinancingFacet.instantSell.selector);
-        assertEq(allFacets[3].functionSelectors[30], sellerFinancingFacet.balanceOf.selector);
-        assertEq(allFacets[3].functionSelectors[36], sellerFinancingFacet.isApprovedForAll.selector);
+        assertEq(allFacets[3].functionSelectors.length, 12);
+        assertEq(allFacets[3].functionSelectors[0], adminFacet.updateRoyaltiesEngineContractAddress.selector);
+        assertEq(allFacets[3].functionSelectors[1], adminFacet.updateDelegateRegistryContractAddress.selector);
+        assertEq(allFacets[3].functionSelectors[2], adminFacet.updateSeaportContractAddress.selector);
+        assertEq(allFacets[3].functionSelectors[11], adminFacet.unpauseSanctions.selector);
 
-        assertEq(allFacets[4].functionSelectors.length, 2);
-        assertEq(allFacets[4].functionSelectors[0], lendingFacet.borrow.selector);
-        assertEq(allFacets[4].functionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
+        assertEq(allFacets[4].functionSelectors.length, 6);
+        assertEq(allFacets[4].functionSelectors[0], offerFacet.getOfferHash.selector);
+        assertEq(allFacets[4].functionSelectors[1], offerFacet.getOfferSigner.selector);
+        assertEq(allFacets[4].functionSelectors[5], offerFacet.withdrawAllOffers.selector);
+
+        assertEq(allFacets[5].functionSelectors.length, 16);
+        assertEq(allFacets[5].functionSelectors[0], loanExecFacet.onERC721Received.selector);
+        assertEq(allFacets[5].functionSelectors[1], loanExecFacet.buyWithSellerFinancing.selector);
+        assertEq(allFacets[5].functionSelectors[2], loanExecFacet.borrow.selector);
+        assertEq(allFacets[5].functionSelectors[3], loanExecFacet.buyWith3rdPartyFinancing.selector);
+        assertEq(allFacets[5].functionSelectors[10], loanExecFacet.name.selector);
+        assertEq(allFacets[5].functionSelectors[15], loanExecFacet.isApprovedForAll.selector);
+
+        assertEq(allFacets[6].functionSelectors.length, 7);
+        assertEq(allFacets[6].functionSelectors[0], loanManagFacet.makePayment.selector);
+        assertEq(allFacets[6].functionSelectors[1], loanManagFacet.seizeAsset.selector);
+        assertEq(allFacets[6].functionSelectors[6], loanManagFacet.makePaymentBatch.selector);
     }
 
     function test_facetFunctionSelectors_must_return_all_added_selectors_for_each_facet() public {
@@ -79,27 +96,37 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(facetFunctionSelectors[0], ownershipFacet.transferOwnership.selector);
         assertEq(facetFunctionSelectors[1], ownershipFacet.owner.selector);
 
-        facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(sellerFinancingFacet));
-        assertEq(facetFunctionSelectors.length, 39);
-        assertEq(facetFunctionSelectors[0], sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector);
-        assertEq(facetFunctionSelectors[1], sellerFinancingFacet.updateDelegateRegistryContractAddress.selector);
-        assertEq(facetFunctionSelectors[2], sellerFinancingFacet.updateSeaportContractAddress.selector);
-        assertEq(facetFunctionSelectors[10], sellerFinancingFacet.pauseSanctions.selector);
-        assertEq(facetFunctionSelectors[20], sellerFinancingFacet.instantSell.selector);
-        assertEq(facetFunctionSelectors[30], sellerFinancingFacet.balanceOf.selector);
-        assertEq(facetFunctionSelectors[36], sellerFinancingFacet.isApprovedForAll.selector);
+        facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(adminFacet));
+        assertEq(facetFunctionSelectors.length, 12);
+        assertEq(facetFunctionSelectors[0], adminFacet.updateRoyaltiesEngineContractAddress.selector);
+        assertEq(facetFunctionSelectors[1], adminFacet.updateDelegateRegistryContractAddress.selector);
+        assertEq(facetFunctionSelectors[2], adminFacet.updateSeaportContractAddress.selector);
+        assertEq(facetFunctionSelectors[10], adminFacet.pauseSanctions.selector);
 
-        facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(lendingFacet));
-        assertEq(facetFunctionSelectors.length, 2);
-        assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
-        assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
+        facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(offerFacet));
+        assertEq(facetFunctionSelectors.length, 6);
+        // assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
+        // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
+
+        facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(loanExecFacet));
+        assertEq(facetFunctionSelectors.length, 16);
+        // assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
+        // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
+
+        facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(loanManagFacet));
+        assertEq(facetFunctionSelectors.length, 7);
+        // assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
+        // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
     }
 
     function test_facetAddress_must_return_correctAddresses_for_each_selector() public {
         assertEq(diamondLoupe.facetAddress(diamondCutFacet.diamondCut.selector), address(diamondCutFacet));
         assertEq(diamondLoupe.facetAddress(diamondLoupeFacet.facets.selector), address(diamondLoupeFacet));
         assertEq(diamondLoupe.facetAddress(ownershipFacet.transferOwnership.selector), address(ownershipFacet));
-        assertEq(diamondLoupe.facetAddress(sellerFinancing.buyWithSellerFinancing.selector), address(sellerFinancingFacet));
+        assertEq(diamondLoupe.facetAddress(adminFacet.updateDelegateRegistryContractAddress.selector), address(adminFacet));
+        assertEq(diamondLoupe.facetAddress(offerFacet.getOfferHash.selector), address(offerFacet));
+        assertEq(diamondLoupe.facetAddress(loanExecFacet.borrow.selector), address(loanExecFacet));
+        assertEq(diamondLoupe.facetAddress(loanManagFacet.makePayment.selector), address(loanManagFacet));
     }
 
     function test_supportsInterface_must_be_true_for_all_supported_intrerface() public {

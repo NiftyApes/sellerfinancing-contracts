@@ -18,7 +18,7 @@ library NiftyApesStorage {
     /// @dev Constant typeHash for EIP-712 hashing of Offer struct
     bytes32 constant _OFFER_TYPEHASH =
         keccak256(
-            "Offer(uint128 price,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,bool isCollectionOffer,uint64 collectionOfferLimit)"
+            "Offer(uint128 price,uint32 creatorOfferNonce,uint128 downPaymentAmount,uint128 minimumPrincipalPerPeriod,uint256 nftId,address nftContractAddress,address creator,uint32 periodInterestRateBps,uint32 periodDuration,uint32 expiration,bool isCollectionOffer,uint64 collectionOfferLimit,bool payRoyalties)"
         );
 
     bytes32 constant SELLER_FINANCING_STORAGE_POSITION =
@@ -61,6 +61,10 @@ library NiftyApesStorage {
         ///      The mapping allows users to withdraw offers that they made by signature.
         /// slot8
         mapping(bytes => bool) cancelledOrFinalized;
+        /// @dev A mapping to store a unique offer nonce value for each user.
+        ///      The mapping allows users to withdraw all offers at once by just incrementing the nonce
+        /// slot9
+        mapping(address => uint32) offerNonce;
     }
 
     function sellerFinancingStorage() internal pure returns (SellerFinancingStorage storage sf) {

@@ -9,9 +9,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeab
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../src/interfaces/niftyapes/INiftyApesEvents.sol";
 
-contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinancingEvents {
+contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEvents {
     function setUp() public override {
         super.setUp();
     }
@@ -101,6 +101,36 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithSellerFinancing_simplest_case(fixedForSpeed);
     }
+
+    function _test_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        offer.payRoyalties = false;
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+
+        createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.nftId);
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+
+        // seller paid out correctly without any royalty deductions
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.downPaymentAmount)
+        );
+    }
+
+    function test_fuzz_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(fixedForSpeed);
+    }
+
 
     function _test_buyWithSellerFinancing_returnsExtraAmountMoreThanDownpayment(
         FuzzedOfferFields memory fuzzed
@@ -371,8 +401,13 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, ISellerFinanci
 
         vm.warp(loan.periodEndTimestamp + 1);
 
+        address[] memory nftContractAddresses = new address[](1);
+        nftContractAddresses[0] = offer.nftContractAddress;
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = offer.nftId;
+
         vm.startPrank(seller1);
-        sellerFinancing.seizeAsset(offer.nftContractAddress, offer.nftId);
+        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
         vm.stopPrank();
 
         vm.startPrank(buyer1);

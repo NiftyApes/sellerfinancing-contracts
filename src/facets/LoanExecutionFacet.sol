@@ -1,26 +1,66 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
-import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../storage/NiftyApesStorage.sol";
-import "../interfaces/niftyapes/lending/ILending.sol";
+import "../interfaces/niftyapes/loanExecution/ILoanExecution.sol";
 import "../interfaces/seaport/ISeaport.sol";
 import "./common/NiftyApesInternal.sol";
 
-/// @title NiftyApes Lending facet
+/// @title NiftyApes LoanExecution facet
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
-contract NiftyApesLendingFacet is
+contract NiftyApesLoanExecutionFacet is
     NiftyApesInternal,
-    ILending
+    ILoanExecution
 {
     using AddressUpgradeable for address payable;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// @inheritdoc ILoanExecution
+    function buyWithSellerFinancing(
+        Offer memory offer,
+        bytes calldata signature,
+        address buyer,
+        uint256 nftId
+    ) external payable whenNotPaused nonReentrant {
+        // validate offerType
+        _requireExpectedOfferType(offer, OfferType.SELLER_FINANCING);
+        // requireSufficientMsgValue
+        if (msg.value < offer.downPaymentAmount) {
+            revert InsufficientMsgValue(msg.value, offer.downPaymentAmount);
+        }
+        // if msg.value is too high, return excess value
+        if (msg.value > offer.downPaymentAmount) {
+            payable(buyer).sendValue(msg.value - offer.downPaymentAmount);
+        }
+
+        // get SellerFinancing storage
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        
+        address seller = _commonLoanChecks(offer, signature, buyer, nftId, sf);
+
+        // transfer nft from seller to this contract, revert on failure
+        _transferNft(offer.nftContractAddress, nftId, seller, address(this));
+
+        uint256 totalRoyaltiesPaid;
+        if (offer.payRoyalties) {
+            totalRoyaltiesPaid = _payRoyalties(
+                offer.nftContractAddress,
+                nftId,
+                buyer,
+                offer.downPaymentAmount,
+                sf
+            );
+        }
+        
+        // payout seller
+        payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
+
+        _executeLoan(offer, signature, buyer, seller, nftId, sf);
+    }
+
+    /// @inheritdoc ILoanExecution
     function borrow(
         Offer memory offer,
         bytes calldata signature,
@@ -65,6 +105,7 @@ contract NiftyApesLendingFacet is
         payable(borrower).sendValue(ethReceived);
     }
 
+    /// @inheritdoc ILoanExecution
     function buyWith3rdPartyFinancing(
         Offer memory offer,
         bytes calldata signature,

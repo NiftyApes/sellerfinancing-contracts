@@ -8,11 +8,11 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "./../utils/fixtures/OffersLoansFixtures.sol";
 import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 import "../../src/interfaces/niftyapes/INiftyApesErrors.sol";
-import "../../src/interfaces/niftyapes/sellerFinancing/ISellerFinancingEvents.sol";
+import "../../src/interfaces/niftyapes/INiftyApesEvents.sol";
 
 import "../common/Console.sol";
 
-contract TestMakePaymentBatch is Test, OffersLoansFixtures, ISellerFinancingEvents {
+contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
     function setUp() public override {
         super.setUp();
     }

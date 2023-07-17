@@ -8,8 +8,11 @@ interface INiftyApesStructs {
     }
     
     struct Offer {
-        // SLOT 0
+        // SLOT 0 - 88 remaining
         OfferType offerType;
+        // Current offer nonce value of the creator
+        // Offer becomes invalid if current offerNonce is increased
+        uint32 creatorOfferNonce;
         // Down payment for NFT financing, ignored for LENDING offers
         uint128 downPaymentAmount;
         // SLOT 1
@@ -36,6 +39,9 @@ interface INiftyApesStructs {
         bool isCollectionOffer;
         // collection offer usage limit, ignored if not collection offer
         uint64 collectionOfferLimit;
+        // royalties will be paid from the buyer payments if offerType is SELLER_FINANCING 
+        // and this set to true. Ignored in all other cases
+        bool payRoyalties;
     }
 
     struct Loan {
@@ -59,6 +65,8 @@ interface INiftyApesStructs {
         uint32 periodEndTimestamp;
         // Timestamp of period beginning
         uint32 periodBeginTimestamp;
+        // Pay royalties from loan payments if set to true
+        bool payRoyalties;
     }
 
     struct UnderlyingNft {

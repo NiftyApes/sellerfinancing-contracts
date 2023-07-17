@@ -6,7 +6,7 @@ import "@openzeppelin-norm/contracts/security/Pausable.sol";
 import "@openzeppelin-norm/contracts/utils/Address.sol";
 import "@openzeppelin-norm/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin-norm/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "../interfaces/niftyapes/sellerFinancing/ISellerFinancing.sol";
+import "../interfaces/niftyapes/INiftyApes.sol";
 import "../interfaces/niftyapes/INiftyApesStructs.sol";
 import "../interfaces/sanctions/SanctionsList.sol";
 
@@ -121,7 +121,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         marketplaceFeeRecipient.sendValue(marketplaceFeeAmount);
 
         // execute buyWithSellerFinancing
-        ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
+        INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
             value: msg.value - marketplaceFeeAmount
         }(offer, signature, buyer, nftId);
     }
@@ -177,7 +177,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             }
             // try executing current offer,
             try
-                ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
+                INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                     value: offer.downPaymentAmount
                 }(offer, signatures[i], buyer, nftIds[i])
             {
@@ -232,12 +232,12 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             address nftContractAddress = nftContractAddresses[i];
             uint256 nftId = nftIds[i];
             // fetech active loan details
-            INiftyApesStructs.Loan memory loan = ISellerFinancing(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
+            INiftyApesStructs.Loan memory loan = INiftyApes(sellerFinancingContractAddress).getLoan(nftContractAddress, nftId);
             // transfer buyerNft from caller to this contract.
             // this call also ensures that loan exists and caller is the current buyer
             try IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.borrowerNftId) {
                 // call instantSell to close the loan
-                try ISellerFinancing(sellerFinancingContractAddress).instantSell(nftContractAddress, nftId, minProfitAmounts[i], data[i]) {} 
+                try INiftyApes(sellerFinancingContractAddress).instantSell(nftContractAddress, nftId, minProfitAmounts[i], data[i]) {} 
                 catch {
                     if (!partialExecution) {
                         revert InstantSellCallRevertedAt(i);

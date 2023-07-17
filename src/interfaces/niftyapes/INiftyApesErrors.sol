@@ -84,4 +84,6 @@ interface INiftyApesErrors {
     error InvalidOfferType(INiftyApesStructs.OfferType given, INiftyApesStructs.OfferType expected);
 
     error InvalidInputLength();
+
+    error InvalidOfferNonce(uint32 offerNonce, uint32 currentNonce);
 }
