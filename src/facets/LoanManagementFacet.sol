@@ -19,91 +19,89 @@ contract NiftyApesLoanManagementFacet is
 
     /// @inheritdoc ILoanManagement
     function getLoan(
-        address nftContractAddress,
-        uint256 nftId
+        uint256 loanId
     ) external view returns (Loan memory) {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        return _getLoan(nftContractAddress, nftId, sf);
+        return _getLoan(loanId, sf);
     }
 
     /// @inheritdoc ILoanManagement
     function getUnderlyingNft(
-        uint256 sellerFinancingTicketId
-    ) external view returns (UnderlyingNft memory) {
+        uint256 ticketId
+    ) external view returns (CollateralItem memory) {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        return _getUnderlyingNft(sellerFinancingTicketId, sf);
+        Loan memory loan = _getLoan(ticketId, sf);
+        return loan.collateralItem;
     }
 
     /// @inheritdoc ILoanManagement
     function calculateMinimumPayment(
-        Loan memory loan
-    ) public view returns (uint256 minimumPayment, uint256 periodInterest) {
+        uint256 loanId
+    ) public view returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        Loan memory loan = _getLoan(loanId, sf);
         return _calculateMinimumPayment(loan, sf);
     }
 
     function _calculateMinimumPayment(
         Loan memory loan,
         NiftyApesStorage.SellerFinancingStorage storage sf
-    ) private view returns (uint256 minimumPayment, uint256 periodInterest) {
+    ) private view returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) {
         // if in the current period, else prior to period minimumPayment and interest should remain 0
         if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
             // calculate periods passed
             uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) /
-                loan.periodDuration) + 1;
+                loan.loanTerms.periodDuration) + 1;
 
             // calculate minimum principal to be paid
-            uint256 minimumPrincipalPayment = loan.minimumPrincipalPerPeriod * numPeriodsPassed;
+            uint256 minimumPrincipalPayment = loan.loanTerms.minimumPrincipalPerPeriod * numPeriodsPassed;
 
             // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
-            if (loan.remainingPrincipal < minimumPrincipalPayment) {
-                minimumPrincipalPayment = loan.remainingPrincipal;
+            if (loan.loanTerms.principalAmount < minimumPrincipalPayment) {
+                minimumPrincipalPayment = loan.loanTerms.principalAmount;
             }
             // calculate % interest to be paid to lender
-            if (loan.periodInterestRateBps != 0) {
+            if (loan.loanTerms.periodInterestRateBps != 0) {
                 periodInterest =
-                    ((loan.remainingPrincipal * loan.periodInterestRateBps) / NiftyApesStorage.BASE_BPS) *
+                    ((loan.loanTerms.principalAmount * loan.loanTerms.periodInterestRateBps) / NiftyApesStorage.BASE_BPS) *
                     numPeriodsPassed;
             }
-
-            minimumPayment = minimumPrincipalPayment + periodInterest;
-            minimumPayment += _calculateProtocolFee(minimumPayment, sf);
+            // calculate fee to be paid to protocolFeeRecpient
+            if (loan.loanTerms.periodInterestRateBps != 0) {
+                protocolFeeAmount = _calculateProtocolFee(loan.loanTerms.principalAmount, sf) *
+                    numPeriodsPassed;
+            }
+            minimumPayment = minimumPrincipalPayment + periodInterest + protocolFeeAmount;
         }
-    }
-
-    function calculateProtocolFee(uint256 loanPaymentAmount) external view returns (uint256) {
-        // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        return _calculateProtocolFee(loanPaymentAmount, sf);
     }
 
     /// @inheritdoc ILoanManagement
     function makePayment(
-        address nftContractAddress,
-        uint256 nftId
+        uint256 loanId
     ) external payable whenNotPaused nonReentrant {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        Loan storage loan = _getLoan(loanId, sf);
+        CollateralItem memory collateralItem = loan.collateralItem;
         // make payment
-        address borrower = _makePayment(nftContractAddress, nftId, msg.value, sf);
+        address borrower = _makePayment(loan, msg.value, sf);
         // transfer nft to borrower if loan closed
         if (borrower != address(0)) {
-            _transferNft(nftContractAddress, nftId, address(this), borrower);
+            _transferCollateral(collateralItem, address(this), borrower);
         }
     }
 
     /// @inheritdoc ILoanManagement
     function makePaymentBatch(
-        address[] memory  nftContractAddresses,
-        uint256[] memory nftIds,
+        uint256[] memory loanIds,
         uint256[] memory payments,
         bool partialExecution
     ) external payable whenNotPaused nonReentrant {
-        uint256 batchLength = nftContractAddresses.length;
-        if (nftIds.length != batchLength) {
+        uint256 batchLength = loanIds.length;
+        if (payments.length != batchLength) {
             revert InvalidInputLength();
         }
 
@@ -128,11 +126,12 @@ contract NiftyApesLoanManagementFacet is
                     );
                 }
             }
-
-            address borrower = _makePayment(nftContractAddresses[i], nftIds[i], payments[i], sf);
+            Loan storage loan = _getLoan(loanIds[i], sf);
+            CollateralItem memory collateralItem = loan.collateralItem;
+            address borrower = _makePayment(loan, payments[i], sf);
             // transfer nft to borrower if loan closed
             if (borrower != address(0)) {
-                _transferNft(nftContractAddresses[i], nftIds[i], address(this), borrower);
+                _transferCollateral(collateralItem, address(this), borrower);
             }
             // add current payment to the `valueConsumed`
             valueConsumed += payments[i];
@@ -145,85 +144,75 @@ contract NiftyApesLoanManagementFacet is
 
     /// @inheritdoc ILoanManagement
     function seizeAsset(
-        address[] memory nftContractAddresses,
-        uint256[] memory nftIds
+        uint256[] memory loanIds
     ) external whenNotPaused nonReentrant {
-        uint256 batchLength = nftContractAddresses.length;
-        if (nftIds.length != batchLength) {
-            revert InvalidInputLength();
-        }
+        uint256 batchLength = loanIds.length;
+
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         
         for (uint256 i; i < batchLength; ++i) {
-            _seizeAsset(nftContractAddresses[i], nftIds[i], sf);
+            _seizeAsset(loanIds[i], sf);
         }
     }
 
     /// @inheritdoc ILoanManagement
     function instantSell(
-        address nftContractAddress,
-        uint256 nftId,
+        uint256 loanId,
         uint256 minProfitAmount,
         bytes calldata data
     ) external whenNotPaused nonReentrant {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         // instantiate loan
-        Loan storage loan = _getLoan(nftContractAddress, nftId, sf);
+        Loan storage loan = _getLoan(loanId, sf);
         // get borrower
-        address borrowerAddress = ownerOf(loan.borrowerNftId);
+        address borrowerAddress = ownerOf(loan.loanId);
 
         _requireIsNotSanctioned(msg.sender, sf);
         // requireMsgSenderIsBuyer
         _requireMsgSenderIsValidCaller(borrowerAddress);
         // requireLoanNotInHardDefault
-        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
+        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.loanTerms.periodDuration);
 
         // calculate period interest
-        (, uint256 periodInterest) = _calculateMinimumPayment(loan, sf);
+        (, uint256 periodInterest, uint256 protocolFeeAmount) = _calculateMinimumPayment(loan, sf);
         // calculate total payment required to close the loan
-        uint256 totalPaymentRequired = loan.remainingPrincipal + periodInterest + _calculateProtocolFee(loan.remainingPrincipal + periodInterest, sf);
+        uint256 totalPaymentRequired = loan.loanTerms.principalAmount + periodInterest + protocolFeeAmount;
 
         // sell the asset to get sufficient funds to repay loan
         uint256 saleAmountReceived = _sellAsset(
-            nftContractAddress,
-            nftId,
+            loan.collateralItem.token,
+            loan.collateralItem.identifier,
             totalPaymentRequired + minProfitAmount,
             data,
             sf
         );
+        // emit instant sell event
+        emit InstantSell(loan.collateralItem.token, loan.collateralItem.identifier, saleAmountReceived);
 
         // make payment to close the loan and transfer remainder to the borrower
-        _makePayment(nftContractAddress, nftId, saleAmountReceived, sf);
-
-        // emit instant sell event
-        emit InstantSell(nftContractAddress, nftId, saleAmountReceived);
+        _makePayment(loan, saleAmountReceived, sf);
     }
 
     function _makePayment(
-        address nftContractAddress,
-        uint256 nftId,
+        Loan storage loan,
         uint256 amountReceived,
         NiftyApesStorage.SellerFinancingStorage storage sf
-    ) internal returns (address borrower) {
-        // instantiate loan
-        Loan storage loan = _getLoan(nftContractAddress, nftId, sf);
+    ) internal returns (address borrowerAddress) {
         // get borrower
-        address borrowerAddress = ownerOf(loan.borrowerNftId);
-        // get lender
-        address lenderAddress = ownerOf(loan.lenderNftId);
+        borrowerAddress = ownerOf(loan.loanId);
 
         _requireIsNotSanctioned(borrowerAddress, sf);
         _requireIsNotSanctioned(msg.sender, sf);
         // requireLoanNotInHardDefault
-        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
+        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.loanTerms.periodDuration);
 
-        // get minimum payment and period interest values
-        (uint256 totalMinimumPayment, uint256 periodInterest) = _calculateMinimumPayment(loan, sf);
+        // get minimum payment, period interest and period protocol fee values
+        (uint256 totalMinimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) = _calculateMinimumPayment(loan, sf);
 
         // calculate the total possible payment
-        uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest + _calculateProtocolFee(loan.remainingPrincipal + periodInterest, sf);
+        uint256 totalPossiblePayment = loan.loanTerms.principalAmount + periodInterest + protocolFeeAmount;
 
         //require amountReceived to be larger than the total minimum payment
         if (amountReceived < totalMinimumPayment) {
@@ -240,16 +229,14 @@ contract NiftyApesLoanManagementFacet is
             amountReceived = totalPossiblePayment;
         }
 
-        // calculate protocol fee
-        uint256 protocolFeeAmount = _calculateProtocolFeeShareFromPaymentReceived(amountReceived, sf);
         // send the fee amount to protocol fee recipient
         _sendProtocolFeeToRecipient(protocolFeeAmount, sf);
 
         uint256 totalRoyaltiesPaid;
         if (loan.payRoyalties) {
             totalRoyaltiesPaid = _payRoyalties(
-                nftContractAddress,
-                nftId,
+                loan.collateralItem.token,
+                loan.collateralItem.identifier,
                 borrowerAddress,
                 amountReceived - protocolFeeAmount,
                 sf
@@ -257,30 +244,28 @@ contract NiftyApesLoanManagementFacet is
         }
 
         // payout lender
-        _conditionalSendValue(lenderAddress, borrowerAddress, amountReceived - protocolFeeAmount - totalRoyaltiesPaid, sf);
+        _conditionalSendValue(ownerOf(loan.loanId + 1), borrowerAddress, amountReceived - protocolFeeAmount - totalRoyaltiesPaid, sf);
 
         // update loan struct
-        loan.remainingPrincipal -= uint128(amountReceived - protocolFeeAmount - periodInterest);
+        loan.loanTerms.principalAmount -= uint128(amountReceived - protocolFeeAmount - periodInterest);
 
         // check if remainingPrincipal is 0
-        if (loan.remainingPrincipal == 0) {
-            // if principal == 0 set nft transfer address to the borrower
-            borrower = borrowerAddress;
+        if (loan.loanTerms.principalAmount == 0) {
             // remove borrower delegate.cash delegation
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
                 borrowerAddress,
-                nftContractAddress,
-                nftId,
+                loan.collateralItem.token,
+                loan.collateralItem.identifier,
                 false
             );
             // burn borrower nft
-            _burn(loan.borrowerNftId);
+            _burn(loan.loanId);
             // burn lender nft
-            _burn(loan.lenderNftId);
+            _burn(loan.loanId + 1);
             //emit paymentMade event
             emit PaymentMade(
-                nftContractAddress,
-                nftId,
+                loan.collateralItem.token,
+                loan.collateralItem.identifier,
                 amountReceived,
                 protocolFeeAmount,
                 totalRoyaltiesPaid,
@@ -288,49 +273,48 @@ contract NiftyApesLoanManagementFacet is
                 loan
             );
             // emit loan repaid event
-            emit LoanRepaid(nftContractAddress, nftId, loan);
-            // delete borrower nft id pointer
-            delete sf.underlyingNfts[loan.borrowerNftId];
-            // delete lender nft id pointer
-            delete sf.underlyingNfts[loan.lenderNftId];
+            emit LoanRepaid(loan.collateralItem.token, loan.collateralItem.identifier, loan);
             // delete loan
-            delete sf.loans[nftContractAddress][nftId];
+            delete sf.loans[loan.loanId];
+            // return borrowerAddress
+            return borrowerAddress;
         }
         //else emit paymentMade event and update loan
         else {
             // if in the current period, else prior to period begin and end should remain the same
             if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
                 uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) /
-                    loan.periodDuration) + 1;
+                    loan.loanTerms.periodDuration) + 1;
                 // increment the currentPeriodBegin and End Timestamps equal to the periodDuration times numPeriodsPassed
-                loan.periodBeginTimestamp += loan.periodDuration * uint32(numPeriodsPassed);
-                loan.periodEndTimestamp += loan.periodDuration * uint32(numPeriodsPassed);
+                loan.periodBeginTimestamp += loan.loanTerms.periodDuration * uint32(numPeriodsPassed);
+                loan.periodEndTimestamp += loan.loanTerms.periodDuration * uint32(numPeriodsPassed);
             }
 
             //emit paymentMade event
             emit PaymentMade(
-                nftContractAddress,
-                nftId,
+                loan.collateralItem.token,
+                loan.collateralItem.identifier,
                 amountReceived,
                 protocolFeeAmount,
                 totalRoyaltiesPaid,
                 periodInterest,
                 loan
             );
+            // return borrowerAddress as zero
+            return address(0);
         }
     }
     
     function _seizeAsset(
-        address nftContractAddress,
-        uint256 nftId,
+        uint256 loanId,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal {
         // instantiate loan
-        Loan storage loan = _getLoan(nftContractAddress, nftId, sf);
+        Loan storage loan = _getLoan(loanId, sf);
         // get borrower
-        address borrowerAddress = ownerOf(loan.borrowerNftId);
+        address borrowerAddress = ownerOf(loan.loanId);
         // get lender
-        address lenderAddress = ownerOf(loan.lenderNftId);
+        address lenderAddress = ownerOf(loan.loanId + 1);
 
         _requireIsNotSanctioned(lenderAddress, sf);
         // requireMsgSenderIsSeller
@@ -343,29 +327,25 @@ contract NiftyApesLoanManagementFacet is
         // remove borrower delegate.cash delegation
         IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
             borrowerAddress,
-            nftContractAddress,
-            nftId,
+            loan.collateralItem.token,
+            loan.collateralItem.identifier,
             false
         );
 
         // burn borrower nft
-        _burn(loan.borrowerNftId);
+        _burn(loan.loanId);
 
         // burn lender nft
-        _burn(loan.lenderNftId);
+        _burn(loan.loanId + 1);
 
         //emit asset seized event
-        emit AssetSeized(nftContractAddress, nftId, loan);
-
-        // delete borrower nft id pointer
-        delete sf.underlyingNfts[loan.borrowerNftId];
-        // delete lender nft id pointer
-        delete sf.underlyingNfts[loan.lenderNftId];
-        // close loan
-        delete sf.loans[nftContractAddress][nftId];
+        emit AssetSeized(loan.collateralItem.token, loan.collateralItem.identifier, loan);
 
         // transfer NFT from this contract to the lender address
-        _transferNft(nftContractAddress, nftId, address(this), lenderAddress);
+        _transferCollateral(loan.collateralItem, address(this), lenderAddress);
+
+        // close loan
+        delete sf.loans[loan.loanId];
     }
 
     function _sellAsset(
@@ -484,13 +464,8 @@ contract NiftyApesLoanManagementFacet is
         return (loanPaymentAmount * sf.protocolFeeBPS) / NiftyApesStorage.BASE_BPS;
     }
 
-    function _calculateProtocolFeeShareFromPaymentReceived(uint256 paymentReceived, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {
-        uint256 loanPaymentAmount = ((paymentReceived*NiftyApesStorage.BASE_BPS)+NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS - 1)/(NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS);
-        return paymentReceived - loanPaymentAmount;
-    }
-
     function _sendProtocolFeeToRecipient(uint256 amount, NiftyApesStorage.SellerFinancingStorage storage sf) private {
-        if (sf.protocolFeeRecipient != address(0)) {
+        if (sf.protocolFeeRecipient != address(0) && amount > 0) {
             sf.protocolFeeRecipient.sendValue(amount);
         }
     }

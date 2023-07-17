@@ -71,7 +71,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[5].functionSelectors[10], loanExecFacet.name.selector);
         assertEq(allFacets[5].functionSelectors[15], loanExecFacet.isApprovedForAll.selector);
 
-        assertEq(allFacets[6].functionSelectors.length, 8);
+        assertEq(allFacets[6].functionSelectors.length, 7);
         assertEq(allFacets[6].functionSelectors[0], loanManagFacet.makePayment.selector);
         assertEq(allFacets[6].functionSelectors[1], loanManagFacet.seizeAsset.selector);
         assertEq(allFacets[6].functionSelectors[6], loanManagFacet.makePaymentBatch.selector);
@@ -105,18 +105,18 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(offerFacet));
         assertEq(facetFunctionSelectors.length, 6);
-        // assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
-        // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
+        assertEq(facetFunctionSelectors[0], offerFacet.getOfferHash.selector);
+        assertEq(facetFunctionSelectors[5], offerFacet.withdrawAllOffers.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(loanExecFacet));
         assertEq(facetFunctionSelectors.length, 16);
-        // assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
-        // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
+        assertEq(facetFunctionSelectors[0], loanExecFacet.onERC721Received.selector);
+        assertEq(facetFunctionSelectors[15], loanExecFacet.isApprovedForAll.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(loanManagFacet));
-        assertEq(facetFunctionSelectors.length, 8);
-        // assertEq(facetFunctionSelectors[0], lendingFacet.borrow.selector);
-        // assertEq(facetFunctionSelectors[1], lendingFacet.buyWith3rdPartyFinancing.selector);
+        assertEq(facetFunctionSelectors.length, 7);
+        assertEq(facetFunctionSelectors[0], loanManagFacet.makePayment.selector);
+        assertEq(facetFunctionSelectors[6], loanManagFacet.makePaymentBatch.selector);
     }
 
     function test_facetAddress_must_return_correctAddresses_for_each_selector() public {

@@ -17,22 +17,7 @@ contract TestGetOfferSigner is Test, BaseTest, INiftyApesStructs, OffersLoansFix
     }
 
     function test_unit_getOfferSigner() public {
-        Offer memory offer = Offer({
-            creator: seller1,
-            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
-            nftId: 1,
-            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
-            principalAmount: 0.7 ether,
-            isCollectionOffer: false,
-            downPaymentAmount: 0.3 ether,
-            minimumPrincipalPerPeriod: 0.07 ether,
-            periodInterestRateBps: 25,
-            periodDuration: 30 days,
-            expiration: uint32(1657217355),
-            collectionOfferLimit: 1,
-            creatorOfferNonce: 0,
-            payRoyalties: true
-        });
+        Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
 

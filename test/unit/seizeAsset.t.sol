@@ -14,87 +14,26 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         super.setUp();
     }
 
-    function _assertionsForExecutedLoan(Offer memory offer, uint256 nftId) private {
-        // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
-        // require delegate.cash has buyer delegation
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(buyer1),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                nftId
-            ),
-            true
-        );
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
-        // loan exists
-        assertEq(
-            loan.periodBeginTimestamp,
-            block.timestamp
-        );
-        // buyer NFT minted to buyer
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.borrowerNftId), buyer1);
-        // seller NFT minted to seller
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.lenderNftId), seller1);
-        
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
-        assertEq(loan.periodBeginTimestamp, block.timestamp);
-    }
-
-    function _assertionsForClosedLoan(Offer memory offer, uint256 nftId, address expectedNftOwner) private {
-        // expected address has NFT
-        assertEq(boredApeYachtClub.ownerOf(nftId), expectedNftOwner);
-        // require delegate.cash buyer delegation has been revoked
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(buyer1),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                nftId
-            ),
-            false
-        );
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
-        // loan doesn't exist anymore
-        assertEq(
-            loan.periodBeginTimestamp,
-            0
-        );
-        // buyer NFT burned
-        vm.expectRevert("ERC721: invalid token ID");
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), address(0));
-        // seller NFT burned
-        vm.expectRevert("ERC721: invalid token ID");
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), address(0));
-    }
-
     function _test_seizeAsset_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithSellerFinancing(offer);
-        _assertionsForExecutedLoan(offer, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.warp(loan.periodEndTimestamp + 1);
 
-        address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = loanId;
 
         vm.expectEmit(true, true, false, false);
-        emit AssetSeized(offer.nftContractAddress, offer.nftId, loan);
+        emit AssetSeized(offer.collateralItem.token, offer.collateralItem.identifier, loan);
 
         vm.startPrank(seller1);
-        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
+        sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
 
-        _assertionsForClosedLoan(offer, offer.nftId, seller1);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, seller1, loanId);
     }
 
     function test_fuzz_seizeAsset_simplest_case(
@@ -110,17 +49,15 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
 
     function _test_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithSellerFinancing(offer);
-        _assertionsForExecutedLoan(offer, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
         
-        address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = loanId;
 
         vm.startPrank(seller1);
         vm.expectRevert(INiftyApesErrors.LoanNotInDefault.selector);
-        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
+        sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
     }
 
@@ -137,30 +74,27 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
 
     function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithSellerFinancing(offer);
-        _assertionsForExecutedLoan(offer, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.startPrank(buyer1);
-        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
-            offer.nftContractAddress,
-            offer.nftId
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
+            loanId
         );
         vm.stopPrank();
 
-        _assertionsForClosedLoan(offer, offer.nftId, buyer1);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);
 
-        address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = loanId;
 
         vm.startPrank(seller1);
         vm.expectRevert("ERC721: invalid token ID");
-        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
+        sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
     }
 
@@ -178,10 +112,10 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
     function _test_seizeAsset_reverts_ifCallerSanctioned(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        _assertionsForExecutedLoan(offer, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         vm.warp(loan.periodEndTimestamp + 1);
 
         vm.prank(owner);
@@ -191,16 +125,14 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(
             seller1,
             SANCTIONED_ADDRESS,
-            loan.lenderNftId
+            loanId + 1
         );
 
         vm.prank(owner);
         sellerFinancing.unpauseSanctions();
 
-        address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = loanId;
 
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
@@ -209,7 +141,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
+        sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
     }
 
@@ -227,22 +159,20 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
     function _test_seizeAsset_reverts_ifCallerNotSeller(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        _assertionsForExecutedLoan(offer, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         vm.warp(loan.periodEndTimestamp + 1);
 
-        address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = loanId;
 
         vm.startPrank(seller2);
         vm.expectRevert(
             abi.encodeWithSelector(INiftyApesErrors.InvalidCaller.selector, seller2, seller1)
         );
-        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
+        sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
     }
 
@@ -261,7 +191,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.nftId = 0;
+        offer.collateralItem.identifier = 0;
         uint256 nftId1 = 8661;
         uint256 nftId2 = 6974;
 
@@ -275,45 +205,42 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId1 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId1
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId2
         );
         vm.stopPrank();
-        _assertionsForExecutedLoan(offer, nftId1);
-        _assertionsForExecutedLoan(offer, nftId2);
+        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
+        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
 
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftId1);
-        Loan memory loan2 = sellerFinancing.getLoan(offer.nftContractAddress, nftId2);
+        Loan memory loan1 = sellerFinancing.getLoan(loanId1);
+        Loan memory loan2 = sellerFinancing.getLoan(loanId2);
 
         vm.warp(loan1.periodEndTimestamp + 1);
 
-        address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](2);
-        nftIds[0] = nftId1;
-        nftIds[1] = nftId2;
+        uint256[] memory loanIds = new uint256[](2);
+        loanIds[0] = loanId1;
+        loanIds[1] = loanId2;
 
         vm.expectEmit(true, true, false, false);
-        emit AssetSeized(offer.nftContractAddress, nftId1, loan1);
+        emit AssetSeized(offer.collateralItem.token, nftId1, loan1);
         vm.expectEmit(true, true, false, false);
-        emit AssetSeized(offer.nftContractAddress, nftId2, loan2);
+        emit AssetSeized(offer.collateralItem.token, nftId2, loan2);
 
         vm.startPrank(seller1);
-        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
+        sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
 
-        _assertionsForClosedLoan(offer, nftIds[0], seller1);
-        _assertionsForClosedLoan(offer, nftIds[1], seller1);
+        assertionsForClosedLoan(offer.collateralItem.token, nftId1, seller1, loanIds[0]);
+        assertionsForClosedLoan(offer.collateralItem.token, nftId2, seller1, loanIds[1]);
     }
 
     function test_fuzz_seizeAsset_with_twoLoans(
@@ -329,25 +256,19 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
 
     function _test_seizeAsset_reverts_if_anyOneSeize_reverts(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        createOfferAndBuyWithSellerFinancing(offer);
-        _assertionsForExecutedLoan(offer, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
         vm.warp(loan.periodEndTimestamp + 1);
 
-        address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](2);
-        nftIds[0] = nftId1;
-        nftIds[1] = nftId2;
+        uint256[] memory loanIds = new uint256[](2);
+        loanIds[0] = loanId;
+        loanIds[1] = 3;
 
         vm.startPrank(seller1);
         vm.expectRevert("ERC721: invalid token ID");
-        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
+        sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
     }
 
