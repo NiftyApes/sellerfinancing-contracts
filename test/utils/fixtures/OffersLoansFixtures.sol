@@ -114,43 +114,63 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
     ) internal pure returns (Offer memory) {
         return
             Offer({
-                creator: fixedFields.creator,
-                nftId: fixedFields.nftId,
-                nftContractAddress: fixedFields.nftContractAddress,
                 offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
-                principalAmount: fuzzed.principalAmount,
-                isCollectionOffer: fixedFields.isCollectionOffer,
-                downPaymentAmount: fuzzed.downPaymentAmount,
-                minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
-                periodInterestRateBps: fuzzed.periodInterestRateBps,
-                periodDuration: fuzzed.periodDuration,
+                collateralItem: CollateralItem({
+                    itemType: ItemType.ERC721,
+                    token: fixedFields.nftContractAddress,
+                    identifier: fixedFields.nftId,
+                    amount: 0
+                }),
+                loanTerms: LoanTerms({
+                    itemType: ItemType.NATIVE,
+                    token: address(0),
+                    identifier: 0,
+                    principalAmount: fuzzed.principalAmount,
+                    minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
+                    downPaymentAmount: fuzzed.downPaymentAmount,
+                    periodInterestRateBps: fuzzed.periodInterestRateBps,
+                    periodDuration: fuzzed.periodDuration
+                }),
+                creator: fixedFields.creator,
                 expiration: fuzzed.expiration,
+                isCollectionOffer: fixedFields.isCollectionOffer,
                 collectionOfferLimit: fixedFields.collectionOfferLimit,
                 creatorOfferNonce: fixedFields.creatorOfferNonce,
-                payRoyalties: true
+                payRoyalties: true,
+                marketplaceRecipients: new MarketplaceRecipient[](0)
             });
     }
 
     function offerStructFromFieldsForLending(
         FuzzedOfferFields memory fuzzed,
         FixedOfferFields memory fixedFields
-    ) internal pure returns (Offer memory) {
+    ) internal view returns (Offer memory) {
         return
-            Offer({
-                creator: fixedFields.creator,
-                nftId: fixedFields.nftId,
-                nftContractAddress: fixedFields.nftContractAddress,
+        Offer({
                 offerType: INiftyApesStructs.OfferType.LENDING,
-                principalAmount: fuzzed.principalAmount,
-                isCollectionOffer: fixedFields.isCollectionOffer,
-                downPaymentAmount: 0,
-                minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
-                periodInterestRateBps: fuzzed.periodInterestRateBps,
-                periodDuration: fuzzed.periodDuration,
+                collateralItem: CollateralItem({
+                    itemType: ItemType.ERC721,
+                    token: fixedFields.nftContractAddress,
+                    identifier: fixedFields.nftId,
+                    amount: 0
+                }),
+                loanTerms: LoanTerms({
+                    itemType: ItemType.NATIVE,
+                    token: address(0),
+                    identifier: 0,
+                    principalAmount: fuzzed.principalAmount,
+                    minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
+                    downPaymentAmount: 0,
+                    periodInterestRateBps: fuzzed.periodInterestRateBps,
+                    periodDuration: fuzzed.periodDuration
+                }),
+                creator: lender1,
                 expiration: fuzzed.expiration,
+                isCollectionOffer: fixedFields.isCollectionOffer,
                 collectionOfferLimit: fixedFields.collectionOfferLimit,
                 creatorOfferNonce: fixedFields.creatorOfferNonce,
-                payRoyalties: false
+                payRoyalties: false,
+                marketplaceRecipients: new MarketplaceRecipient[](0)
             });
     }
 
@@ -163,7 +183,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function seller1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.nftId);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
         vm.stopPrank();
 
         return signOffer(seller1_private_key, offer);
@@ -171,21 +191,21 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function lender1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(lender1);
-        weth.approve(address(sellerFinancing), offer.principalAmount);
+        weth.approve(address(sellerFinancing), offer.loanTerms.principalAmount);
         vm.stopPrank();
 
         return signOffer(lender1_private_key, offer);
     }
 
-    function createOfferAndBuyWithSellerFinancing(Offer memory offer) internal {
+    function createOfferAndBuyWithSellerFinancing(Offer memory offer) internal returns (uint256 loanId) {
         bytes memory offerSignature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.collateralItem.identifier
         );
         vm.stopPrank();
     }
@@ -197,4 +217,112 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         wethToken.transfer(user, amount);
         vm.stopPrank();
     }
+
+    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId, address expectedborrower, uint256 loanId) internal {
+        // sellerFinancing contract has NFT
+        assertEq(IERC721Upgradeable(offer.collateralItem.token).ownerOf(nftId), address(sellerFinancing));
+        
+        // require delegate.cash has buyer delegation
+        assertEq(
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(expectedborrower),
+                address(sellerFinancing),
+                offer.collateralItem.token,
+                nftId
+            ),
+            true
+        );
+        // loan auction exists
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+        assertEq(
+            loan.periodBeginTimestamp,
+            block.timestamp
+        );
+        // buyer NFT minted to buyer
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId), expectedborrower);
+        // seller NFT minted to seller
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId + 1), offer.creator);
+
+        //buyer nftId has tokenURI same as original nft
+        assertEq(
+            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loanId),
+            IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(nftId)
+        );
+        // check loan struct values
+        assertEq(loan.loanTerms.principalAmount, offer.loanTerms.principalAmount);
+        assertEq(loan.loanTerms.minimumPrincipalPerPeriod, offer.loanTerms.minimumPrincipalPerPeriod);
+        assertEq(loan.loanTerms.periodInterestRateBps, offer.loanTerms.periodInterestRateBps);
+        assertEq(loan.loanTerms.periodDuration, offer.loanTerms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.loanTerms.periodDuration);
+        assertEq(loan.periodBeginTimestamp, block.timestamp);
+    }
+
+    function assertionsForClosedLoan(address nftContractAddress, uint256 nftId, address expectedNftOwner, uint256 loanId) internal {
+        // loan doesn't exist anymore
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+        assertEq(
+            loan.periodBeginTimestamp,
+            0
+        );
+        // expected address has NFT
+        assertEq(IERC721Upgradeable(nftContractAddress).ownerOf(nftId), expectedNftOwner);
+
+        // require delegate.cash buyer delegation has been revoked
+        assertEq(
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                address(buyer1),
+                address(sellerFinancing),
+                nftContractAddress,
+                nftId
+            ),
+            false
+        );
+
+        
+        // buyer NFT burned
+        vm.expectRevert("ERC721: invalid token ID");
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId), address(0));
+        // seller NFT burned
+        vm.expectRevert("ERC721: invalid token ID");
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId+1), address(0));
+    }
+
+    function assertionsForExecutedLoanThrough3rdPartyLender(Offer memory offer, uint256 nftId, address expectedborrower, uint256 loanId) internal {
+        // sellerFinancing contract has NFT
+        assertEq(IERC721Upgradeable(offer.collateralItem.token).ownerOf(nftId), address(sellerFinancing));
+        // require delegate.cash has buyer delegation
+        assertEq(
+            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
+                expectedborrower,
+                address(sellerFinancing),
+                offer.collateralItem.token,
+                nftId
+            ),
+            true
+        );
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+        assertEq(
+            loan.periodBeginTimestamp,
+            block.timestamp
+        );
+        // borrower NFT minted to borrower1
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId), expectedborrower);
+        // lender NFT minted to lender1
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId + 1), offer.creator);
+        
+        //buyer nftId has tokenURI same as original nft
+        assertEq(
+            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loanId),
+            IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(nftId)
+        );
+
+        // check loan struct values
+        assertEq(loan.loanTerms.principalAmount, offer.loanTerms.principalAmount);
+        assertEq(loan.loanTerms.minimumPrincipalPerPeriod, offer.loanTerms.minimumPrincipalPerPeriod);
+        assertEq(loan.loanTerms.periodInterestRateBps, offer.loanTerms.periodInterestRateBps);
+        assertEq(loan.loanTerms.periodDuration, offer.loanTerms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.loanTerms.periodDuration);
+        assertEq(loan.periodBeginTimestamp, block.timestamp);
+    }
+
 }

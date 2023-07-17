@@ -17,69 +17,30 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         super.setUp();
     }
 
-    function assertionsForExecutedLoanThrough3rdPartyLender(Offer memory offer, uint256 nftId) private {
-        // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
-        // require delegate.cash has buyer delegation
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(borrower1),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                nftId
-            ),
-            true
-        );
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
-        assertEq(
-            loan.periodBeginTimestamp,
-            block.timestamp
-        );
-        // borrower NFT minted to borrower1
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.borrowerNftId), borrower1);
-        // lender NFT minted to lender1
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.lenderNftId), lender1);
-
-        
-        //buyer nftId has tokenURI same as original nft
-        assertEq(
-            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.borrowerNftId),
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
-        );
-
-        // check loan struct values
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
-        assertEq(loan.periodBeginTimestamp, block.timestamp);
-    }
-
     function _test_buyWith3rdPartyFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
         uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
-        sellerFinancing.buyWith3rdPartyFinancing(
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.nftId);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
@@ -87,11 +48,11 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         // lender1 balance reduced by loan principal amount
         assertEq(
             lender1BalanceAfter,
-            (lender1BalanceBefore - offer.principalAmount)
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
         );
 
-        // borrower1 balance decreased by nft price minus offer.principalAmount
-        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - (order.parameters.consideration[0].endAmount - offer.principalAmount));
+        // borrower1 balance decreased by nft price minus offer.loanTerms.principalAmount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - (order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
     }
 
     function test_fuzz_buyWith3rdPartyFinancing_simplest_case(
@@ -108,33 +69,33 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
     function _test_buyWith3rdPartyFinancing_emits_expectedEvents(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
         
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(0);
         vm.expectEmit(true, true, false, false);
-        emit OfferSignatureUsed(offer.nftContractAddress, offer.nftId, offer, offerSignature);
+        emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.identifier, offer, offerSignature);
 
         vm.expectEmit(true, true, false, false);
-        emit LoanExecuted(offer.nftContractAddress, offer.nftId, offerSignature, loan);
+        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.identifier, offerSignature, loan);
         
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.nftId);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
     }
 
     function test_fuzz_buyWith3rdPartyFinancing_emits_expectedEvents(
@@ -151,22 +112,22 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
     function _test_buyWith3rdPartyFinancing_reverts_if_offerType_Not_Lending(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         vm.expectRevert(abi.encodeWithSelector(INiftyApesErrors.InvalidOfferType.selector, INiftyApesStructs.OfferType.SELLER_FINANCING, INiftyApesStructs.OfferType.LENDING));
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -187,14 +148,14 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.nftId = 0;
+        offer.collateralItem.identifier = 0;
         uint256 nftId1 = 8661;
         uint256 nftId2 = 6974;
 
         
         bytes memory offerSignature = lender1CreateOffer(offer);
         vm.startPrank(lender1);
-        weth.approve(address(sellerFinancing), 2*offer.principalAmount);
+        weth.approve(address(sellerFinancing), 2*offer.loanTerms.principalAmount);
         vm.stopPrank();
 
         vm.prank(seller1);
@@ -202,24 +163,24 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         vm.prank(SANCTIONED_ADDRESS);
         boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller2, nftId2);
 
-        ISeaport.Order memory order1 = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, nftId1);
-        ISeaport.Order memory order2 = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, nftId2);
+        ISeaport.Order memory order1 = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, nftId1);
+        ISeaport.Order memory order2 = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, nftId2);
 
-        mintWeth(borrower1, 2*(order1.parameters.consideration[0].endAmount - offer.principalAmount));
+        mintWeth(borrower1, 2*(order1.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
         uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), 2*(order1.parameters.consideration[0].endAmount - offer.principalAmount));
-        sellerFinancing.buyWith3rdPartyFinancing(
+        weth.approve(address(sellerFinancing), 2*(order1.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
+        uint256 loanId1 = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
             nftId1,
             abi.encode(order1)
         );
-        sellerFinancing.buyWith3rdPartyFinancing(
+        uint256 loanId2 = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
@@ -227,8 +188,8 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             abi.encode(order2)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1);
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId2);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1, borrower1, loanId1);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId2, borrower1, loanId2);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
@@ -236,11 +197,11 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         // lender1 balance reduced by two times loan principal amount
         assertEq(
             lender1BalanceAfter,
-            lender1BalanceBefore - 2*offer.principalAmount
+            lender1BalanceBefore - 2*offer.loanTerms.principalAmount
         );
 
-        // borrower1 balance decreased by two times nft price minus offer.principalAmount
-        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - 2* (order1.parameters.consideration[0].endAmount - offer.principalAmount));
+        // borrower1 balance decreased by two times nft price minus offer.loanTerms.principalAmount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - 2* (order1.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
     }
 
     function test_fuzz_buyWith3rdPartyFinancing_collectionOffer_case(
@@ -259,14 +220,14 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         offer.isCollectionOffer = true;
         // setting offer limit to one
         offer.collectionOfferLimit = 1;
-        offer.nftId = 0;
+        offer.collateralItem.identifier = 0;
         uint256 nftId1 = 8661;
         uint256 nftId2 = 6974;
 
         
         bytes memory offerSignature = lender1CreateOffer(offer);
         vm.startPrank(lender1);
-        weth.approve(address(sellerFinancing), 2*offer.principalAmount);
+        weth.approve(address(sellerFinancing), 2*offer.loanTerms.principalAmount);
         vm.stopPrank();
 
         vm.prank(seller1);
@@ -274,17 +235,17 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         vm.prank(SANCTIONED_ADDRESS);
         boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller2, nftId2);
 
-        ISeaport.Order memory order1 = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, nftId1);
-        ISeaport.Order memory order2 = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, nftId2);
+        ISeaport.Order memory order1 = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, nftId1);
+        ISeaport.Order memory order2 = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, nftId2);
 
-        mintWeth(borrower1, 2*(order1.parameters.consideration[0].endAmount - offer.principalAmount));
+        mintWeth(borrower1, 2*(order1.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
         uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), 2*(order1.parameters.consideration[0].endAmount - offer.principalAmount));
-        sellerFinancing.buyWith3rdPartyFinancing(
+        weth.approve(address(sellerFinancing), 2*(order1.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
+        uint256 loanId1 = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
@@ -300,7 +261,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             abi.encode(order2)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1, borrower1, loanId1);
         // seller21 still owns second nft
         assertEq(boredApeYachtClub.ownerOf(nftId2), seller2);
 
@@ -310,11 +271,11 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         // lender1 balance reduced by only one times the loan principal amount
         assertEq(
             lender1BalanceAfter,
-            lender1BalanceBefore - offer.principalAmount
+            lender1BalanceBefore - offer.loanTerms.principalAmount
         );
 
-        // borrower1 balance decreased by only nft price minus offer.principalAmount
-        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - (order1.parameters.consideration[0].endAmount - offer.principalAmount));
+        // borrower1 balance decreased by only nft price minus offer.loanTerms.principalAmount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - (order1.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
     }
 
     function test_fuzz_buyWith3rdPartyFinancing_collectionOffer_reverts_if_limitReached(
@@ -331,40 +292,38 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
     function _test_buyWith3rdPartyFinancing_reverts_if_signature_already_used(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
         
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
-        sellerFinancing.buyWith3rdPartyFinancing(
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.nftId);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
         vm.warp(loan.periodEndTimestamp + 1);
 
-        address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = loanId;
 
         vm.startPrank(lender1);
-        sellerFinancing.seizeAsset(nftContractAddresses, nftIds);
+        sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
 
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
         vm.expectRevert(
             abi.encodeWithSelector(
                 INiftyApesErrors.SignatureNotAvailable.selector,
@@ -375,7 +334,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -396,22 +355,22 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         vm.assume(fuzzed.expiration < type(uint32).max - 1);
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         vm.warp(uint256(offer.expiration) + 1);
         
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
         vm.expectRevert(INiftyApesErrors.OfferExpired.selector);
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -432,23 +391,23 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
     function _test_buyWith3rdPartyFinancing_reverts_if_invalidPeriodDuration(FuzzedOfferFields memory fuzzed) private {
         vm.assume(fuzzed.expiration < type(uint32).max - 1);
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.periodDuration = 1 minutes - 1;
+        offer.loanTerms.periodDuration = 1 minutes - 1;
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         
         vm.startPrank(borrower1);
-        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.principalAmount);
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
         vm.expectRevert(INiftyApesErrors.InvalidPeriodDuration.selector);
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -469,13 +428,13 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
     function _test_buyWith3rdPartyFinancing_reverts_if_principalAmount_isZero(FuzzedOfferFields memory fuzzed) private {
         vm.assume(fuzzed.expiration < type(uint32).max - 1);
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.principalAmount = 0;
+        offer.loanTerms.principalAmount = 0;
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         
         vm.startPrank(borrower1);
@@ -484,7 +443,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -505,28 +464,28 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
     function _test_buyWith3rdPartyFinancing_reverts_if_invalidMinPrincipalPerPeriod(FuzzedOfferFields memory fuzzed) private {
         vm.assume(fuzzed.expiration < type(uint32).max - 1);
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.minimumPrincipalPerPeriod = offer.principalAmount + 1;
+        offer.loanTerms.minimumPrincipalPerPeriod = uint128(offer.loanTerms.principalAmount + 1);
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         
         vm.startPrank(borrower1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 INiftyApesErrors.InvalidMinimumPrincipalPerPeriod.selector,
-                offer.minimumPrincipalPerPeriod,
-                offer.principalAmount
+                offer.loanTerms.minimumPrincipalPerPeriod,
+                offer.loanTerms.principalAmount
             )
         );
         sellerFinancing.buyWith3rdPartyFinancing(
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -547,13 +506,13 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
     function _test_buyWith3rdPartyFinancing_reverts_if_borrowerSanctioned(FuzzedOfferFields memory fuzzed) private {
         vm.assume(fuzzed.expiration < type(uint32).max - 1);
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.minimumPrincipalPerPeriod = offer.principalAmount + 1;
+        offer.loanTerms.minimumPrincipalPerPeriod = uint128(offer.loanTerms.principalAmount + 1);
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         
         vm.startPrank(borrower1);
@@ -567,11 +526,10 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();
-
     }
 
     function test_fuzz_buyWith3rdPartyFinancing_reverts_if_borrowerSanctioned(
@@ -588,13 +546,13 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
     function _test_buyWith3rdPartyFinancing_reverts_if_callerSanctioned(FuzzedOfferFields memory fuzzed) private {
         vm.assume(fuzzed.expiration < type(uint32).max - 1);
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
-        offer.minimumPrincipalPerPeriod = offer.principalAmount + 1;
+        offer.loanTerms.minimumPrincipalPerPeriod = uint128(offer.loanTerms.principalAmount + 1);
         vm.prank(seller1);
-        boredApeYachtClub.transferFrom(seller1, seller2, offer.nftId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.principalAmount*2, offer.nftId);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.identifier);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.identifier);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
-        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.principalAmount);
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
 
         
         vm.startPrank(SANCTIONED_ADDRESS);
@@ -608,7 +566,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offer,
             offerSignature,
             borrower1,
-            offer.nftId,
+            offer.collateralItem.identifier,
             abi.encode(order)
         );
         vm.stopPrank();

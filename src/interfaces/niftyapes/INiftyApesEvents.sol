@@ -32,7 +32,8 @@ interface INiftyApesEvents {
     /// @notice Emitted when a payment is made toward the loan
     /// @param nftContractAddress The nft contract address
     /// @param nftId The nft id
-    /// @param amount The amount paid towards the loan
+    /// @param amount The total amount received
+    /// @param protocolFee The amount paid as protocol fee
     /// @param totalRoyaltiesPaid The amount paid in royalties
     /// @param interestPaid the amount paid in interest
     /// @param loan The loan details
@@ -40,6 +41,7 @@ interface INiftyApesEvents {
         address indexed nftContractAddress,
         uint256 indexed nftId,
         uint256 amount,
+        uint256 protocolFee,
         uint256 totalRoyaltiesPaid,
         uint256 interestPaid,
         INiftyApesStructs.Loan loan

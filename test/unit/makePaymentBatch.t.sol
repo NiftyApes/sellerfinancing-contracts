@@ -17,93 +17,31 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId) private {
-        // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(nftId), address(sellerFinancing));
-        // require delegate.cash has buyer delegation
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(buyer1),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                nftId
-            ),
-            true
-        );
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
-        // loan exists
-        assertEq(
-            loan.periodBeginTimestamp,
-            block.timestamp
-        );
-        // buyer NFT minted to buyer
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.borrowerNftId), buyer1);
-        // seller NFT minted to seller
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan.lenderNftId), seller1);
-        
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
-        assertEq(loan.periodBeginTimestamp, block.timestamp);
-    }
-
-    function assertionsForClosedLoan(Offer memory offer, uint256 nftId, address expectedNftOwner) private {
-        // expected address has NFT
-        assertEq(boredApeYachtClub.ownerOf(nftId), expectedNftOwner);
-        // require delegate.cash buyer delegation has been revoked
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(buyer1),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                nftId
-            ),
-            false
-        );
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
-        // loan doesn't exist anymore
-        assertEq(
-            loan.periodBeginTimestamp,
-            0
-        );
-        // buyer NFT burned
-        vm.expectRevert("ERC721: invalid token ID");
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), address(0));
-        // seller NFT burned
-        vm.expectRevert("ERC721: invalid token ID");
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), address(0));
-    }
-
     function _test_makePaymentBatch_fullRepayment_case_with_oneLoan(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.startPrank(buyer1);
-        address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = loanId;
         uint256[] memory payments = new uint256[](1);
-        payments[0] = (loan.remainingPrincipal + periodInterest);
+        payments[0] = (loan.loanTerms.principalAmount + periodInterest);
         sellerFinancing.makePaymentBatch{ value:  payments[0]}(
-            nftContractAddresses,
-            nftIds,
+            loanIds,
             payments,
             false
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer, offer.nftId, buyer1);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);
     }
 
     function test_fuzz_makePaymentBatch_fullRepayment_case_with_oneLoan(
@@ -123,7 +61,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.nftId = 0;
+        offer.collateralItem.identifier = 0;
         uint256 nftId1 = 8661;
         uint256 nftId2 = 6974;
 
@@ -137,48 +75,44 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId1 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId1
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId2
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1);
-        assertionsForExecutedLoan(offer, nftId2);
+        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
+        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
 
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftId1);
-        Loan memory loan2 = sellerFinancing.getLoan(offer.nftContractAddress, nftId2);
+        Loan memory loan1 = sellerFinancing.getLoan(loanId1);
+        Loan memory loan2 = sellerFinancing.getLoan(loanId2);
 
-        (, uint256 periodInterest1) = sellerFinancing.calculateMinimumPayment(loan1);
-        (, uint256 periodInterest2) = sellerFinancing.calculateMinimumPayment(loan2);
+        (, uint256 periodInterest1,) = sellerFinancing.calculateMinimumPayment(loanId1);
+        (, uint256 periodInterest2,) = sellerFinancing.calculateMinimumPayment(loanId2);
 
-        address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](2);
-        nftIds[0] = nftId1;
-        nftIds[1] = nftId2;
+        uint256[] memory loanIds = new uint256[](2);
+        loanIds[0] = loanId1;
+        loanIds[1] = loanId2;
         uint256[] memory payments = new uint256[](2);
-        payments[0] = (loan1.remainingPrincipal + periodInterest1);
-        payments[1] = (loan2.remainingPrincipal + periodInterest2);
+        payments[0] = (loan1.loanTerms.principalAmount + periodInterest1);
+        payments[1] = (loan2.loanTerms.principalAmount + periodInterest2);
 
         vm.startPrank(buyer1);
         sellerFinancing.makePaymentBatch{ value:  payments[0]+payments[1]}(
-            nftContractAddresses,
-            nftIds,
+            loanIds,
             payments,
             false
         );
         vm.stopPrank();
-        assertionsForClosedLoan(offer, nftId1, buyer1);
-        assertionsForClosedLoan(offer, nftId2, buyer1);
+        assertionsForClosedLoan(offer.collateralItem.token, nftId1, buyer1, loanIds[0]);
+        assertionsForClosedLoan(offer.collateralItem.token, nftId2, buyer1, loanIds[1]);
     }
 
     function test_fuzz_makePaymentBatch_fullRepayment_case_with_twoLoans(
@@ -192,46 +126,116 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_makePaymentBatch_fullRepayment_case_with_twoLoans(fixedForSpeed);
     }
 
+    function _test_makePaymentBatch_fullRepayment_case_with_twoLoans_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) private {
+        vm.prank(owner);
+        sellerFinancing.updateProtocolFeeBPS(protocolFeeBPS);
+
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        offer.isCollectionOffer = true;
+        offer.collectionOfferLimit = 2;
+        offer.collateralItem.identifier = 0;
+        uint256 nftId1 = 8661;
+        uint256 nftId2 = 6974;
+
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
+
+        vm.prank(SANCTIONED_ADDRESS);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, nftId2);
+        vm.startPrank(seller1);
+        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
+        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        vm.stopPrank();
+
+        uint256[] memory loanIds = new uint256[](2);
+        vm.startPrank(buyer1);
+        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
+            offer,
+            offerSignature,
+            buyer1,
+            nftId1
+        );
+        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
+            offer,
+            offerSignature,
+            buyer1,
+            nftId2
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer, nftId1, buyer1, loanIds[0]);
+        assertionsForExecutedLoan(offer, nftId2, buyer1, loanIds[1]);
+
+        Loan memory loan1 = sellerFinancing.getLoan(loanIds[0]);
+        Loan memory loan2 = sellerFinancing.getLoan(loanIds[1]);
+
+        (, uint256 periodInterest1,uint256 protocolFee1) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterest2,uint256 protocolFee2) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
+
+        
+        uint256[] memory payments = new uint256[](2);
+        payments[0] = (loan1.loanTerms.principalAmount + periodInterest1 + protocolFee1);
+        payments[1] = (loan2.loanTerms.principalAmount + periodInterest2 + protocolFee2);
+
+        vm.startPrank(buyer1);
+        sellerFinancing.makePaymentBatch{ value:  payments[0]+payments[1]}(
+            loanIds,
+            payments,
+            false
+        );
+        vm.stopPrank();
+        assertionsForClosedLoan(offer.collateralItem.token, nftId1, buyer1, loanIds[0]);
+        assertionsForClosedLoan(offer.collateralItem.token, nftId2, buyer1, loanIds[1]);
+    }
+
+    function test_fuzz_makePaymentBatch_fullRepayment_case_with_twoLoans_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) public validateFuzzedOfferFields(fuzzed) {
+        vm.assume(protocolFeeBPS < 1000);
+        _test_makePaymentBatch_fullRepayment_case_with_twoLoans_withProtocolFee(fuzzed, protocolFeeBPS);
+    }
+
+    function test_unit_makePaymentBatch_fullRepayment_case_with_twoLoans_withProtocolFee() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePaymentBatch_fullRepayment_case_with_twoLoans_withProtocolFee(fixedForSpeed, 150);
+    }
+
     function _test_makePaymentBatch_returns_anyExtraAmountNotReqToCloseTheLoan(
         FuzzedOfferFields memory fuzzed
     ) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(
-            offer.nftContractAddress,
-            offer.nftId
+            loanId
         );
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(
+            loanId
         );
 
         uint256 buyer1BalanceBeforePayment = address(buyer1).balance;
         uint256 extraAmountToBeSent = 100;
 
         vm.startPrank(buyer1);
-        address[] memory nftContractAddresses = new address[](1);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = offer.nftId;
+        uint256[] memory loanIds = new uint256[](1);
+        loanIds[0] = loanId;
         uint256[] memory payments = new uint256[](1);
-        payments[0] = (loan.remainingPrincipal + periodInterest);
+        payments[0] = (loan.loanTerms.principalAmount + periodInterest);
         sellerFinancing.makePaymentBatch{ value:  (payments[0] + extraAmountToBeSent)}(
-            nftContractAddresses,
-            nftIds,
+            loanIds,
             payments,
             false
         );
         vm.stopPrank();
-        assertionsForClosedLoan(offer, offer.nftId, buyer1);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);
 
         uint256 buyer1BalanceAfterPayment = address(buyer1).balance;
         assertEq(
             buyer1BalanceAfterPayment,
-            (buyer1BalanceBeforePayment - (loan.remainingPrincipal + periodInterest))
+            (buyer1BalanceBeforePayment - (loan.loanTerms.principalAmount + periodInterest))
         );
     }
 
@@ -252,7 +256,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.nftId = 0;
+        offer.collateralItem.identifier = 0;
         uint256 nftId1 = 8661;
         uint256 nftId2 = 6974;
 
@@ -266,50 +270,46 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId1 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId1
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId2
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1);
-        assertionsForExecutedLoan(offer, nftId2);
+        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
+        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
 
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftId1);
-        Loan memory loan2 = sellerFinancing.getLoan(offer.nftContractAddress, nftId2);
+        Loan memory loan1 = sellerFinancing.getLoan(loanId1);
+        Loan memory loan2 = sellerFinancing.getLoan(loanId2);
 
-        (, uint256 periodInterest1) = sellerFinancing.calculateMinimumPayment(loan1);
-        (, uint256 periodInterest2) = sellerFinancing.calculateMinimumPayment(loan2);
+        (, uint256 periodInterest1,) = sellerFinancing.calculateMinimumPayment(loanId1);
+        (, uint256 periodInterest2,) = sellerFinancing.calculateMinimumPayment(loanId2);
 
-        address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](2);
-        nftIds[0] = nftId1;
-        nftIds[1] = nftId2;
+        uint256[] memory loanIds = new uint256[](2);
+        loanIds[0] = loanId1;
+        loanIds[1] = loanId2;
         uint256[] memory payments = new uint256[](2);
-        payments[0] = (loan1.minimumPrincipalPerPeriod + periodInterest1);
-        payments[1] = (loan2.minimumPrincipalPerPeriod + periodInterest2);
+        payments[0] = (loan1.loanTerms.minimumPrincipalPerPeriod + periodInterest1);
+        payments[1] = (loan2.loanTerms.minimumPrincipalPerPeriod + periodInterest2);
 
         vm.startPrank(buyer1);
         sellerFinancing.makePaymentBatch{ value:  payments[0]+payments[1]}(
-            nftContractAddresses,
-            nftIds,
+            loanIds,
             payments,
             false
         );
         vm.stopPrank();
-        Loan memory loan1_after = sellerFinancing.getLoan(offer.nftContractAddress, nftId1);
-        Loan memory loan2_after = sellerFinancing.getLoan(offer.nftContractAddress, nftId2);
-        assertEq(loan1_after.remainingPrincipal, loan1.remainingPrincipal - loan1.minimumPrincipalPerPeriod);
-        assertEq(loan2_after.remainingPrincipal, loan2.remainingPrincipal - loan1.minimumPrincipalPerPeriod);
+        Loan memory loan1_after = sellerFinancing.getLoan(loanId1);
+        Loan memory loan2_after = sellerFinancing.getLoan(loanId2);
+        assertEq(loan1_after.loanTerms.principalAmount, loan1.loanTerms.principalAmount - loan1.loanTerms.minimumPrincipalPerPeriod);
+        assertEq(loan2_after.loanTerms.principalAmount, loan2.loanTerms.principalAmount - loan1.loanTerms.minimumPrincipalPerPeriod);
     }
 
     function test_fuzz_makePaymentBatch_partialRepayment_case_two_loans(
@@ -329,7 +329,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.nftId = 0;
+        offer.collateralItem.identifier = 0;
         uint256 nftId1 = 8661;
         uint256 nftId2 = 6974;
 
@@ -343,51 +343,47 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId1 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId1
         );
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId2
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1);
-        assertionsForExecutedLoan(offer, nftId2);
+        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
+        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
 
-        Loan memory loan1 = sellerFinancing.getLoan(offer.nftContractAddress, nftId1);
-        Loan memory loan2 = sellerFinancing.getLoan(offer.nftContractAddress, nftId2);
+        Loan memory loan1 = sellerFinancing.getLoan(loanId1);
+        Loan memory loan2 = sellerFinancing.getLoan(loanId2);
 
-        (, uint256 periodInterest1) = sellerFinancing.calculateMinimumPayment(loan1);
-        (, uint256 periodInterest2) = sellerFinancing.calculateMinimumPayment(loan2);
+        (, uint256 periodInterest1,) = sellerFinancing.calculateMinimumPayment(loanId1);
+        (, uint256 periodInterest2,) = sellerFinancing.calculateMinimumPayment(loanId2);
 
-        address[] memory nftContractAddresses = new address[](2);
-        nftContractAddresses[0] = offer.nftContractAddress;
-        nftContractAddresses[1] = offer.nftContractAddress;
-        uint256[] memory nftIds = new uint256[](2);
-        nftIds[0] = nftId1;
-        nftIds[1] = nftId2;
+        uint256[] memory loanIds = new uint256[](2);
+        loanIds[0] = loanId1;
+        loanIds[1] = loanId2;
         uint256[] memory payments = new uint256[](2);
-        payments[0] = (loan1.minimumPrincipalPerPeriod + periodInterest1);
-        payments[1] = (loan2.minimumPrincipalPerPeriod + periodInterest2);
+        payments[0] = (loan1.loanTerms.minimumPrincipalPerPeriod + periodInterest1);
+        payments[1] = (loan2.loanTerms.minimumPrincipalPerPeriod + periodInterest2);
 
         vm.startPrank(buyer1);
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         sellerFinancing.makePaymentBatch{ value:  payments[0] + payments[1] - 1}(
-            nftContractAddresses,
-            nftIds,
+            loanIds,
             payments,
             true
         );
         vm.stopPrank();
-        Loan memory loan1_after = sellerFinancing.getLoan(offer.nftContractAddress, nftId1);
-        Loan memory loan2_after = sellerFinancing.getLoan(offer.nftContractAddress, nftId2);
-        assertEq(loan1_after.remainingPrincipal, loan1.remainingPrincipal - loan1.minimumPrincipalPerPeriod);
-        assertEq(loan2_after.remainingPrincipal, loan2.remainingPrincipal);
+        Loan memory loan1_after = sellerFinancing.getLoan(loanId1);
+        Loan memory loan2_after = sellerFinancing.getLoan(loanId2);
+        assertEq(loan1_after.loanTerms.principalAmount, loan1.loanTerms.principalAmount - loan1.loanTerms.minimumPrincipalPerPeriod);
+        assertEq(loan2_after.loanTerms.principalAmount, loan2.loanTerms.principalAmount);
         
         uint256 buyer1BalanceAfter = address(buyer1).balance;
         assertEq(buyer1BalanceAfter, buyer1BalanceBefore - payments[0]);

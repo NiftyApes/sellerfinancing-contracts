@@ -17,57 +17,21 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer) private {
-        // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
-        // require delegate.cash has buyer delegation
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(buyer1),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                offer.nftId
-            ),
-            true
-        );
-        // loan exists
-        assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
-            block.timestamp
-        );
-        // buyer NFT minted to buyer
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), buyer1);
-        // seller NFT minted to seller
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
-        assertEq(loan.borrowerNftId, 0);
-        assertEq(loan.lenderNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
-        assertEq(loan.periodBeginTimestamp, block.timestamp);
-    }
-
     function test_unit_safeTranferFrom_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loanId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.collateralItem.identifier
             ),
             false
         );
@@ -77,7 +41,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.collateralItem.identifier
             ),
             true
         );
@@ -86,20 +50,18 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_safeTranferFromData_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan.borrowerNftId, bytes(""));
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loanId, bytes(""));
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.collateralItem.identifier
             ),
             false
         );
@@ -109,7 +71,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.collateralItem.identifier
             ),
             true
         );
@@ -119,20 +81,18 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_tranferFrom_updates_delagates_for_buyer_ticket() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loan.borrowerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loanId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.collateralItem.identifier
             ),
             false
         );
@@ -142,7 +102,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.collateralItem.identifier
             ),
             true
         );
@@ -151,10 +111,8 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_safeTranferFrom_reverts_if_anyTransactingPartiesAreSanctioned() public {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
-        createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer);
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
 
         vm.prank(buyer1);
         vm.expectRevert(
@@ -163,20 +121,20 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 SANCTIONED_ADDRESS
             )
         );
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.borrowerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loanId);
 
         vm.prank(owner);
         sellerFinancing.pauseSanctions();
 
         vm.prank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loan.borrowerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, SANCTIONED_ADDRESS, loanId);
 
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.collateralItem.identifier
             ),
             false
         );
@@ -186,7 +144,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 SANCTIONED_ADDRESS,
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.nftId
+                offer.collateralItem.identifier
             ),
             true
         );
@@ -202,6 +160,6 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 SANCTIONED_ADDRESS
             )
         );
-        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(SANCTIONED_ADDRESS, buyer1, loan.borrowerNftId);
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(SANCTIONED_ADDRESS, buyer1, loanId);
     }
 }

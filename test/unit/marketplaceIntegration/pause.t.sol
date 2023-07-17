@@ -23,11 +23,11 @@ contract TestPauseMarketplace is Test, BaseTest, OffersLoansFixtures {
 
         vm.startPrank(buyer1);
         vm.expectRevert("Pausable: paused");
-        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.collateralItem.identifier
         );
     }
 }
