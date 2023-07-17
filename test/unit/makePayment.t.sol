@@ -41,7 +41,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         (recipients, amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -124,7 +124,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest, uint256 protocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
 
         (recipients, amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -140,7 +140,6 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
             royaltiesPaidInMakePayment += amounts[i];
         }
         totalRoyaltiesPaid += royaltiesPaidInMakePayment;
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest);
         uint256 ownerBalanceBefore = address(owner).balance;
         vm.startPrank(buyer1);
         vm.expectEmit(true, true, false, false);
@@ -197,7 +196,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.startPrank(buyer1);
         vm.expectEmit(true, true, false, false);
@@ -257,7 +256,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         uint256 lender1BalanceBefore = address(lender1).balance;
 
@@ -322,8 +321,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest);
+        (, uint256 periodInterest, uint256 protocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
 
         uint256 lender1BalanceBefore = address(lender1).balance;
         uint256 ownerBalanceBefore = address(owner).balance;
@@ -391,7 +389,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         uint256 lender1BalanceBefore = address(lender1).balance;
 
@@ -445,7 +443,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
             loanId
         );
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(
             loanId
         );
 
@@ -487,7 +485,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (uint256 totalMinimumPayment, uint256 periodInterest) = sellerFinancing
+        (uint256 totalMinimumPayment, uint256 periodInterest,) = sellerFinancing
             .calculateMinimumPayment(loanId);
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
@@ -559,10 +557,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (uint256 totalMinimumPayment, uint256 periodInterest) = sellerFinancing
+        (uint256 totalMinimumPayment, uint256 periodInterest, uint256 protocolFee) = sellerFinancing
             .calculateMinimumPayment(loanId);
-
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.minimumPrincipalPerPeriod + periodInterest);
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -633,11 +629,11 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         skip(loan.loanTerms.periodDuration);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         assertEq(totalInterest, 2 * periodInterest);
 
@@ -674,27 +670,26 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest, uint256 protocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
 
         skip(loan.loanTerms.periodDuration);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest, uint256 totalProtocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
 
         assertEq(totalInterest, 2 * periodInterest);
+        assertEq(totalProtocolFee, 2 * protocolFee);
 
         uint256 ownerBalanceBefore = address(owner).balance;
-        
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + totalInterest);
 
         vm.startPrank(buyer1);
-        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + totalInterest + protocolFee) }(
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + totalInterest + totalProtocolFee) }(
             loanId
         );
         vm.stopPrank();
 
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);
         // protocol fee received by the owner
-        assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
+        assertEq(address(owner).balance, ownerBalanceBefore + totalProtocolFee);
     }
 
     function test_fuzz_makePayment_fullRepayment_in_gracePeriod_withProtocolFee(
@@ -719,11 +714,11 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         skip(loan.loanTerms.periodDuration * 2);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         assertEq(totalInterest, 3 * periodInterest);
 
@@ -756,11 +751,11 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         skip(loan.loanTerms.periodDuration);
 
-        (uint256 totalMinimumPayment, uint256 totalInterest) = sellerFinancing
+        (uint256 totalMinimumPayment, uint256 totalInterest,) = sellerFinancing
             .calculateMinimumPayment(loanId);
 
         vm.assume(loan.loanTerms.principalAmount > 2 * loan.loanTerms.minimumPrincipalPerPeriod);
@@ -827,7 +822,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(
@@ -865,7 +860,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
             loanId
         );
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(
             loanId
         );
 
@@ -906,7 +901,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
             loanId
         );
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(
             loanId
         );
 
@@ -947,7 +942,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
             loanId
         );
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(
             loanId
         );
 

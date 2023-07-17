@@ -27,7 +27,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.startPrank(buyer1);
         uint256[] memory loanIds = new uint256[](1);
@@ -94,8 +94,8 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan1 = sellerFinancing.getLoan(loanId1);
         Loan memory loan2 = sellerFinancing.getLoan(loanId2);
 
-        (, uint256 periodInterest1) = sellerFinancing.calculateMinimumPayment(loanId1);
-        (, uint256 periodInterest2) = sellerFinancing.calculateMinimumPayment(loanId2);
+        (, uint256 periodInterest1,) = sellerFinancing.calculateMinimumPayment(loanId1);
+        (, uint256 periodInterest2,) = sellerFinancing.calculateMinimumPayment(loanId2);
 
         uint256[] memory loanIds = new uint256[](2);
         loanIds[0] = loanId1;
@@ -148,41 +148,34 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         boredApeYachtClub.approve(address(sellerFinancing), nftId2);
         vm.stopPrank();
 
+        uint256[] memory loanIds = new uint256[](2);
         vm.startPrank(buyer1);
-        uint256 loanId1 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
+        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId1
         );
-        uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
+        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
             nftId2
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
-        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
+        assertionsForExecutedLoan(offer, nftId1, buyer1, loanIds[0]);
+        assertionsForExecutedLoan(offer, nftId2, buyer1, loanIds[1]);
 
-        Loan memory loan1 = sellerFinancing.getLoan(loanId1);
-        Loan memory loan2 = sellerFinancing.getLoan(loanId2);
+        Loan memory loan1 = sellerFinancing.getLoan(loanIds[0]);
+        Loan memory loan2 = sellerFinancing.getLoan(loanIds[1]);
 
-        (, uint256 periodInterest1) = sellerFinancing.calculateMinimumPayment(loanId1);
-        (, uint256 periodInterest2) = sellerFinancing.calculateMinimumPayment(loanId2);
+        (, uint256 periodInterest1,uint256 protocolFee1) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
+        (, uint256 periodInterest2,uint256 protocolFee2) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
 
-        uint256[] memory loanIds = new uint256[](2);
-        loanIds[0] = loanId1;
-        loanIds[1] = loanId2;
-        uint256[] memory payments = new uint256[](2);
         
-        payments[0] = (loan1.loanTerms.principalAmount + periodInterest1);
-        // add protocolFee
-        payments[0] += sellerFinancing.calculateProtocolFee(payments[0]);
-
-        payments[1] = (loan2.loanTerms.principalAmount + periodInterest2);
-        // add protocolFee
-        payments[1] += sellerFinancing.calculateProtocolFee(payments[1]);
+        uint256[] memory payments = new uint256[](2);
+        payments[0] = (loan1.loanTerms.principalAmount + periodInterest1 + protocolFee1);
+        payments[1] = (loan2.loanTerms.principalAmount + periodInterest2 + protocolFee2);
 
         vm.startPrank(buyer1);
         sellerFinancing.makePaymentBatch{ value:  payments[0]+payments[1]}(
@@ -219,7 +212,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
             loanId
         );
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(
             loanId
         );
 
@@ -296,8 +289,8 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan1 = sellerFinancing.getLoan(loanId1);
         Loan memory loan2 = sellerFinancing.getLoan(loanId2);
 
-        (, uint256 periodInterest1) = sellerFinancing.calculateMinimumPayment(loanId1);
-        (, uint256 periodInterest2) = sellerFinancing.calculateMinimumPayment(loanId2);
+        (, uint256 periodInterest1,) = sellerFinancing.calculateMinimumPayment(loanId1);
+        (, uint256 periodInterest2,) = sellerFinancing.calculateMinimumPayment(loanId2);
 
         uint256[] memory loanIds = new uint256[](2);
         loanIds[0] = loanId1;
@@ -369,8 +362,8 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan1 = sellerFinancing.getLoan(loanId1);
         Loan memory loan2 = sellerFinancing.getLoan(loanId2);
 
-        (, uint256 periodInterest1) = sellerFinancing.calculateMinimumPayment(loanId1);
-        (, uint256 periodInterest2) = sellerFinancing.calculateMinimumPayment(loanId2);
+        (, uint256 periodInterest1,) = sellerFinancing.calculateMinimumPayment(loanId1);
+        (, uint256 periodInterest2,) = sellerFinancing.calculateMinimumPayment(loanId2);
 
         uint256[] memory loanIds = new uint256[](2);
         loanIds[0] = loanId1;

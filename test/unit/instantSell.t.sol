@@ -25,7 +25,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest, uint256 protocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -43,8 +43,6 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
-
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + protocolFee + minProfitAmount) *
@@ -118,7 +116,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest, uint256 protocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
 
         (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -136,8 +134,6 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
-
-        uint256 protocolFee = sellerFinancing.calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + protocolFee + minProfitAmount) *
@@ -209,7 +205,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // set any minimum profit value
         uint256 considerationAmount2 = 1 ether;
@@ -299,7 +295,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         (recipients, amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -370,7 +366,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         skip(loan.loanTerms.periodDuration * 2);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
@@ -423,7 +419,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
@@ -488,7 +484,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
@@ -539,7 +535,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         vm.warp(loan.periodEndTimestamp + loan.loanTerms.periodDuration + 1);
 
@@ -589,7 +585,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
@@ -636,7 +632,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
@@ -683,7 +679,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
@@ -729,7 +725,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
@@ -775,7 +771,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
@@ -821,7 +817,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
@@ -868,7 +864,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // adding 2.5% opnesea fee amount
         uint256 bidPrice = ((loan.loanTerms.principalAmount + totalInterest) * 40 + 38) / 39;
@@ -916,7 +912,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(loanId);
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
 
         // set any minimum profit value
         uint256 minProfitAmount = 1 ether;
@@ -976,7 +972,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
-        (, uint256 totalInterest) = sellerFinancing.calculateMinimumPayment(
+        (, uint256 totalInterest,) = sellerFinancing.calculateMinimumPayment(
             loanId
         );
 

@@ -39,7 +39,7 @@ contract NiftyApesLoanManagementFacet is
     /// @inheritdoc ILoanManagement
     function calculateMinimumPayment(
         uint256 loanId
-    ) public view returns (uint256 minimumPayment, uint256 periodInterest) {
+    ) public view returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         Loan memory loan = _getLoan(loanId, sf);
@@ -49,7 +49,7 @@ contract NiftyApesLoanManagementFacet is
     function _calculateMinimumPayment(
         Loan memory loan,
         NiftyApesStorage.SellerFinancingStorage storage sf
-    ) private view returns (uint256 minimumPayment, uint256 periodInterest) {
+    ) private view returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) {
         // if in the current period, else prior to period minimumPayment and interest should remain 0
         if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
             // calculate periods passed
@@ -69,16 +69,13 @@ contract NiftyApesLoanManagementFacet is
                     ((loan.loanTerms.principalAmount * loan.loanTerms.periodInterestRateBps) / NiftyApesStorage.BASE_BPS) *
                     numPeriodsPassed;
             }
-
-            minimumPayment = minimumPrincipalPayment + periodInterest;
-            minimumPayment += _calculateProtocolFee(minimumPayment, sf);
+            // calculate fee to be paid to protocolFeeRecpient
+            if (loan.loanTerms.periodInterestRateBps != 0) {
+                protocolFeeAmount = _calculateProtocolFee(loan.loanTerms.principalAmount, sf) *
+                    numPeriodsPassed;
+            }
+            minimumPayment = minimumPrincipalPayment + periodInterest + protocolFeeAmount;
         }
-    }
-
-    function calculateProtocolFee(uint256 loanPaymentAmount) external view returns (uint256) {
-        // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        return _calculateProtocolFee(loanPaymentAmount, sf);
     }
 
     /// @inheritdoc ILoanManagement
@@ -179,9 +176,9 @@ contract NiftyApesLoanManagementFacet is
         _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.loanTerms.periodDuration);
 
         // calculate period interest
-        (, uint256 periodInterest) = _calculateMinimumPayment(loan, sf);
+        (, uint256 periodInterest, uint256 protocolFeeAmount) = _calculateMinimumPayment(loan, sf);
         // calculate total payment required to close the loan
-        uint256 totalPaymentRequired = loan.loanTerms.principalAmount + periodInterest + _calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest, sf);
+        uint256 totalPaymentRequired = loan.loanTerms.principalAmount + periodInterest + protocolFeeAmount;
 
         // sell the asset to get sufficient funds to repay loan
         uint256 saleAmountReceived = _sellAsset(
@@ -211,11 +208,11 @@ contract NiftyApesLoanManagementFacet is
         // requireLoanNotInHardDefault
         _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.loanTerms.periodDuration);
 
-        // get minimum payment and period interest values
-        (uint256 totalMinimumPayment, uint256 periodInterest) = _calculateMinimumPayment(loan, sf);
+        // get minimum payment, period interest and period protocol fee values
+        (uint256 totalMinimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) = _calculateMinimumPayment(loan, sf);
 
         // calculate the total possible payment
-        uint256 totalPossiblePayment = loan.loanTerms.principalAmount + periodInterest + _calculateProtocolFee(loan.loanTerms.principalAmount + periodInterest, sf);
+        uint256 totalPossiblePayment = loan.loanTerms.principalAmount + periodInterest + protocolFeeAmount;
 
         //require amountReceived to be larger than the total minimum payment
         if (amountReceived < totalMinimumPayment) {
@@ -232,8 +229,6 @@ contract NiftyApesLoanManagementFacet is
             amountReceived = totalPossiblePayment;
         }
 
-        // calculate protocol fee
-        uint256 protocolFeeAmount = _calculateProtocolFeeShareFromPaymentReceived(amountReceived, sf);
         // send the fee amount to protocol fee recipient
         _sendProtocolFeeToRecipient(protocolFeeAmount, sf);
 
@@ -469,13 +464,8 @@ contract NiftyApesLoanManagementFacet is
         return (loanPaymentAmount * sf.protocolFeeBPS) / NiftyApesStorage.BASE_BPS;
     }
 
-    function _calculateProtocolFeeShareFromPaymentReceived(uint256 paymentReceived, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {
-        uint256 loanPaymentAmount = ((paymentReceived*NiftyApesStorage.BASE_BPS)+NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS - 1)/(NiftyApesStorage.BASE_BPS + sf.protocolFeeBPS);
-        return paymentReceived - loanPaymentAmount;
-    }
-
     function _sendProtocolFeeToRecipient(uint256 amount, NiftyApesStorage.SellerFinancingStorage storage sf) private {
-        if (sf.protocolFeeRecipient != address(0)) {
+        if (sf.protocolFeeRecipient != address(0) && amount > 0) {
             sf.protocolFeeRecipient.sendValue(amount);
         }
     }
