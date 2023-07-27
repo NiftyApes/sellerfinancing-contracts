@@ -29,7 +29,8 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
             offer,
             offerSignature,
             buyer1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
 
@@ -41,10 +42,11 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
             offer,
             offerSignature,
             buyer1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
 
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
     }
 }

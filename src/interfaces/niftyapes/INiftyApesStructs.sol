@@ -18,14 +18,14 @@ interface INiftyApesStructs {
     struct CollateralItem {
         ItemType itemType;
         address token;
-        uint256 identifier;
+        uint256 tokenId;
         uint256 amount;
     }
 
     struct LoanTerms {
         ItemType itemType;
         address token;
-        uint256 identifier;
+        uint256 tokenId;
         // Loan amount
         uint128 principalAmount;
         // Minimum amount of total principal to be paid each period
@@ -73,7 +73,7 @@ interface INiftyApesStructs {
 
     struct Loan {
         // SLOT 0
-        // Buyer loan receipt nftId
+        // Buyer loan receipt tokenId
         uint256 loanId;
         // SLOT 1, 2, 3, 4
         LoanTerms loanTerms;

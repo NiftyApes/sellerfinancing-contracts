@@ -28,10 +28,11 @@ contract TestBuyWithSellerFinancingMarketplace is Test, OffersLoansFixtures {
             offer,
             offerSignature,
             buyer1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
 
@@ -67,7 +68,7 @@ contract TestBuyWithSellerFinancingMarketplace is Test, OffersLoansFixtures {
         );
         marketplaceIntegration.buyWithSellerFinancing{
             value: offer.loanTerms.downPaymentAmount + marketplaceFee - 1
-        }(offer, offerSignature, buyer1, offer.collateralItem.identifier);
+        }(offer, offerSignature, buyer1, offer.collateralItem.tokenId, offer.collateralItem.amount);
         vm.stopPrank();
     }
 

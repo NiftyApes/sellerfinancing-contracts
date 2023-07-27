@@ -26,10 +26,11 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, SANCTIONED_ADDRESS, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, SANCTIONED_ADDRESS, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 

@@ -17,7 +17,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
     function _test_seizeAsset_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -27,13 +27,13 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         loanIds[0] = loanId;
 
         vm.expectEmit(true, true, false, false);
-        emit AssetSeized(offer.collateralItem.token, offer.collateralItem.identifier, loan);
+        emit AssetSeized(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
 
         vm.startPrank(seller1);
         sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, seller1, loanId);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, seller1, loanId);
     }
 
     function test_fuzz_seizeAsset_simplest_case(
@@ -50,7 +50,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
     function _test_seizeAsset_reverts_if_not_expired(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
         
         uint256[] memory loanIds = new uint256[](1);
         loanIds[0] = loanId;
@@ -75,7 +75,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
     function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -87,7 +87,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer1, loanId);
 
         uint256[] memory loanIds = new uint256[](1);
         loanIds[0] = loanId;
@@ -113,7 +113,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
         vm.warp(loan.periodEndTimestamp + 1);
@@ -160,7 +160,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
         vm.warp(loan.periodEndTimestamp + 1);
@@ -191,17 +191,17 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, tokenId2);
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
         vm.stopPrank();
 
         vm.startPrank(buyer1);
@@ -209,17 +209,19 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             buyer1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
         uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
-        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
+        assertionsForExecutedLoan(offer, tokenId1, buyer1, loanId1);
+        assertionsForExecutedLoan(offer, tokenId2, buyer1, loanId2);
 
         Loan memory loan1 = sellerFinancing.getLoan(loanId1);
         Loan memory loan2 = sellerFinancing.getLoan(loanId2);
@@ -231,16 +233,16 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
         loanIds[1] = loanId2;
 
         vm.expectEmit(true, true, false, false);
-        emit AssetSeized(offer.collateralItem.token, nftId1, loan1);
+        emit AssetSeized(offer.collateralItem.token, tokenId1, loan1);
         vm.expectEmit(true, true, false, false);
-        emit AssetSeized(offer.collateralItem.token, nftId2, loan2);
+        emit AssetSeized(offer.collateralItem.token, tokenId2, loan2);
 
         vm.startPrank(seller1);
         sellerFinancing.seizeAsset(loanIds);
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.collateralItem.token, nftId1, seller1, loanIds[0]);
-        assertionsForClosedLoan(offer.collateralItem.token, nftId2, seller1, loanIds[1]);
+        assertionsForClosedLoan(offer.collateralItem.token, tokenId1, seller1, loanIds[0]);
+        assertionsForClosedLoan(offer.collateralItem.token, tokenId2, seller1, loanIds[1]);
     }
 
     function test_fuzz_seizeAsset_with_twoLoans(
@@ -257,7 +259,7 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
     function _test_seizeAsset_reverts_if_anyOneSeize_reverts(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
         vm.warp(loan.periodEndTimestamp + 1);

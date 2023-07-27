@@ -80,15 +80,19 @@ contract NiftyApesLoanManagementFacet is
 
     /// @inheritdoc ILoanManagement
     function makePayment(
-        uint256 loanId
+        uint256 loanId,
+        uint256 paymentAmount
     ) external payable whenNotPaused nonReentrant {
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         Loan storage loan = _getLoan(loanId, sf);
+        if (loan.loanTerms.itemType == ItemType.NATIVE && msg.value != paymentAmount) {
+            revert ValueReceivedNotEqualToPaymentAmount();
+        }
         CollateralItem memory collateralItem = loan.collateralItem;
         // make payment
-        address borrower = _makePayment(loan, msg.value, sf);
-        // transfer nft to borrower if loan closed
+        address borrower = _makePayment(loan, paymentAmount, sf);
+        // transfer token to borrower if loan closed
         if (borrower != address(0)) {
             _transferCollateral(collateralItem, address(this), borrower);
         }
@@ -129,7 +133,7 @@ contract NiftyApesLoanManagementFacet is
             Loan storage loan = _getLoan(loanIds[i], sf);
             CollateralItem memory collateralItem = loan.collateralItem;
             address borrower = _makePayment(loan, payments[i], sf);
-            // transfer nft to borrower if loan closed
+            // transfer token to borrower if loan closed
             if (borrower != address(0)) {
                 _transferCollateral(collateralItem, address(this), borrower);
             }
@@ -169,6 +173,7 @@ contract NiftyApesLoanManagementFacet is
         // get borrower
         address borrowerAddress = ownerOf(loan.loanId);
 
+        _requireValidCollateralItemType(loan.CollateralItem.itemType, ItemType.ERC721);
         _requireIsNotSanctioned(msg.sender, sf);
         // requireMsgSenderIsBuyer
         _requireMsgSenderIsValidCaller(borrowerAddress);
@@ -182,14 +187,13 @@ contract NiftyApesLoanManagementFacet is
 
         // sell the asset to get sufficient funds to repay loan
         uint256 saleAmountReceived = _sellAsset(
-            loan.collateralItem.token,
-            loan.collateralItem.identifier,
+            loan,
             totalPaymentRequired + minProfitAmount,
             data,
             sf
         );
         // emit instant sell event
-        emit InstantSell(loan.collateralItem.token, loan.collateralItem.identifier, saleAmountReceived);
+        emit InstantSell(loan.collateralItem.token, loan.collateralItem.tokenId, saleAmountReceived);
 
         // make payment to close the loan and transfer remainder to the borrower
         _makePayment(loan, saleAmountReceived, sf);
@@ -197,7 +201,7 @@ contract NiftyApesLoanManagementFacet is
 
     function _makePayment(
         Loan storage loan,
-        uint256 amountReceived,
+        uint256 paymentAmount,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal returns (address borrowerAddress) {
         // get borrower
@@ -214,66 +218,84 @@ contract NiftyApesLoanManagementFacet is
         // calculate the total possible payment
         uint256 totalPossiblePayment = loan.loanTerms.principalAmount + periodInterest + protocolFeeAmount;
 
-        //require amountReceived to be larger than the total minimum payment
-        if (amountReceived < totalMinimumPayment) {
-            revert AmountReceivedLessThanRequiredMinimumPayment(
-                amountReceived,
+        //require paymentAmount to be larger than the total minimum payment
+        if (paymentAmount < totalMinimumPayment) {
+            revert PaymentReceivedLessThanRequiredMinimumPayment(
+                paymentAmount,
                 totalMinimumPayment
             );
         }
-        // if amountReceived is greater than the totalPossiblePayment send back the difference
-        if (amountReceived > totalPossiblePayment) {
-            //send back value
-            payable(borrowerAddress).sendValue(amountReceived - totalPossiblePayment);
-            // adjust amountReceived value
-            amountReceived = totalPossiblePayment;
+        // if paymentAmount is greater than the totalPossiblePayment send back the difference
+        if (paymentAmount > totalPossiblePayment) {
+            // send back value if loanItem NATIVE ETH
+            if (loan.loanTerms.itemType == ItemType.NATIVE) {
+                payable(borrowerAddress).sendValue(paymentAmount - totalPossiblePayment);
+            }
+            
+            // adjust paymentAmount value
+            paymentAmount = totalPossiblePayment;
         }
 
         // send the fee amount to protocol fee recipient
-        _sendProtocolFeeToRecipient(protocolFeeAmount, sf);
+        if (sf.protocolFeeRecipient != address(0) && protocolFeeAmount > 0) {
+            if (loan.loanTerms.itemType == ItemType.NATIVE) {
+                sf.protocolFeeRecipient.sendValue(protocolFeeAmount);
+            } else {
+                _transferERC20(loan.loanTerms.token, msg.sender, sf.protocolFeeRecipient, protocolFeeAmount);
+            }
+        }
 
         uint256 totalRoyaltiesPaid;
-        if (loan.payRoyalties) {
+        if (loan.payRoyalties && loan.collateralItem.itemType == ItemType.ERC721) {
             totalRoyaltiesPaid = _payRoyalties(
                 loan.collateralItem.token,
-                loan.collateralItem.identifier,
+                loan.collateralItem.tokenId,
                 borrowerAddress,
-                amountReceived - protocolFeeAmount,
+                loan.loanTerms.itemType,
+                loan.loanTerms.token,
+                paymentAmount - protocolFeeAmount,
                 sf
             );
         }
 
         // payout lender
-        _conditionalSendValue(ownerOf(loan.loanId + 1), borrowerAddress, amountReceived - protocolFeeAmount - totalRoyaltiesPaid, sf);
+        if (loan.loanTerms.itemType == ItemType.NATIVE) {
+            _conditionalSendValue(ownerOf(loan.loanId + 1), borrowerAddress, paymentAmount - protocolFeeAmount - totalRoyaltiesPaid, sf);
+        } else {
+            _transferERC20(loan.loanTerms.token, msg.sender, ownerOf(loan.loanId + 1), paymentAmount - protocolFeeAmount - totalRoyaltiesPaid);
+        }
 
         // update loan struct
-        loan.loanTerms.principalAmount -= uint128(amountReceived - protocolFeeAmount - periodInterest);
+        loan.loanTerms.principalAmount -= uint128(paymentAmount - protocolFeeAmount - periodInterest);
 
         // check if remainingPrincipal is 0
         if (loan.loanTerms.principalAmount == 0) {
-            // remove borrower delegate.cash delegation
-            IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
-                borrowerAddress,
-                loan.collateralItem.token,
-                loan.collateralItem.identifier,
-                false
-            );
-            // burn borrower nft
+            // remove borrower delegate.cash delegation if collateral ERC721
+            if (loan.collateralItem.itemType == ItemType.ERC721) {
+                IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
+                    borrowerAddress,
+                    loan.collateralItem.token,
+                    loan.collateralItem.tokenId,
+                    false
+                );
+            }
+            
+            // burn borrower token
             _burn(loan.loanId);
-            // burn lender nft
+            // burn lender token
             _burn(loan.loanId + 1);
             //emit paymentMade event
             emit PaymentMade(
                 loan.collateralItem.token,
-                loan.collateralItem.identifier,
-                amountReceived,
+                loan.collateralItem.tokenId,
+                paymentAmount,
                 protocolFeeAmount,
                 totalRoyaltiesPaid,
                 periodInterest,
                 loan
             );
             // emit loan repaid event
-            emit LoanRepaid(loan.collateralItem.token, loan.collateralItem.identifier, loan);
+            emit LoanRepaid(loan.collateralItem.token, loan.collateralItem.tokenId, loan);
             // delete loan
             delete sf.loans[loan.loanId];
             // return borrowerAddress
@@ -293,8 +315,8 @@ contract NiftyApesLoanManagementFacet is
             //emit paymentMade event
             emit PaymentMade(
                 loan.collateralItem.token,
-                loan.collateralItem.identifier,
-                amountReceived,
+                loan.collateralItem.tokenId,
+                paymentAmount,
                 protocolFeeAmount,
                 totalRoyaltiesPaid,
                 periodInterest,
@@ -325,21 +347,23 @@ contract NiftyApesLoanManagementFacet is
         }
 
         // remove borrower delegate.cash delegation
-        IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
-            borrowerAddress,
-            loan.collateralItem.token,
-            loan.collateralItem.identifier,
-            false
-        );
+        if (loan.collateralItem.itemType == ItemType.ERC721) {
+            IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
+                borrowerAddress,
+                loan.collateralItem.token,
+                loan.collateralItem.tokenId,
+                false
+            );
+        }
 
-        // burn borrower nft
+        // burn borrower token
         _burn(loan.loanId);
 
-        // burn lender nft
+        // burn lender token
         _burn(loan.loanId + 1);
 
         //emit asset seized event
-        emit AssetSeized(loan.collateralItem.token, loan.collateralItem.identifier, loan);
+        emit AssetSeized(loan.collateralItem.token, loan.collateralItem.tokenId, loan);
 
         // transfer NFT from this contract to the lender address
         _transferCollateral(loan.collateralItem, address(this), lenderAddress);
@@ -349,23 +373,21 @@ contract NiftyApesLoanManagementFacet is
     }
 
     function _sellAsset(
-        address nftContractAddress,
-        uint256 nftId,
+        Loan memory loan,
         uint256 minSaleAmount,
         bytes calldata data,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) private returns (uint256 saleAmountReceived) {
         // approve the NFT for Seaport conduit
-        IERC721Upgradeable(nftContractAddress).approve(sf.seaportContractAddress, nftId);
+        IERC721Upgradeable(loan.collateralItem.token).approve(sf.seaportContractAddress, tokenId);
 
         // decode seaport order data
         ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
 
         // validate order
-        _validateSaleOrder(order, nftContractAddress, nftId, sf);
-
-        // instantiate weth
-        IERC20Upgradeable asset = IERC20Upgradeable(sf.wethContractAddress);
+        _validateSaleOrder(order, loan, sf);
+        // instantiate loam token
+        IERC20Upgradeable asset = IERC20Upgradeable(loan.loanTerms.token);
 
         // calculate totalConsiderationAmount
         uint256 totalConsiderationAmount;
@@ -377,28 +399,37 @@ contract NiftyApesLoanManagementFacet is
         asset.approve(sf.seaportContractAddress, totalConsiderationAmount);
 
         // cache this contract eth balance before the sale
-        uint256 contractBalanceBefore = address(this).balance;
+        uint256 contractBalanceBefore;
+        if (loan.loanTerms.itemType == ItemType.NATIVE) {
+            contractBalanceBefore = address(this).balance;
+        } else {
+            contractBalanceBefore = asset.balanceOf(address(this));
+        }
 
         // execute sale on Seaport
         if (!ISeaport(sf.seaportContractAddress).fulfillOrder(order, bytes32(0))) {
             revert SeaportOrderNotFulfilled();
         }
 
-        // convert weth to eth
-        (bool success, ) = sf.wethContractAddress.call(
-            abi.encodeWithSignature(
-                "withdraw(uint256)",
-                order.parameters.offer[0].endAmount - totalConsiderationAmount
-            )
-        );
-        if (!success) {
-            revert WethConversionFailed();
+        if (loan.loanTerms.itemType == ItemType.NATIVE) {
+            // convert weth to eth
+            (bool success, ) = sf.wethContractAddress.call(
+                abi.encodeWithSignature(
+                    "withdraw(uint256)",
+                    order.parameters.offer[0].endAmount - totalConsiderationAmount
+                )
+            );
+            if (!success) {
+                revert WethConversionFailed();
+            }
+            // calculate saleAmountReceived
+            saleAmountReceived = address(this).balance - contractBalanceBefore;
+        } else {
+            // calculate saleAmountReceived
+            saleAmountReceived = asset.balanceOf(address(this)) - contractBalanceBefore;
         }
-
-        // calculate saleAmountReceived
-        saleAmountReceived = address(this).balance - contractBalanceBefore;
-
-        // check amount received is more than minSaleAmount
+        
+        // check amount received is more than minSaleAmount else revert
         if (saleAmountReceived < minSaleAmount) {
             revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
         }
@@ -406,8 +437,8 @@ contract NiftyApesLoanManagementFacet is
 
     function _validateSaleOrder(
         ISeaport.Order memory order,
-        address nftContractAddress,
-        uint256 nftId,
+        address tokenContractAddress,
+        uint256 tokenId,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal view {
         if (order.parameters.consideration[0].itemType != ISeaport.ItemType.ERC721) {
@@ -417,17 +448,17 @@ contract NiftyApesLoanManagementFacet is
                 ISeaport.ItemType.ERC721
             );
         }
-        if (order.parameters.consideration[0].token != nftContractAddress) {
+        if (order.parameters.consideration[0].token != tokenContractAddress) {
             revert InvalidConsiderationToken(
                 0,
                 order.parameters.consideration[0].token,
-                nftContractAddress
+                tokenContractAddress
             );
         }
-        if (order.parameters.consideration[0].identifierOrCriteria != nftId) {
+        if (order.parameters.consideration[0].tokenId != tokenId) {
             revert InvalidConsideration0Identifier(
-                order.parameters.consideration[0].identifierOrCriteria,
-                nftId
+                order.parameters.consideration[0].tokenId,
+                tokenId
             );
         }
         if (order.parameters.offer[0].itemType != ISeaport.ItemType.ERC20) {
@@ -436,8 +467,11 @@ contract NiftyApesLoanManagementFacet is
                 ISeaport.ItemType.ERC20
             );
         }
-        if (order.parameters.offer[0].token != sf.wethContractAddress) {
+        if (loan.loanTerm.itemType == ItemType.NATIVE && order.parameters.offer[0].token != sf.wethContractAddress) {
             revert InvalidOffer0Token(order.parameters.offer[0].token, sf.wethContractAddress);
+        }
+        if (loan.loanTerm.itemType == ItemType.ERC20 && order.parameters.offer[0].token != loan.loanTerms.token) {
+            revert InvalidOffer0Token(order.parameters.offer[0].token, loan.loanTerms.token);
         }
         if (order.parameters.offer.length != 1) {
             revert InvalidOfferLength(order.parameters.offer.length, 1);
@@ -464,9 +498,9 @@ contract NiftyApesLoanManagementFacet is
         return (loanPaymentAmount * sf.protocolFeeBPS) / NiftyApesStorage.BASE_BPS;
     }
 
-    function _sendProtocolFeeToRecipient(uint256 amount, NiftyApesStorage.SellerFinancingStorage storage sf) private {
-        if (sf.protocolFeeRecipient != address(0) && amount > 0) {
-            sf.protocolFeeRecipient.sendValue(amount);
-        }
-    }
+    // function _sendProtocolFeeToRecipient(uint256 amount, NiftyApesStorage.SellerFinancingStorage storage sf) private {
+    //     if (sf.protocolFeeRecipient != address(0) && amount > 0) {
+    //         sf.protocolFeeRecipient.sendValue(amount);
+    //     }
+    // }
 }

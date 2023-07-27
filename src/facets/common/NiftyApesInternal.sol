@@ -53,7 +53,7 @@ abstract contract NiftyApesInternal is
                 NiftyApesStorage._COLLATERAL_ITEM_TYPEHASH,
                 offer.collateralItem.itemType,
                 offer.collateralItem.token,
-                offer.collateralItem.identifier,
+                offer.collateralItem.tokenId,
                 offer.collateralItem.amount
             )
         );
@@ -63,7 +63,7 @@ abstract contract NiftyApesInternal is
                 NiftyApesStorage._LOAN_TERMS_TYPEHASH,
                 offer.loanTerms.itemType,
                 offer.loanTerms.token,
-                offer.loanTerms.identifier,
+                offer.loanTerms.tokenId,
                 offer.loanTerms.principalAmount,
                 offer.loanTerms.minimumPrincipalPerPeriod,
                 offer.loanTerms.downPaymentAmount,
@@ -135,20 +135,23 @@ abstract contract NiftyApesInternal is
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal {
         sf.cancelledOrFinalized[signature] = true;
-        emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.identifier, offer, signature);
+        emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.tokenId, offer, signature);
     }
     
     function _commonLoanChecks(
         Offer memory offer,
         bytes calldata signature,
         address borrower,
-        uint256 nftId,
+        uint256 tokenId,
+        uint256 tokenAmount,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal returns (address lender) {
-        // check for collection offer
         if (!offer.isCollectionOffer) {
-            if (nftId != offer.collateralItem.identifier) {
-                revert NftIdsMustMatch();
+            if (tokenId != offer.collateralItem.tokenId) {
+                revert CollateralDetailsMustMatch();
+            }
+            if (offer.collateralItem.itemType == itemType.ERC1155 && tokenAmount != tokenAmountoffer.collateralItem.amount) {
+                revert CollateralDetailsMustMatch();
             }
             _requireAvailableSignature(signature, sf);
             // mark signature as used
@@ -158,6 +161,11 @@ abstract contract NiftyApesInternal is
                 revert CollectionOfferLimitReached();
             }
             sf.collectionOfferCounters[signature] += 1;
+        }
+
+        // loan item must be either ETH or ERC20
+        if (offer.loanTerms.itemType != ItemType.NATIVE || offer.loanTerms.itemType != ItemType.ERC20) {
+            revert InvalidLoanItemType(offer.loanTerms.itemType);
         }
 
         // get lender
@@ -199,49 +207,49 @@ abstract contract NiftyApesInternal is
         bytes calldata signature,
         address borrower,
         address lender,
-        uint256 nftId,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal {
         // instantiate loan
         Loan storage loan = _getLoan(sf.loanId, sf);
 
-        // mint borrower nft
+        if (offer.collateralItem.itemType == ItemType.ERC721) {
+            _setTokenURI(
+                sf.loanId,
+                IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(offer.collateralItem.tokenId)
+            );
+            // add borrower delegate.cash delegation
+            IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
+                borrower,
+                offer.collateralItem.token,
+                offer.collateralItem.tokenId,
+                true
+            );
+        }
+
+        // mint borrower token
         _safeMint(borrower, sf.loanId);
-        _setTokenURI(
-            sf.loanId,
-            IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(nftId)
-        );
         sf.loanId++;
 
-        // mint lender nft
+        // mint lender token
         _safeMint(lender, sf.loanId);
         sf.loanId++;
 
         // create loan
-        _createLoan(loan, offer, nftId, sf.loanId - 2);
-
-        // add borrower delegate.cash delegation
-        IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
-            borrower,
-            offer.collateralItem.token,
-            nftId,
-            true
-        );
+        _createLoan(loan, offer, sf.loanId - 2);
 
         // emit loan executed event
-        emit LoanExecuted(offer.collateralItem.token, nftId, signature, loan);
+        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offer.collateralItem.tokenAmount, signature, loan);
     }
 
     function _createLoan(
         Loan storage loan,
         Offer memory offer,
-        uint256 nftId,
         uint256 loanId
     ) internal {
         loan.loanId = loanId;
         loan.collateralItem.itemType = offer.collateralItem.itemType;
         loan.collateralItem.token = offer.collateralItem.token;
-        loan.collateralItem.identifier = nftId;
+        loan.collateralItem.tokenId = offer.collateralItem.tokenId;
         loan.collateralItem.amount = offer.collateralItem.amount;
 
         loan.loanTerms.itemType = offer.loanTerms.itemType;
@@ -275,33 +283,57 @@ abstract contract NiftyApesInternal is
     ) internal {
         if (collateralItem.itemType == ItemType.ERC1155) {
             _transferERC1155Token(
-                collateralItem,
+                collateralItem.token,
                 from,
-                to
+                to,
+                collateralItem.tokenId,
+                collateralItem.amount
+            );
+        } else if (collateralItem.itemType == ItemType.ERC721) {
+            _transferNft(
+                collateralItem.token,
+                from,
+                to,
+                collateralItem.tokenId
+            );
+        } else if (collateralItem.itemType == ItemType.ERC20) {
+            _transferERC20(
+                collateralItem.token,
+                from,
+                to,
+                collateralItem.amount
             );
         } else {
-            _transferNft(
-                collateralItem,
-                from,
-                to
-            );
+            revert InvalidCollateralItemType(ItemType.NATIVE);
         }
     }
 
     function _transferNft(
-        CollateralItem memory item,
+        address token,
         address from,
-        address to
+        address to,
+        uint256 tokenId
     ) internal {
-        IERC721Upgradeable(item.token).safeTransferFrom(from, to, item.identifier);
+        IERC721Upgradeable(token).safeTransferFrom(from, to, tokenId);
+    }
+
+    function _transferERC20(
+        address token,
+        address from,
+        address to,
+        uint256 amount
+    ) internal {
+        IERC20Upgradeable(token).safeTransferFrom(from, to, amount);
     }
 
     function _transferERC1155Token(
-        CollateralItem memory item,
+        address token,
         address from,
-        address to
+        address to,
+        uint256 tokenId,
+        uint256 amount
     ) internal {
-        IERC1155Upgradeable(item.token).safeTransferFrom(from, to, item.identifier, item.amount, bytes(""));
+        IERC1155Upgradeable(token).safeTransferFrom(from, to, tokenId, amount, bytes(""));
     }
 
     function _currentTimestamp32() internal view returns (uint32) {
@@ -364,14 +396,14 @@ abstract contract NiftyApesInternal is
         _requireIsNotSanctioned(to, sf);
         // if the token is a borrower ticket
         if (tokenId % 2 == 0) {
-            // get underlying nft
+            // get underlying token
             Loan memory loan = _getLoan(tokenId, sf);
 
             // remove from delegate.cash delegation
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
                 from,
                 loan.collateralItem.token,
-                loan.collateralItem.identifier,
+                loan.collateralItem.tokenId,
                 false
             );
 
@@ -379,7 +411,7 @@ abstract contract NiftyApesInternal is
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
                 to,
                 loan.collateralItem.token,
-                loan.collateralItem.identifier,
+                loan.collateralItem.tokenId,
                 true
             );
         }
@@ -391,25 +423,31 @@ abstract contract NiftyApesInternal is
         address nftContractAddress,
         uint256 nftId,
         address from,
-        uint256 amount,
+        ItemType paymentItemType,
+        address paymentToken,
+        uint256 paymentAmount,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal returns (uint256 totalRoyaltiesPaid) {
         // query royalty recipients and amounts
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             sf.royaltiesEngineContractAddress
-        ).getRoyaltyView(nftContractAddress, nftId, amount);
+        ).getRoyaltyView(nftContractAddress, nftId, paymentAmount);
 
         // payout royalties
         for (uint256 i = 0; i < recipients.length; i++) {
             if (amounts[i] > 0) {
-                _conditionalSendValue(recipients[i], from, amounts[i], sf);
+                if (paymentItemType == ItemType.NATIVE) {
+                    _conditionalSendValue(recipients[i], from, amounts[i], sf);
+                } else {
+                    _transferERC20(paymentToken, from, recipients[i], amounts[i]);
+                }
                 totalRoyaltiesPaid += amounts[i];
             }
         }
     }
 
     /// @dev If "to" is a contract that doesn't accept ETH, send value back to "from" and continue
-    /// otherwise "to" could force a default by sending bearer nft to contract that does not accept ETH
+    /// otherwise "to" could force a default by sending bearer token to contract that does not accept ETH
     function _conditionalSendValue(
         address to,
         address from,
@@ -470,6 +508,21 @@ abstract contract NiftyApesInternal is
     ) internal view {
         if (offer.creatorOfferNonce != sf.offerNonce[lender]) {
             revert InvalidOfferNonce(offer.creatorOfferNonce, sf.offerNonce[lender]);
+        }
+    }
+
+    function _requireValidCollateralItemType(ItemType given, ItemType expected) {
+        if (given != expected) {
+            revert InvalidCollateralItemType(given, expected);
+        }
+    }
+
+    function _requireLoanItemWETH(LoanTerms memory loanTerms) {
+        if (loanTerms.itemType != ItemType.ERC20) {
+            revert InvalidLoanItemType(loanTerms.itemType);
+        }
+        if (loanTerms.token != sf.wethContractAddress) {
+            revert InvalidLoanItemToken(loanTerms.token);
         }
     }
 }

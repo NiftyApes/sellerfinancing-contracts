@@ -21,7 +21,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loanId);
@@ -31,7 +31,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             ),
             false
         );
@@ -41,7 +41,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             ),
             true
         );
@@ -51,7 +51,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loanId, bytes(""));
@@ -61,7 +61,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             ),
             false
         );
@@ -71,7 +71,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             ),
             true
         );
@@ -82,7 +82,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         vm.prank(buyer1);
         IERC721Upgradeable(address(sellerFinancing)).transferFrom(buyer1, buyer2, loanId);
@@ -92,7 +92,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             ),
             false
         );
@@ -102,7 +102,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer2),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             ),
             true
         );
@@ -112,7 +112,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         vm.prank(buyer1);
         vm.expectRevert(
@@ -134,7 +134,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 address(buyer1),
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             ),
             false
         );
@@ -144,7 +144,7 @@ contract TestSafeTransferFrom is Test, OffersLoansFixtures, INiftyApesEvents {
                 SANCTIONED_ADDRESS,
                 address(sellerFinancing),
                 address(boredApeYachtClub),
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             ),
             true
         );

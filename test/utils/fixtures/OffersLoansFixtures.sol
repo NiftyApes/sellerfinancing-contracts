@@ -27,8 +27,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
     struct FixedOfferFields {
         INiftyApesStructs.OfferType offerType;
         address creator;
-        uint256 nftId;
-        address nftContractAddress;
+        uint256 tokenId;
+        address tokenContractAddress;
         bool isCollectionOffer;
         uint64 collectionOfferLimit;
         uint32 creatorOfferNonce;
@@ -50,8 +50,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         defaultFixedOfferFields = FixedOfferFields({
             offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
             creator: seller1,
-            nftContractAddress: address(boredApeYachtClub),
-            nftId: 8661,
+            tokenContractAddress: address(boredApeYachtClub),
+            tokenId: 8661,
             isCollectionOffer: false,
             collectionOfferLimit: 1,
             creatorOfferNonce: 0
@@ -62,8 +62,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         defaultFixedOfferFieldsForLending = FixedOfferFields({
             offerType: INiftyApesStructs.OfferType.LENDING,
             creator: seller1,
-            nftContractAddress: address(boredApeYachtClub),
-            nftId: 8661,
+            tokenContractAddress: address(boredApeYachtClub),
+            tokenId: 8661,
             isCollectionOffer: false,
             collectionOfferLimit: 1,
             creatorOfferNonce: 0
@@ -117,14 +117,14 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                 offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
                 collateralItem: CollateralItem({
                     itemType: ItemType.ERC721,
-                    token: fixedFields.nftContractAddress,
-                    identifier: fixedFields.nftId,
+                    token: fixedFields.tokenContractAddress,
+                    tokenId: fixedFields.tokenId,
                     amount: 0
                 }),
                 loanTerms: LoanTerms({
                     itemType: ItemType.NATIVE,
                     token: address(0),
-                    identifier: 0,
+                    tokenId: 0,
                     principalAmount: fuzzed.principalAmount,
                     minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
                     downPaymentAmount: fuzzed.downPaymentAmount,
@@ -150,14 +150,14 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                 offerType: INiftyApesStructs.OfferType.LENDING,
                 collateralItem: CollateralItem({
                     itemType: ItemType.ERC721,
-                    token: fixedFields.nftContractAddress,
-                    identifier: fixedFields.nftId,
+                    token: fixedFields.tokenContractAddress,
+                    tokenId: fixedFields.tokenId,
                     amount: 0
                 }),
                 loanTerms: LoanTerms({
                     itemType: ItemType.NATIVE,
                     token: address(0),
-                    identifier: 0,
+                    tokenId: 0,
                     principalAmount: fuzzed.principalAmount,
                     minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
                     downPaymentAmount: 0,
@@ -183,7 +183,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function seller1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
         vm.stopPrank();
 
         return signOffer(seller1_private_key, offer);
@@ -205,7 +205,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             offer,
             offerSignature,
             buyer1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -218,9 +219,9 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         vm.stopPrank();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, uint256 nftId, address expectedborrower, uint256 loanId) internal {
+    function assertionsForExecutedLoan(Offer memory offer, uint256 tokenId, address expectedborrower, uint256 loanId) internal {
         // sellerFinancing contract has NFT
-        assertEq(IERC721Upgradeable(offer.collateralItem.token).ownerOf(nftId), address(sellerFinancing));
+        assertEq(IERC721Upgradeable(offer.collateralItem.token).ownerOf(tokenId), address(sellerFinancing));
         
         // require delegate.cash has buyer delegation
         assertEq(
@@ -228,7 +229,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                 address(expectedborrower),
                 address(sellerFinancing),
                 offer.collateralItem.token,
-                nftId
+                tokenId
             ),
             true
         );
@@ -243,10 +244,10 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         // seller NFT minted to seller
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId + 1), offer.creator);
 
-        //buyer nftId has tokenURI same as original nft
+        //buyer tokenId has tokenURI same as original token
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loanId),
-            IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(nftId)
+            IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(tokenId)
         );
         // check loan struct values
         assertEq(loan.loanTerms.principalAmount, offer.loanTerms.principalAmount);
@@ -257,7 +258,7 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function assertionsForClosedLoan(address nftContractAddress, uint256 nftId, address expectedNftOwner, uint256 loanId) internal {
+    function assertionsForClosedLoan(address tokenContractAddress, uint256 tokenId, address expectedNftOwner, uint256 loanId) internal {
         // loan doesn't exist anymore
         Loan memory loan = sellerFinancing.getLoan(loanId);
         assertEq(
@@ -265,15 +266,15 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             0
         );
         // expected address has NFT
-        assertEq(IERC721Upgradeable(nftContractAddress).ownerOf(nftId), expectedNftOwner);
+        assertEq(IERC721Upgradeable(tokenContractAddress).ownerOf(tokenId), expectedNftOwner);
 
         // require delegate.cash buyer delegation has been revoked
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 address(buyer1),
                 address(sellerFinancing),
-                nftContractAddress,
-                nftId
+                tokenContractAddress,
+                tokenId
             ),
             false
         );
@@ -287,16 +288,16 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId+1), address(0));
     }
 
-    function assertionsForExecutedLoanThrough3rdPartyLender(Offer memory offer, uint256 nftId, address expectedborrower, uint256 loanId) internal {
+    function assertionsForExecutedLoanThrough3rdPartyLender(Offer memory offer, uint256 tokenId, address expectedborrower, uint256 loanId) internal {
         // sellerFinancing contract has NFT
-        assertEq(IERC721Upgradeable(offer.collateralItem.token).ownerOf(nftId), address(sellerFinancing));
+        assertEq(IERC721Upgradeable(offer.collateralItem.token).ownerOf(tokenId), address(sellerFinancing));
         // require delegate.cash has buyer delegation
         assertEq(
             IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
                 expectedborrower,
                 address(sellerFinancing),
                 offer.collateralItem.token,
-                nftId
+                tokenId
             ),
             true
         );
@@ -310,10 +311,10 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         // lender NFT minted to lender1
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId + 1), offer.creator);
         
-        //buyer nftId has tokenURI same as original nft
+        //buyer tokenId has tokenURI same as original token
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loanId),
-            IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(nftId)
+            IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(tokenId)
         );
 
         // check loan struct values

@@ -100,12 +100,14 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param offer The details of the financing offer
     /// @param signature Signature from the offer creator
     /// @param buyer The address of the buyer
-    /// @param nftId The nftId of the nft the buyer intends to buy
+    /// @param tokenId The tokenId of the token the buyer intends to buy
+    /// @param tokenAmount Amount of the specified token if ERC1155
     function buyWithSellerFinancing(
         INiftyApesStructs.Offer memory offer,
         bytes calldata signature,
         address buyer,
-        uint256 nftId
+        uint256 tokenId,
+        uint256 tokenAmount
     ) external payable whenNotPaused returns (uint256 loanId) {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
@@ -123,28 +125,30 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         // execute buyWithSellerFinancing
         return INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
             value: msg.value - marketplaceFeeAmount
-        }(offer, signature, buyer, nftId);
+        }(offer, signature, buyer, tokenId, tokenAmount);
     }
 
     /// @notice Execute loan offers in batch for buyer
     /// @param offers The list of the offers to execute
     /// @param signatures The list of corresponding signatures from the offer creators
     /// @param buyer The address of the buyer
-    /// @param nftIds The nftIds of the nfts the buyer intends to buy
+    /// @param tokenIds The tokenIds of the tokens the buyer intends to buy
+    /// @param tokenAmounts Amount values of the specified tokens if ERC1155
     /// @param partialExecution If set to true, will continue to attempt transaction executions regardless
     ///        if previous transactions have failed or had insufficient value available
     function buyWithSellerFinancingBatch(
         INiftyApesStructs.Offer[] memory offers,
         bytes[] calldata signatures,
         address buyer,
-        uint256[] calldata nftIds,
+        uint256[] calldata tokenIds,
+        uint256[] calldata tokenAmounts,
         bool partialExecution
     ) external payable whenNotPaused returns (uint256[] memory loanIds) {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
         // requireLengthOfAllInputArraysAreEqual
-        if (offers.length != signatures.length || offers.length != nftIds.length) {
+        if (offers.length != signatures.length || offers.length != tokenIds.length || offers.length != tokenAmounts.length) {
             revert InvalidInputLength();
         }
 
@@ -179,7 +183,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             try
                 INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                     value: offer.loanTerms.downPaymentAmount
-                }(offer, signatures[i], buyer, nftIds[i]) returns (uint256 loanId)
+                }(offer, signatures[i], buyer, tokenIds[i], tokenAmounts[i]) returns (uint256 loanId)
             {
                 loanIds[i] = loanId;
                 // if successful
@@ -207,7 +211,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     }
     
     /// @notice Execute instantSell on all the NFTs in the provided input
-    /// @param loanIds The list of all the nft IDs
+    /// @param loanIds The list of all the token IDs
     /// @param minProfitAmounts List of minProfitAmount for each `instantSell` call
     /// @param data The list of data to be passed to each `instantSell` call
     /// @param partialExecution If set to true, will continue to attempt next request in the loop

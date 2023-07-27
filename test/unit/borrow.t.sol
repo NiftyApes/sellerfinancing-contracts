@@ -27,15 +27,16 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
         (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, address(borrower1), loanId);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, address(borrower1), loanId);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = address(borrower1).balance;
@@ -70,22 +71,23 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan = sellerFinancing.getLoan(0);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
 
         vm.expectEmit(true, true, false, false);
-        emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.identifier, offer, offerSignature);
+        emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.tokenId, offer, offerSignature);
 
         vm.expectEmit(true, true, false, false);
-        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.identifier, offerSignature, loan);
+        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offerSignature, loan);
 
         (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, borrower1, loanId);
         assertEq(ethRecieved, offer.loanTerms.principalAmount);
     }
 
@@ -106,14 +108,15 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
 
         vm.expectRevert(abi.encodeWithSelector(INiftyApesErrors.InvalidOfferType.selector, INiftyApesStructs.OfferType.SELLER_FINANCING, INiftyApesStructs.OfferType.LENDING));
         sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -133,9 +136,9 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
         uint256 borrower1BalanceBefore = address(borrower1).balance;
@@ -146,25 +149,27 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, tokenId2);
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
         (uint256 loanId1, uint256 ethRecieved1) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
         (uint256 loanId2, uint256 ethRecieved2) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1, borrower1, loanId1);
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId2, borrower1, loanId2);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, tokenId1, borrower1, loanId1);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, tokenId2, borrower1, loanId2);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = address(borrower1).balance;
@@ -197,9 +202,9 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 1;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
         uint256 borrower1BalanceBefore = address(borrower1).balance;
@@ -210,28 +215,30 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, tokenId2);
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
         (uint256 loanId1, uint256 ethRecieved1) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
         vm.expectRevert(INiftyApesErrors.CollectionOfferLimitReached.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1, borrower1, loanId1);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, tokenId1, borrower1, loanId1);
 
-        // borrower1 still owns second nft
-        assertEq(boredApeYachtClub.ownerOf(nftId2), borrower1);
+        // borrower1 still owns second token
+        assertEq(boredApeYachtClub.ownerOf(tokenId2), borrower1);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = address(borrower1).balance;
@@ -264,15 +271,16 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
         (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, borrower1, loanId);
         assertEq(ethRecieved, offer.loanTerms.principalAmount);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
@@ -297,7 +305,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -321,13 +330,14 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.warp(uint256(offer.expiration) + 1);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
         vm.expectRevert(INiftyApesErrors.OfferExpired.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -349,13 +359,14 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
         vm.expectRevert(INiftyApesErrors.InvalidPeriodDuration.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -382,7 +393,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -415,7 +427,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -446,7 +459,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -477,7 +491,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }

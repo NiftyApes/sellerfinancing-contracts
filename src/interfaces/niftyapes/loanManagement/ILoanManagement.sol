@@ -11,7 +11,7 @@ interface ILoanManagement
     /// @param loanId The `loanId` of the loan or `loanId+1`
     function getLoan(uint256 loanId) external view returns (INiftyApesStructs.Loan memory);
 
-    /// @notice Returns the underlying nft of a specified ticket id.
+    /// @notice Returns the underlying token of a specified ticket id.
     /// @param ticketId The id of a specified ticket id
     function getUnderlyingNft(
         uint256 ticketId
@@ -29,7 +29,8 @@ interface ILoanManagement
     /// @notice Make a partial payment or full repayment of a loan.
     /// @dev Any address may make a payment towards the loan.
     /// @param loanId The `loanId` of the loan or `loanId+1`
-    function makePayment(uint256 loanId) external payable;
+    /// @param paymentAmount Total amount to be paid as payment
+    function makePayment(uint256 loanId, uint256 paymentAmount) external payable;
 
     /// @notice Make payments to a list of active loans
     /// @dev Any address may make a payment towards the loans.
@@ -50,7 +51,7 @@ interface ILoanManagement
         uint256[] memory loanIds
     ) external;
 
-    /// @notice Sell the underlying nft and repay the loan using the proceeds of the sale.
+    /// @notice Sell the underlying token and repay the loan using the proceeds of the sale.
     ///         Transfer remaining funds to the buyer
     /// @dev    This function is only callable by the buyer address
     /// @dev    This function only supports valid Seaport orders

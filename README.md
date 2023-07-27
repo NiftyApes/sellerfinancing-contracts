@@ -12,7 +12,7 @@ The flow and main actions of the system are described as:
 
 #### List NFT With Financing
 
-1. The owner of an NFT may list it at a given price, down payment amount, interest rate per period, minimum principal per period (which determines the number of pay periods) and pay period duration by signing a properly formed offer struct and supplying it to the NiftyApes API. An owner can also provide a nftId of ~uint256(0) and a collectionOfferLimit value as a way to make a collection financing offer and support mint financing.
+1. The owner of an NFT may list it at a given price, down payment amount, interest rate per period, minimum principal per period (which determines the number of pay periods) and pay period duration by signing a properly formed offer struct and supplying it to the NiftyApes API. An owner can also provide a tokenId of ~uint256(0) and a collectionOfferLimit value as a way to make a collection financing offer and support mint financing.
 
 #### Execute A Purchase
 

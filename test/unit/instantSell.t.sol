@@ -21,7 +21,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -31,7 +31,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
         ).getRoyalty(
                 offer.collateralItem.token,
-                offer.collateralItem.identifier,
+                offer.collateralItem.tokenId,
                 (loan.loanTerms.principalAmount + periodInterest)
             );
 
@@ -51,7 +51,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -65,11 +65,11 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         vm.expectEmit(true, true, false, false);
-        emit InstantSell(offer.collateralItem.token, offer.collateralItem.identifier, 0);
+        emit InstantSell(offer.collateralItem.token, offer.collateralItem.tokenId, 0);
         vm.expectEmit(true, true, false, false);
         emit PaymentMade(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             loan.loanTerms.principalAmount + periodInterest + protocolFee,
             protocolFee,
             royaltiesInInstantSell,
@@ -84,7 +84,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer2, loanId);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer2, loanId);
         assertEq(
             address(buyer1).balance,
             (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount + minProfitAmount)
@@ -112,7 +112,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         uint256 ownerBalanceBefore = address(owner).balance;
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -122,7 +122,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
         ).getRoyalty(
                 offer.collateralItem.token,
-                offer.collateralItem.identifier,
+                offer.collateralItem.tokenId,
                 (loan.loanTerms.principalAmount + periodInterest)
             );
 
@@ -142,7 +142,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -156,11 +156,11 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         vm.expectEmit(true, true, false, false);
-        emit InstantSell(offer.collateralItem.token, offer.collateralItem.identifier, 0);
+        emit InstantSell(offer.collateralItem.token, offer.collateralItem.tokenId, 0);
         vm.expectEmit(true, true, false, false);
         emit PaymentMade(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             loan.loanTerms.principalAmount + periodInterest + protocolFee,
             protocolFee,
             royaltiesInInstantSell,
@@ -175,7 +175,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer2, loanId);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer2, loanId);
         assertEq(
             address(buyer1).balance,
             (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount + minProfitAmount)
@@ -201,7 +201,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -217,7 +217,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -230,7 +230,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         considItems[2] = ISeaport.ConsiderationItem({
             itemType: ISeaport.ItemType.ERC20,
             token: WETH_ADDRESS,
-            identifierOrCriteria: 0,
+            tokenId: 0,
             startAmount: considerationAmount2,
             endAmount: considerationAmount2,
             recipient: payable(buyer2)
@@ -255,7 +255,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer2, loanId);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer2, loanId);
         assertEq(
             address(buyer1).balance,
             (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount)
@@ -280,7 +280,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
-        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.identifier, offer.loanTerms.downPaymentAmount);
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.tokenId, offer.loanTerms.downPaymentAmount);
 
         uint256 totalRoyaltiesPaid;
 
@@ -291,7 +291,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         uint256 buyer1BalanceBefore = address(buyer1).balance;
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -301,7 +301,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
         ).getRoyalty(
                 offer.collateralItem.token,
-                offer.collateralItem.identifier,
+                offer.collateralItem.tokenId,
                 (loan.loanTerms.principalAmount + periodInterest)
             );
 
@@ -317,7 +317,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             false
@@ -337,7 +337,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer2, loanId);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer2, loanId);
         uint256 buyer1BalanceAfter = address(buyer1).balance;
         assertEq(
             buyer1BalanceAfter,
@@ -360,7 +360,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -378,7 +378,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -415,7 +415,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -431,7 +431,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -480,7 +480,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -496,7 +496,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -531,7 +531,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -549,7 +549,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -592,7 +592,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -639,7 +639,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -686,19 +686,19 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
         );
-        order[0].parameters.consideration[0].identifierOrCriteria = 1;
+        order[0].parameters.consideration[0].tokenId = 1;
 
         vm.startPrank(buyer1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 INiftyApesErrors.InvalidConsideration0Identifier.selector,
                 1,
-                offer.collateralItem.identifier
+                offer.collateralItem.tokenId
             )
         );
         sellerFinancing.instantSell(loanId, 0, abi.encode(order[0]));
@@ -732,7 +732,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -778,7 +778,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -824,7 +824,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -871,7 +871,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -908,7 +908,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -924,7 +924,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -983,7 +983,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
 
         ISeaport.Order[] memory order = _createOrder(
             offer.collateralItem.token,
-            offer.collateralItem.identifier,
+            offer.collateralItem.tokenId,
             bidPrice,
             buyer2,
             true
@@ -992,14 +992,14 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         order[0].parameters.offer[0] = ISeaport.OfferItem({
             itemType: ISeaport.ItemType.ERC20,
             token: WETH_ADDRESS,
-            identifierOrCriteria: 0,
+            tokenId: 0,
             startAmount: bidPrice,
             endAmount: bidPrice
         });
         order[0].parameters.offer[1] = ISeaport.OfferItem({
             itemType: ISeaport.ItemType.ERC20,
             token: WETH_ADDRESS,
-            identifierOrCriteria: 0,
+            tokenId: 0,
             startAmount: bidPrice,
             endAmount: bidPrice
         });
@@ -1032,8 +1032,8 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
     }
 
     function _createOrder(
-        address nftContractAddress,
-        uint256 nftId,
+        address tokenContractAddress,
+        uint256 tokenId,
         uint256 bidPrice,
         address orderCreator,
         bool addSeaportFee
@@ -1072,14 +1072,14 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         order[0].parameters.offer[0] = ISeaport.OfferItem({
             itemType: offerItemType,
             token: offerToken,
-            identifierOrCriteria: 0,
+            tokenId: 0,
             startAmount: bidPrice,
             endAmount: bidPrice
         });
         order[0].parameters.consideration[0] = ISeaport.ConsiderationItem({
             itemType: ISeaport.ItemType.ERC721,
-            token: nftContractAddress,
-            identifierOrCriteria: nftId,
+            token: tokenContractAddress,
+            tokenId: tokenId,
             startAmount: 1,
             endAmount: 1,
             recipient: payable(orderCreator)
@@ -1088,7 +1088,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
                 itemType: offerItemType,
                 token: offerToken,
-                identifierOrCriteria: 0,
+                tokenId: 0,
                 startAmount: seaportFeeAmount,
                 endAmount: seaportFeeAmount,
                 recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
