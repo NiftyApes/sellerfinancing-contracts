@@ -173,7 +173,9 @@ contract NiftyApesLoanManagementFacet is
         // get borrower
         address borrowerAddress = ownerOf(loan.loanId);
 
-        _requireValidCollateralItemType(loan.CollateralItem.itemType, ItemType.ERC721);
+        if (loan.collateralItem.itemType != ItemType.ERC721) {
+            revert InvalidCollateralItemType();
+        }
         _requireIsNotSanctioned(msg.sender, sf);
         // requireMsgSenderIsBuyer
         _requireMsgSenderIsValidCaller(borrowerAddress);
@@ -379,14 +381,14 @@ contract NiftyApesLoanManagementFacet is
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) private returns (uint256 saleAmountReceived) {
         // approve the NFT for Seaport conduit
-        IERC721Upgradeable(loan.collateralItem.token).approve(sf.seaportContractAddress, tokenId);
+        IERC721Upgradeable(loan.collateralItem.token).approve(sf.seaportContractAddress, loan.collateralItem.tokenId);
 
         // decode seaport order data
         ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
 
         // validate order
         _validateSaleOrder(order, loan, sf);
-        // instantiate loam token
+        // instantiate loan token
         IERC20Upgradeable asset = IERC20Upgradeable(loan.loanTerms.token);
 
         // calculate totalConsiderationAmount
@@ -437,8 +439,7 @@ contract NiftyApesLoanManagementFacet is
 
     function _validateSaleOrder(
         ISeaport.Order memory order,
-        address tokenContractAddress,
-        uint256 tokenId,
+        Loan memory loan,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal view {
         if (order.parameters.consideration[0].itemType != ISeaport.ItemType.ERC721) {
@@ -448,17 +449,17 @@ contract NiftyApesLoanManagementFacet is
                 ISeaport.ItemType.ERC721
             );
         }
-        if (order.parameters.consideration[0].token != tokenContractAddress) {
+        if (order.parameters.consideration[0].token != loan.collateralItem.token) {
             revert InvalidConsiderationToken(
                 0,
                 order.parameters.consideration[0].token,
-                tokenContractAddress
+                loan.collateralItem.token
             );
         }
-        if (order.parameters.consideration[0].tokenId != tokenId) {
+        if (order.parameters.consideration[0].tokenId != loan.collateralItem.tokenId) {
             revert InvalidConsideration0Identifier(
                 order.parameters.consideration[0].tokenId,
-                tokenId
+                loan.collateralItem.tokenId
             );
         }
         if (order.parameters.offer[0].itemType != ISeaport.ItemType.ERC20) {
@@ -467,10 +468,10 @@ contract NiftyApesLoanManagementFacet is
                 ISeaport.ItemType.ERC20
             );
         }
-        if (loan.loanTerm.itemType == ItemType.NATIVE && order.parameters.offer[0].token != sf.wethContractAddress) {
+        if (loan.loanTerms.itemType == ItemType.NATIVE && order.parameters.offer[0].token != sf.wethContractAddress) {
             revert InvalidOffer0Token(order.parameters.offer[0].token, sf.wethContractAddress);
         }
-        if (loan.loanTerm.itemType == ItemType.ERC20 && order.parameters.offer[0].token != loan.loanTerms.token) {
+        if (loan.loanTerms.itemType == ItemType.ERC20 && order.parameters.offer[0].token != loan.loanTerms.token) {
             revert InvalidOffer0Token(order.parameters.offer[0].token, loan.loanTerms.token);
         }
         if (order.parameters.offer.length != 1) {
@@ -484,11 +485,18 @@ contract NiftyApesLoanManagementFacet is
                     ISeaport.ItemType.ERC20
                 );
             }
-            if (order.parameters.consideration[i].token != sf.wethContractAddress) {
+            if (loan.loanTerms.itemType == ItemType.NATIVE && order.parameters.consideration[i].token != sf.wethContractAddress) {
                 revert InvalidConsiderationToken(
                     i,
                     order.parameters.consideration[i].token,
                     sf.wethContractAddress
+                );
+            }
+            if (loan.loanTerms.itemType == ItemType.ERC20 && order.parameters.consideration[i].token != loan.loanTerms.token) {
+                revert InvalidConsiderationToken(
+                    i,
+                    order.parameters.consideration[i].token,
+                    loan.loanTerms.token
                 );
             }
         }

@@ -66,7 +66,7 @@ contract NiftyApesLoanExecutionFacet is
         if (offer.loanTerms.itemType == ItemType.NATIVE) {
             payable(seller).sendValue(offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid);
         } else {
-            _transferERC20(loanTerms.token, buyer, seller, offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid);
+            _transferERC20(offer.loanTerms.token, buyer, seller, offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid);
         }
 
         _executeLoan(offer, signature, buyer, seller, sf);
@@ -84,12 +84,13 @@ contract NiftyApesLoanExecutionFacet is
     ) external whenNotPaused nonReentrant returns (uint256 loanId, uint256 ethReceived) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
-        // loan item must be WETH
-        _requireLoanItemWETH(offer.loanTerms);
+        
         
         // get storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        
+        // loan item must be WETH
+        _requireLoanItemWETH(offer.loanTerms, sf);
+
         address lender = _commonLoanChecks(offer, signature, borrower, tokenId, tokenAmount, sf);
 
         // transfer token from borrower to this contract, revert on failure
@@ -114,14 +115,15 @@ contract NiftyApesLoanExecutionFacet is
     ) external whenNotPaused nonReentrant returns (uint256 loanId) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
-        // loan item must be WETH
-        _requireLoanItemWETH(offer.loanTerms);
 
         // get storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         
-        
-        _requireValidCollateralItemType(offer.CollateralItem.itemType, ItemType.ERC721);
+        // loan item must be WETH
+        _requireLoanItemWETH(offer.loanTerms, sf);
+        if (offer.collateralItem.itemType != ItemType.ERC721) {
+            revert InvalidCollateralItemType();
+        }
         // revert if collateral not ERC721
         if (offer.collateralItem.itemType != ItemType.ERC721) {
             revert InvalidCollateralItemType();

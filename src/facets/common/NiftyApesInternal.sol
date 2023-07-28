@@ -150,7 +150,7 @@ abstract contract NiftyApesInternal is
             if (tokenId != offer.collateralItem.tokenId) {
                 revert CollateralDetailsMustMatch();
             }
-            if (offer.collateralItem.itemType == itemType.ERC1155 && tokenAmount != tokenAmountoffer.collateralItem.amount) {
+            if (offer.collateralItem.itemType == ItemType.ERC1155 && tokenAmount != offer.collateralItem.amount) {
                 revert CollateralDetailsMustMatch();
             }
             _requireAvailableSignature(signature, sf);
@@ -165,7 +165,7 @@ abstract contract NiftyApesInternal is
 
         // loan item must be either ETH or ERC20
         if (offer.loanTerms.itemType != ItemType.NATIVE || offer.loanTerms.itemType != ItemType.ERC20) {
-            revert InvalidLoanItemType(offer.loanTerms.itemType);
+            revert InvalidLoanItemType();
         }
 
         // get lender
@@ -238,7 +238,7 @@ abstract contract NiftyApesInternal is
         _createLoan(loan, offer, sf.loanId - 2);
 
         // emit loan executed event
-        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offer.collateralItem.tokenAmount, signature, loan);
+        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offer.collateralItem.amount, signature, loan);
     }
 
     function _createLoan(
@@ -304,7 +304,7 @@ abstract contract NiftyApesInternal is
                 collateralItem.amount
             );
         } else {
-            revert InvalidCollateralItemType(ItemType.NATIVE);
+            revert InvalidCollateralItemType();
         }
     }
 
@@ -511,15 +511,12 @@ abstract contract NiftyApesInternal is
         }
     }
 
-    function _requireValidCollateralItemType(ItemType given, ItemType expected) {
-        if (given != expected) {
-            revert InvalidCollateralItemType(given, expected);
-        }
-    }
-
-    function _requireLoanItemWETH(LoanTerms memory loanTerms) {
+    function _requireLoanItemWETH(
+            LoanTerms memory loanTerms,
+            NiftyApesStorage.SellerFinancingStorage storage sf
+        ) internal {
         if (loanTerms.itemType != ItemType.ERC20) {
-            revert InvalidLoanItemType(loanTerms.itemType);
+            revert InvalidLoanItemType();
         }
         if (loanTerms.token != sf.wethContractAddress) {
             revert InvalidLoanItemToken(loanTerms.token);

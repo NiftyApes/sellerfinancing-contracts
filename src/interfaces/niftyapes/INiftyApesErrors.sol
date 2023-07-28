@@ -85,9 +85,9 @@ interface INiftyApesErrors {
 
     error InvalidOfferNonce(uint32 offerNonce, uint32 currentNonce);
 
-    error InvalidCollateralItemType(INiftyApesStructs.ItemType given);
+    error InvalidCollateralItemType();
 
-    error InvalidLoanItemType(INiftyApesStructs.ItemType given);
+    error InvalidLoanItemType();
 
     error InvalidLoanItemToken(address given);
 
