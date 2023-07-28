@@ -47,7 +47,8 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
             )
         );
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest)
         );
         vm.stopPrank();
     }

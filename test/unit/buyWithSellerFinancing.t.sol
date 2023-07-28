@@ -138,7 +138,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.tokenId, offer, offerSignature);
 
         vm.expectEmit(true, true, false, false);
-        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offerSignature, loan);
+        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offer.collateralItem.amount, offerSignature, loan);
 
         vm.startPrank(buyer1);
         sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
@@ -190,7 +190,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         Loan memory loan = sellerFinancing.getLoan(0);
 
         vm.expectEmit(true, true, false, false);
-        emit LoanExecuted(offer.collateralItem.token, tokenId, offerSignature, loan);
+        emit LoanExecuted(offer.collateralItem.token, tokenId, offer.collateralItem.amount, offerSignature, loan);
 
         vm.startPrank(buyer1);
         uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(

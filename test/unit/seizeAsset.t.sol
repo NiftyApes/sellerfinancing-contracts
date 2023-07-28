@@ -83,7 +83,8 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest)
         );
         vm.stopPrank();
 

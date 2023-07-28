@@ -115,7 +115,7 @@ contract TestGetUnderlyingNft is
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
             value: ((offer.loanTerms.principalAmount + periodInterest))
-        }(loanId);
+        }(loanId, (offer.loanTerms.principalAmount + periodInterest));
         vm.stopPrank();
 
         underlyingBuyer = sellerFinancing.getUnderlyingNft(loanId);

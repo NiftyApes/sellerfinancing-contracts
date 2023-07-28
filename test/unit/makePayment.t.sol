@@ -71,7 +71,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest)
         );
         vm.stopPrank();
 
@@ -155,7 +156,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest + protocolFee) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest + protocolFee)
         );
         vm.stopPrank();
 
@@ -212,7 +214,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest)
         );
         vm.stopPrank();
 
@@ -275,7 +278,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest)
         );
         vm.stopPrank();
 
@@ -342,7 +346,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest + protocolFee) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest + protocolFee)
         );
         vm.stopPrank();
 
@@ -410,7 +415,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest)
         );
         vm.stopPrank();
 
@@ -456,7 +462,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
             value: ((loan.loanTerms.principalAmount + periodInterest) + extraAmountToBeSent)
-        }(loanId);
+        }(loanId, (loan.loanTerms.principalAmount + periodInterest) + extraAmountToBeSent);
         vm.stopPrank();
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer1, loanId);
 
@@ -511,7 +517,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
                 loan
         );
         sellerFinancing.makePayment{ value: totalMinimumPayment }(
-            loanId
+            loanId,
+            totalMinimumPayment
         );
         vm.stopPrank();
 
@@ -583,7 +590,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
                 loan
         );
         sellerFinancing.makePayment{ value: totalMinimumPayment }(
-            loanId
+            loanId,
+            totalMinimumPayment
         );
         vm.stopPrank();
 
@@ -642,7 +650,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + totalInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + totalInterest)
         );
         vm.stopPrank();
 
@@ -686,7 +695,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + totalInterest + totalProtocolFee) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + totalInterest + totalProtocolFee)
         );
         vm.stopPrank();
 
@@ -728,7 +738,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.startPrank(buyer1);
         vm.expectRevert(INiftyApesErrors.SoftGracePeriodEnded.selector);
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + totalInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + totalInterest)
         );
         vm.stopPrank();
     }
@@ -776,7 +787,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{ value: totalMinimumPayment }(
-            loanId
+            loanId,
+            totalMinimumPayment
         );
         vm.stopPrank();
 
@@ -835,7 +847,8 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
             )
         );
         sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
-            loanId
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest)
         );
         vm.stopPrank();
     }
@@ -870,14 +883,14 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
             value: (loan.loanTerms.principalAmount + periodInterest)
-        }(loanId);
+        }(loanId, (loan.loanTerms.principalAmount + periodInterest));
         vm.stopPrank();
 
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer1, loanId);
 
         vm.startPrank(seller1);
         vm.expectRevert("ERC721: invalid token ID");
-        sellerFinancing.makePayment{value: 1}(loanId);
+        sellerFinancing.makePayment{value: 1}(loanId, 1);
         vm.stopPrank();
     }
 
@@ -918,7 +931,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         sellerFinancing.makePayment{
             value: (loan.loanTerms.minimumPrincipalPerPeriod + periodInterest - 1)
-        }(loanId);
+        }(loanId, (loan.loanTerms.minimumPrincipalPerPeriod + periodInterest - 1));
         vm.stopPrank();
     }
 
@@ -977,7 +990,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
             value: (loan.loanTerms.principalAmount + periodInterest)
-        }(loanId);
+        }(loanId, (loan.loanTerms.principalAmount + periodInterest));
         vm.stopPrank();
         assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer1, loanId);
 

@@ -77,7 +77,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.tokenId, offer, offerSignature);
 
         vm.expectEmit(true, true, false, false);
-        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offerSignature, loan);
+        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offer.collateralItem.amount, offerSignature, loan);
 
         (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
             offer,

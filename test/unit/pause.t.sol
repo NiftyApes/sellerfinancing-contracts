@@ -32,7 +32,7 @@ contract TestPause is Test, BaseTest, OffersLoansFixtures {
         );
 
         vm.expectRevert("Pausable: paused");
-        sellerFinancing.makePayment{ value: (1) }(loanId);
+        sellerFinancing.makePayment{ value: (1) }(loanId, 1);
 
         vm.expectRevert("Pausable: paused");
         sellerFinancing.instantSell(
