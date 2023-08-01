@@ -133,7 +133,6 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param signatures The list of corresponding signatures from the offer creators
     /// @param buyer The address of the buyer
     /// @param tokenIds The tokenIds of the tokens the buyer intends to buy
-    /// @param tokenAmounts Amount values of the specified tokens if ERC1155
     /// @param partialExecution If set to true, will continue to attempt transaction executions regardless
     ///        if previous transactions have failed or had insufficient value available
     function buyWithSellerFinancingBatch(
@@ -141,14 +140,13 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         bytes[] calldata signatures,
         address buyer,
         uint256[] calldata tokenIds,
-        uint256[] calldata tokenAmounts,
         bool partialExecution
     ) external payable whenNotPaused returns (uint256[] memory loanIds) {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
 
         // requireLengthOfAllInputArraysAreEqual
-        if (offers.length != signatures.length || offers.length != tokenIds.length || offers.length != tokenAmounts.length) {
+        if (offers.length != signatures.length || offers.length != tokenIds.length) {
             revert InvalidInputLength();
         }
 
@@ -183,7 +181,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             try
                 INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                     value: offer.loanTerms.downPaymentAmount
-                }(offer, signatures[i], buyer, tokenIds[i], tokenAmounts[i]) returns (uint256 loanId)
+                }(offer, signatures[i], buyer, tokenIds[i], 0) returns (uint256 loanId)
             {
                 loanIds[i] = loanId;
                 // if successful

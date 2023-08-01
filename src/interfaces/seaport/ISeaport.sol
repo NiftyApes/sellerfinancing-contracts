@@ -31,7 +31,7 @@ interface ISeaport {
     /**
      * @dev An offer item has five components: an item type (ETH or other native
      *      tokens, ERC20, ERC721, and ERC1155, as well as criteria-based ERC721 and
-     *      ERC1155), a token address, a dual-purpose "tokenId"
+     *      ERC1155), a token address, a dual-purpose "identifierOrCriteria"
      *      component that will either represent a tokenId or a merkle root
      *      depending on the item type, and a start and end amount that support
      *      increasing or decreasing amounts over the duration of the respective
@@ -40,7 +40,7 @@ interface ISeaport {
     struct OfferItem {
         ItemType itemType;
         address token;
-        uint256 tokenId;
+        uint256 identifierOrCriteria;
         uint256 startAmount;
         uint256 endAmount;
     }
@@ -53,7 +53,7 @@ interface ISeaport {
     struct ConsiderationItem {
         ItemType itemType;
         address token;
-        uint256 tokenId;
+        uint256 identifierOrCriteria;
         uint256 startAmount;
         uint256 endAmount;
         address payable recipient;

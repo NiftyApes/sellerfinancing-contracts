@@ -35,7 +35,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             offerSignatures,
             buyer1,
             tokenIds,
-            tokenAmounts,
+            // tokenAmounts,
             false
         );
         vm.stopPrank();
@@ -94,7 +94,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             offerSignatures,
             buyer1,
             tokenIds,
-            tokenAmounts,
+            // tokenAmounts,
             false
         );
         vm.stopPrank();
@@ -155,7 +155,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             offerSignatures,
             buyer1,
             tokenIds,
-            tokenAmounts,
+            // tokenAmounts,
             true
         );
         vm.stopPrank();
@@ -223,7 +223,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             offerSignatures,
             buyer1,
             tokenIds,
-            tokenAmounts,
+            // tokenAmounts,
             true
         );
         vm.stopPrank();
@@ -292,7 +292,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             offerSignatures,
             buyer1,
             tokenIds,
-            tokenAmounts,
+            // tokenAmounts,
             true
         );
         vm.stopPrank();
@@ -364,7 +364,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             offerSignatures,
             buyer1,
             tokenIds,
-            tokenAmounts,
+            // tokenAmounts,
             false
         );
         vm.stopPrank();
@@ -423,7 +423,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             offerSignatures,
             buyer1,
             tokenIds,
-            tokenAmounts,
+            // tokenAmounts,
             false
         );
         vm.stopPrank();
@@ -466,7 +466,7 @@ contract TestBuyWithSellerFinancingBatchMarketplace is Test, OffersLoansFixtures
             offerSignatures,
             buyer1,
             tokenIds,
-            tokenAmounts,
+            // tokenAmounts,
             false
         );
         vm.stopPrank();

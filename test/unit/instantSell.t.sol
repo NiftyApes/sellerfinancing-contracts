@@ -230,7 +230,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         considItems[2] = ISeaport.ConsiderationItem({
             itemType: ISeaport.ItemType.ERC20,
             token: WETH_ADDRESS,
-            tokenId: 0,
+            identifierOrCriteria: 0,
             startAmount: considerationAmount2,
             endAmount: considerationAmount2,
             recipient: payable(buyer2)
@@ -691,7 +691,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             buyer2,
             true
         );
-        order[0].parameters.consideration[0].tokenId = 1;
+        order[0].parameters.consideration[0].identifierOrCriteria = 1;
 
         vm.startPrank(buyer1);
         vm.expectRevert(
@@ -992,14 +992,14 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         order[0].parameters.offer[0] = ISeaport.OfferItem({
             itemType: ISeaport.ItemType.ERC20,
             token: WETH_ADDRESS,
-            tokenId: 0,
+            identifierOrCriteria: 0,
             startAmount: bidPrice,
             endAmount: bidPrice
         });
         order[0].parameters.offer[1] = ISeaport.OfferItem({
             itemType: ISeaport.ItemType.ERC20,
             token: WETH_ADDRESS,
-            tokenId: 0,
+            identifierOrCriteria: 0,
             startAmount: bidPrice,
             endAmount: bidPrice
         });
@@ -1072,14 +1072,14 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         order[0].parameters.offer[0] = ISeaport.OfferItem({
             itemType: offerItemType,
             token: offerToken,
-            tokenId: 0,
+            identifierOrCriteria: 0,
             startAmount: bidPrice,
             endAmount: bidPrice
         });
         order[0].parameters.consideration[0] = ISeaport.ConsiderationItem({
             itemType: ISeaport.ItemType.ERC721,
             token: tokenContractAddress,
-            tokenId: tokenId,
+            identifierOrCriteria: tokenId,
             startAmount: 1,
             endAmount: 1,
             recipient: payable(orderCreator)
@@ -1088,7 +1088,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
                 itemType: offerItemType,
                 token: offerToken,
-                tokenId: 0,
+                identifierOrCriteria: 0,
                 startAmount: seaportFeeAmount,
                 endAmount: seaportFeeAmount,
                 recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)

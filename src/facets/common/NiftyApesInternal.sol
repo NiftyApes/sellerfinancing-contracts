@@ -164,7 +164,7 @@ abstract contract NiftyApesInternal is
         }
 
         // loan item must be either ETH or ERC20
-        if (offer.loanTerms.itemType != ItemType.NATIVE || offer.loanTerms.itemType != ItemType.ERC20) {
+        if (offer.loanTerms.itemType != ItemType.NATIVE && offer.loanTerms.itemType != ItemType.ERC20) {
             revert InvalidLoanItemType();
         }
 
@@ -212,9 +212,17 @@ abstract contract NiftyApesInternal is
         // instantiate loan
         Loan storage loan = _getLoan(sf.loanId, sf);
 
+        // mint borrower token
+        _safeMint(borrower, sf.loanId);
+        sf.loanId++;
+
+        // mint lender token
+        _safeMint(lender, sf.loanId);
+        sf.loanId++;
+
         if (offer.collateralItem.itemType == ItemType.ERC721) {
             _setTokenURI(
-                sf.loanId,
+                sf.loanId-2,
                 IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(offer.collateralItem.tokenId)
             );
             // add borrower delegate.cash delegation
@@ -225,14 +233,6 @@ abstract contract NiftyApesInternal is
                 true
             );
         }
-
-        // mint borrower token
-        _safeMint(borrower, sf.loanId);
-        sf.loanId++;
-
-        // mint lender token
-        _safeMint(lender, sf.loanId);
-        sf.loanId++;
 
         // create loan
         _createLoan(loan, offer, sf.loanId - 2);
@@ -253,6 +253,7 @@ abstract contract NiftyApesInternal is
         loan.collateralItem.amount = offer.collateralItem.amount;
 
         loan.loanTerms.itemType = offer.loanTerms.itemType;
+        loan.loanTerms.token = offer.loanTerms.token;
         loan.loanTerms.principalAmount = uint128(offer.loanTerms.principalAmount);
         loan.loanTerms.minimumPrincipalPerPeriod = offer.loanTerms.minimumPrincipalPerPeriod;
 
@@ -511,15 +512,12 @@ abstract contract NiftyApesInternal is
         }
     }
 
-    function _requireLoanItemWETH(
-            LoanTerms memory loanTerms,
-            NiftyApesStorage.SellerFinancingStorage storage sf
+    function _requireItemType(
+            ItemType loanItemType,
+            ItemType expectedType
         ) internal {
-        if (loanTerms.itemType != ItemType.ERC20) {
+        if (loanItemType != expectedType) {
             revert InvalidLoanItemType();
-        }
-        if (loanTerms.token != sf.wethContractAddress) {
-            revert InvalidLoanItemToken(loanTerms.token);
         }
     }
 }

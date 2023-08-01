@@ -81,15 +81,14 @@ contract NiftyApesLoanExecutionFacet is
         address borrower,
         uint256 tokenId,
         uint256 tokenAmount
-    ) external whenNotPaused nonReentrant returns (uint256 loanId, uint256 ethReceived) {
+    ) external whenNotPaused nonReentrant returns (uint256 loanId) {
         // validate offerType
         _requireExpectedOfferType(offer, OfferType.LENDING);
-        
+        // loan item must be ERC20
+        _requireItemType(offer.loanTerms.itemType, ItemType.ERC20);
         
         // get storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        // loan item must be WETH
-        _requireLoanItemWETH(offer.loanTerms, sf);
 
         address lender = _commonLoanChecks(offer, signature, borrower, tokenId, tokenAmount, sf);
 
@@ -100,9 +99,9 @@ contract NiftyApesLoanExecutionFacet is
         _executeLoan(offer, signature, borrower, lender, sf);
 
         // payout borrower
-        _transferERC20(sf.wethContractAddress, lender, borrower, offer.loanTerms.principalAmount);
+        _transferERC20(offer.loanTerms.token, lender, borrower, offer.loanTerms.principalAmount);
 
-        return (sf.loanId - 2, ethReceived);
+        return (sf.loanId - 2);
     }
 
     /// @inheritdoc ILoanExecution
@@ -119,13 +118,11 @@ contract NiftyApesLoanExecutionFacet is
         // get storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
         
-        // loan item must be WETH
-        _requireLoanItemWETH(offer.loanTerms, sf);
-        if (offer.collateralItem.itemType != ItemType.ERC721) {
-            revert InvalidCollateralItemType();
-        }
+        // loan item must be ERC20
+        _requireItemType(offer.loanTerms.itemType, ItemType.ERC20);
+
         // revert if collateral not ERC721
-        if (offer.collateralItem.itemType != ItemType.ERC721) {
+        if (offer.collateralItem.itemType != ItemType.ERC721 && offer.collateralItem.itemType != ItemType.ERC1155) {
             revert InvalidCollateralItemType();
         }
         address lender = _commonLoanChecks(offer, signature, borrower, tokenId, 0, sf);
@@ -134,7 +131,7 @@ contract NiftyApesLoanExecutionFacet is
         ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
 
         // instantiate weth
-        IERC20Upgradeable asset = IERC20Upgradeable(sf.wethContractAddress);
+        IERC20Upgradeable asset = IERC20Upgradeable(offer.loanTerms.token);
 
         // calculate totalConsiderationAmount
         uint256 totalConsiderationAmount;

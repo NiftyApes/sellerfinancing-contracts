@@ -155,8 +155,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
                     amount: 0
                 }),
                 loanTerms: LoanTerms({
-                    itemType: ItemType.NATIVE,
-                    token: address(0),
+                    itemType: ItemType.ERC20,
+                    token: address(WETH_ADDRESS),
                     tokenId: 0,
                     principalAmount: fuzzed.principalAmount,
                     minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,

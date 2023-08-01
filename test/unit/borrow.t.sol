@@ -22,13 +22,13 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
-        uint256 borrower1BalanceBefore = address(borrower1).balance;
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
-        (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -39,7 +39,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, address(borrower1), loanId);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
-        uint256 borrower1BalanceAfter = address(borrower1).balance;
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
 
         // lender1 balance reduced by loan principal amount
         assertEq(
@@ -49,7 +49,6 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // borrower1 balance increased by loan principal amount
         assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
-        assertEq(ethRecieved, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_simplest_case(
@@ -79,7 +78,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.expectEmit(true, true, false, false);
         emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offer.collateralItem.amount, offerSignature, loan);
 
-        (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -88,7 +87,6 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
         assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, borrower1, loanId);
-        assertEq(ethRecieved, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_emits_expectedEvents(
@@ -141,7 +139,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 tokenId2 = 6974;
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
-        uint256 borrower1BalanceBefore = address(borrower1).balance;
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         bytes memory offerSignature = lender1CreateOffer(offer);
         vm.startPrank(lender1);
@@ -152,7 +150,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, tokenId2);
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
-        (uint256 loanId1, uint256 ethRecieved1) = sellerFinancing.borrow(
+        (uint256 loanId1) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -160,7 +158,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.amount
         );
         boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
-        (uint256 loanId2, uint256 ethRecieved2) = sellerFinancing.borrow(
+        (uint256 loanId2) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -172,7 +170,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         assertionsForExecutedLoanThrough3rdPartyLender(offer, tokenId2, borrower1, loanId2);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
-        uint256 borrower1BalanceAfter = address(borrower1).balance;
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
 
         // lender1 balance reduced by two times the loan principal amount
         assertEq(
@@ -182,9 +180,6 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // borrower1 balance increased by two times the loan principal amount
         assertEq(borrower1BalanceAfter, borrower1BalanceBefore + 2 * offer.loanTerms.principalAmount);
-
-        assertEq(ethRecieved1, offer.loanTerms.principalAmount);
-        assertEq(ethRecieved2, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_collection_offer_case(
@@ -207,7 +202,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 tokenId2 = 6974;
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
-        uint256 borrower1BalanceBefore = address(borrower1).balance;
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         bytes memory offerSignature = lender1CreateOffer(offer);
         vm.startPrank(lender1);
@@ -218,7 +213,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, tokenId2);
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
-        (uint256 loanId1, uint256 ethRecieved1) = sellerFinancing.borrow(
+        (uint256 loanId1) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -241,7 +236,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         assertEq(boredApeYachtClub.ownerOf(tokenId2), borrower1);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
-        uint256 borrower1BalanceAfter = address(borrower1).balance;
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
 
         // lender1 balance reduced by only one loan principal amount
         assertEq(
@@ -251,7 +246,6 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // borrower1 balance increased by only one loan principal amount
         assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
-        assertEq(ethRecieved1, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_collection_offer_reverts_if_limitReached(
@@ -272,7 +266,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
-        (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -281,7 +275,6 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
         assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, borrower1, loanId);
-        assertEq(ethRecieved, offer.loanTerms.principalAmount);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 

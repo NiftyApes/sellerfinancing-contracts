@@ -198,7 +198,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
             offerSignature,
             buyer1,
             tokenId,
-            offer.collateralItem.amount
+            0
         );
         vm.stopPrank();
 

@@ -591,13 +591,13 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         order.parameters.offer = new ISeaport.OfferItem[](1);
         order.parameters.offer[0].itemType = ISeaport.ItemType.ERC721;
         order.parameters.offer[0].token = address(boredApeYachtClub);
-        order.parameters.offer[0].tokenId = tokenId;
+        order.parameters.offer[0].identifierOrCriteria = tokenId;
         order.parameters.offer[0].startAmount = 1;
         order.parameters.offer[0].endAmount = 1;
         order.parameters.consideration = new ISeaport.ConsiderationItem[](1);
         order.parameters.consideration[0].itemType = ISeaport.ItemType.ERC20;
         order.parameters.consideration[0].token = WETH_ADDRESS;
-        order.parameters.consideration[0].tokenId = 0;
+        order.parameters.consideration[0].identifierOrCriteria = 0;
         order.parameters.consideration[0].startAmount = tokenPrice;
         order.parameters.consideration[0].endAmount = tokenPrice;
         order.parameters.consideration[0].recipient = seller2;

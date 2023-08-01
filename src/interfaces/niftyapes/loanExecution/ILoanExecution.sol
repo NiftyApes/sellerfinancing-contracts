@@ -34,7 +34,7 @@ interface ILoanExecution
         address borrower,
         uint256 tokenId,
         uint256 tokenAmount
-    ) external returns (uint256 loanId, uint256 ethReceived);
+    ) external returns (uint256 loanId);
 
     /// @notice Executes the NFT purchase and starts a loan using the fund from lender who signed the Lending Offer
     /// @param offer        The details of the lending offer

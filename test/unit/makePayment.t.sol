@@ -248,7 +248,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
-        (uint256 loanId,) = sellerFinancing.borrow(
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -261,10 +261,11 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
-
-        uint256 lender1BalanceBefore = address(lender1).balance;
+        mintWeth(borrower1, (periodInterest));
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
 
         vm.startPrank(borrower1);
+        weth.approve(address(sellerFinancing), (loan.loanTerms.principalAmount + periodInterest));
         vm.expectEmit(true, true, false, false);
         emit PaymentMade(
                 offer.collateralItem.token,
@@ -277,7 +278,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
-        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment(
             loanId,
             (loan.loanTerms.principalAmount + periodInterest)
         );
@@ -287,7 +288,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // lender received principal plus interest balance without any royalty deductions
         assertEq(
-            address(lender1).balance,
+            weth.balanceOf(lender1),
             (lender1BalanceBefore + offer.loanTerms.principalAmount + periodInterest)
         );
     }
@@ -315,7 +316,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
-        (uint256 loanId,) = sellerFinancing.borrow(
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -329,10 +330,13 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         (, uint256 periodInterest, uint256 protocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
 
-        uint256 lender1BalanceBefore = address(lender1).balance;
-        uint256 ownerBalanceBefore = address(owner).balance;
+        mintWeth(borrower1, (periodInterest + protocolFee));
 
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
+        uint256 ownerBalanceBefore = weth.balanceOf(owner);
+        
         vm.startPrank(borrower1);
+        weth.approve(address(sellerFinancing), (loan.loanTerms.principalAmount + periodInterest + protocolFee));
         vm.expectEmit(true, true, false, false);
         emit PaymentMade(
                 offer.collateralItem.token,
@@ -345,7 +349,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
-        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest + protocolFee) }(
+        sellerFinancing.makePayment(
             loanId,
             (loan.loanTerms.principalAmount + periodInterest + protocolFee)
         );
@@ -355,12 +359,12 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // lender received principal plus interest balance without any royalty deductions
         assertEq(
-            address(lender1).balance,
+            weth.balanceOf(lender1),
             (lender1BalanceBefore + offer.loanTerms.principalAmount + periodInterest)
         );
 
         // protocol fee received by the owner
-        assertEq(address(owner).balance, ownerBalanceBefore + protocolFee);
+        assertEq(weth.balanceOf(owner), ownerBalanceBefore + protocolFee);
     }
 
     function test_fuzz_makePayment_after_borrow_withProtocolFee(
@@ -385,7 +389,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         vm.startPrank(borrower1);
         boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
-        (uint256 loanId,) = sellerFinancing.borrow(
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
@@ -398,10 +402,11 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
         (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
-
-        uint256 lender1BalanceBefore = address(lender1).balance;
+        mintWeth(borrower1, (periodInterest));
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
 
         vm.startPrank(borrower1);
+        weth.approve(address(sellerFinancing), (loan.loanTerms.principalAmount + periodInterest));
         vm.expectEmit(true, true, false, false);
         emit PaymentMade(
                 offer.collateralItem.token,
@@ -414,7 +419,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.expectEmit(true, true, false, false);
         emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
-        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
+        sellerFinancing.makePayment(
             loanId,
             (loan.loanTerms.principalAmount + periodInterest)
         );
@@ -424,7 +429,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // lender received principal plus interest balance without any royalty deductions
         assertEq(
-            address(lender1).balance,
+            weth.balanceOf(lender1),
             (lender1BalanceBefore + offer.loanTerms.principalAmount + periodInterest)
         );
     }

@@ -389,7 +389,13 @@ contract NiftyApesLoanManagementFacet is
         // validate order
         _validateSaleOrder(order, loan, sf);
         // instantiate loan token
-        IERC20Upgradeable asset = IERC20Upgradeable(loan.loanTerms.token);
+        IERC20Upgradeable asset;
+        if (loan.loanTerms.itemType == ItemType.NATIVE) {
+            asset = IERC20Upgradeable(sf.wethContractAddress);
+        } else {
+            asset = IERC20Upgradeable(loan.loanTerms.token);
+        }
+        
 
         // calculate totalConsiderationAmount
         uint256 totalConsiderationAmount;
@@ -456,9 +462,9 @@ contract NiftyApesLoanManagementFacet is
                 loan.collateralItem.token
             );
         }
-        if (order.parameters.consideration[0].tokenId != loan.collateralItem.tokenId) {
+        if (order.parameters.consideration[0].identifierOrCriteria != loan.collateralItem.tokenId) {
             revert InvalidConsideration0Identifier(
-                order.parameters.consideration[0].tokenId,
+                order.parameters.consideration[0].identifierOrCriteria,
                 loan.collateralItem.tokenId
             );
         }
