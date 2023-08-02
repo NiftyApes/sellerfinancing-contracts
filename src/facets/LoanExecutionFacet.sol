@@ -50,7 +50,7 @@ contract NiftyApesLoanExecutionFacet is
         _transferCollateral(offer.collateralItem, seller, address(this));
 
         uint256 totalRoyaltiesPaid;
-        if (offer.collateralItem.itemType == ItemType.ERC721 && offer.payRoyalties) {
+        if (offer.payRoyalties && offer.collateralItem.itemType == ItemType.ERC721) {
             totalRoyaltiesPaid = _payRoyalties(
                 offer.collateralItem.token,
                 offer.collateralItem.tokenId,

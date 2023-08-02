@@ -16,7 +16,6 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
     function setUp() public override {
         super.setUp();
     }
-
     
     function _test_borrow_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
@@ -499,5 +498,36 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_borrow_reverts_if_callerSanctioned() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
         _test_borrow_reverts_if_callerSanctioned(fixedForSpeed);
+    }
+
+    function _test_borrow_reverts_for_loanItemType_NonERC20(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
+        offer.loanTerms.itemType = ItemType.NATIVE;
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        vm.expectRevert(
+            INiftyApesErrors.InvalidLoanItemType.selector
+        );
+        sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_borrow_reverts_for_loanItemType_NonERC20(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_borrow_reverts_for_loanItemType_NonERC20(fuzzed);
+    }
+
+    function test_unit_reverts_for_loanItemType_NonERC20() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_borrow_reverts_for_loanItemType_NonERC20(fixedForSpeed);
     }
 }

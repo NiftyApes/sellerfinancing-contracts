@@ -27,11 +27,15 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
     struct FixedOfferFields {
         INiftyApesStructs.OfferType offerType;
         address creator;
+        ItemType collateralItemType;
         uint256 tokenId;
         address tokenContractAddress;
+        uint256 tokenAmount;
         bool isCollectionOffer;
         uint64 collectionOfferLimit;
         uint32 creatorOfferNonce;
+        ItemType loanItemType;
+        address loanTokenAddress;
     }
 
     FixedOfferFields internal defaultFixedOfferFields;
@@ -50,11 +54,15 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         defaultFixedOfferFields = FixedOfferFields({
             offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
             creator: seller1,
+            collateralItemType: ItemType.ERC721,
             tokenContractAddress: address(boredApeYachtClub),
             tokenId: 8661,
+            tokenAmount: 0,
             isCollectionOffer: false,
             collectionOfferLimit: 1,
-            creatorOfferNonce: 0
+            creatorOfferNonce: 0,
+            loanItemType: ItemType.NATIVE,
+            loanTokenAddress: address(0)
         });
 
         // these fields are fixed for Lending offer, not fuzzed
@@ -62,11 +70,15 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         defaultFixedOfferFieldsForLending = FixedOfferFields({
             offerType: INiftyApesStructs.OfferType.LENDING,
             creator: seller1,
+            collateralItemType: ItemType.ERC721,
             tokenContractAddress: address(boredApeYachtClub),
             tokenId: 8661,
+            tokenAmount: 0,
             isCollectionOffer: false,
             collectionOfferLimit: 1,
-            creatorOfferNonce: 0
+            creatorOfferNonce: 0,
+            loanItemType: ItemType.ERC20,
+            loanTokenAddress: address(WETH_ADDRESS)
         });
 
         // in addition to fuzz tests, we have fast unit tests
@@ -116,14 +128,14 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             Offer({
                 offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
                 collateralItem: CollateralItem({
-                    itemType: ItemType.ERC721,
+                    itemType: fixedFields.collateralItemType,
                     token: fixedFields.tokenContractAddress,
                     tokenId: fixedFields.tokenId,
-                    amount: 0
+                    amount: fixedFields.tokenAmount
                 }),
                 loanTerms: LoanTerms({
-                    itemType: ItemType.NATIVE,
-                    token: address(0),
+                    itemType: fixedFields.loanItemType,
+                    token: fixedFields.loanTokenAddress,
                     tokenId: 0,
                     principalAmount: fuzzed.principalAmount,
                     minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,
@@ -141,6 +153,16 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             });
     }
 
+    function offerStructFromFieldsERC20Payment(
+        FuzzedOfferFields memory fuzzed,
+        FixedOfferFields memory fixedFields,
+        address erc20TokenAddress
+    ) internal pure returns (Offer memory offer) {
+        offer = offerStructFromFields(fuzzed, fixedFields);
+        offer.loanTerms.itemType = ItemType.ERC20;
+        offer.loanTerms.token = erc20TokenAddress;
+    }
+
     function offerStructFromFieldsForLending(
         FuzzedOfferFields memory fuzzed,
         FixedOfferFields memory fixedFields
@@ -149,14 +171,14 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         Offer({
                 offerType: INiftyApesStructs.OfferType.LENDING,
                 collateralItem: CollateralItem({
-                    itemType: ItemType.ERC721,
+                    itemType: fixedFields.collateralItemType,
                     token: fixedFields.tokenContractAddress,
                     tokenId: fixedFields.tokenId,
-                    amount: 0
+                    amount: fixedFields.tokenAmount
                 }),
                 loanTerms: LoanTerms({
-                    itemType: ItemType.ERC20,
-                    token: address(WETH_ADDRESS),
+                    itemType: fixedFields.loanItemType,
+                    token: fixedFields.loanTokenAddress,
                     tokenId: 0,
                     principalAmount: fuzzed.principalAmount,
                     minimumPrincipalPerPeriod: fuzzed.minimumPrincipalPerPeriod,

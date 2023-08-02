@@ -173,7 +173,7 @@ contract NiftyApesLoanManagementFacet is
         // get borrower
         address borrowerAddress = ownerOf(loan.loanId);
 
-        if (loan.collateralItem.itemType != ItemType.ERC721) {
+        if (loan.collateralItem.itemType != ItemType.ERC721 && loan.collateralItem.itemType != ItemType.ERC1155) {
             revert InvalidCollateralItemType();
         }
         _requireIsNotSanctioned(msg.sender, sf);
@@ -448,11 +448,10 @@ contract NiftyApesLoanManagementFacet is
         Loan memory loan,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal view {
-        if (order.parameters.consideration[0].itemType != ISeaport.ItemType.ERC721) {
+        if (uint(order.parameters.consideration[0].itemType) != uint(loan.collateralItem.itemType)) {
             revert InvalidConsiderationItemType(
                 0,
-                order.parameters.consideration[0].itemType,
-                ISeaport.ItemType.ERC721
+                order.parameters.consideration[0].itemType
             );
         }
         if (order.parameters.consideration[0].token != loan.collateralItem.token) {
@@ -487,8 +486,7 @@ contract NiftyApesLoanManagementFacet is
             if (order.parameters.consideration[i].itemType != ISeaport.ItemType.ERC20) {
                 revert InvalidConsiderationItemType(
                     i,
-                    order.parameters.consideration[i].itemType,
-                    ISeaport.ItemType.ERC20
+                    order.parameters.consideration[i].itemType
                 );
             }
             if (loan.loanTerms.itemType == ItemType.NATIVE && order.parameters.consideration[i].token != sf.wethContractAddress) {

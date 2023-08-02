@@ -144,6 +144,38 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         _test_buyWith3rdPartyFinancing_reverts_if_offerType_Not_Lending(fixedForSpeed);
     }
 
+    function _test_buyWith3rdPartyFinancing_reverts_if_loanItemType_notERC20(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
+        offer.loanTerms.itemType = ItemType.NATIVE;
+        vm.prank(seller1);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        vm.expectRevert(INiftyApesErrors.InvalidLoanItemType.selector);
+        sellerFinancing.buyWith3rdPartyFinancing(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            abi.encode(order)
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_buyWith3rdPartyFinancing_reverts_if_loanItemType_notERC20(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWith3rdPartyFinancing_reverts_if_loanItemType_notERC20(fuzzed);
+    }
+
+    function test_unit_buyWith3rdPartyFinancing_reverts_if_loanItemType_notERC20() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_buyWith3rdPartyFinancing_reverts_if_loanItemType_notERC20(fixedForSpeed);
+    }
+
     function _test_buyWith3rdPartyFinancing_collectionOffer_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         offer.isCollectionOffer = true;
@@ -553,7 +585,6 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
 
         bytes memory offerSignature = lender1CreateOffer(offer);
         mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
-
         
         vm.startPrank(SANCTIONED_ADDRESS);
         vm.expectRevert(

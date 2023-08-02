@@ -515,7 +515,7 @@ abstract contract NiftyApesInternal is
     function _requireItemType(
             ItemType loanItemType,
             ItemType expectedType
-        ) internal {
+        ) internal pure {
         if (loanItemType != expectedType) {
             revert InvalidLoanItemType();
         }

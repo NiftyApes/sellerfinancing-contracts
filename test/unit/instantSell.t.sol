@@ -604,8 +604,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             abi.encodeWithSelector(
                 INiftyApesErrors.InvalidConsiderationItemType.selector,
                 0,
-                ISeaport.ItemType.ERC20,
-                ISeaport.ItemType.ERC721
+                ISeaport.ItemType.ERC20
             )
         );
         sellerFinancing.instantSell(loanId, 0, abi.encode(order[0]));
@@ -836,8 +835,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             abi.encodeWithSelector(
                 INiftyApesErrors.InvalidConsiderationItemType.selector,
                 1,
-                ISeaport.ItemType.ERC721,
-                ISeaport.ItemType.ERC20
+                ISeaport.ItemType.ERC721
             )
         );
         sellerFinancing.instantSell(loanId, 0, abi.encode(order[0]));

@@ -36,8 +36,7 @@ interface INiftyApesErrors {
 
     error InvalidConsiderationItemType(
         uint256 index,
-        ISeaport.ItemType given,
-        ISeaport.ItemType expected
+        ISeaport.ItemType given
     );
 
     error InvalidConsiderationToken(uint256 index, address given, address expected);
