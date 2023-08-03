@@ -963,6 +963,88 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_makePayment_partialRepayment_simplest_case(fixedForSpeed);
     }
 
+    function _test_makePayment_partialRepayment_WETH_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFieldsERC20Payment(fuzzed, defaultFixedOfferFields, WETH_ADDRESS);
+
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        weth.approve(address(sellerFinancing), offer.loanTerms.downPaymentAmount);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
+
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+
+        (uint256 totalMinimumPayment, uint256 periodInterest,) = sellerFinancing
+            .calculateMinimumPayment(loanId);
+
+        (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.tokenId, totalMinimumPayment);
+
+        uint256 sellerBalanceBefore = weth.balanceOf(seller1);
+        uint256 royaltiesBalanceBefore = weth.balanceOf(recipients[0]);
+        uint256 totalRoyaltiesPaid = amounts[0];
+
+        vm.startPrank(buyer1);
+        weth.approve(address(sellerFinancing), totalMinimumPayment);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.collateralItem.token,
+                offer.collateralItem.tokenId,
+                totalMinimumPayment,
+                0,
+                totalRoyaltiesPaid,
+                periodInterest,
+                loan
+        );
+        sellerFinancing.makePayment(
+            loanId,
+            totalMinimumPayment
+        );
+        vm.stopPrank();
+
+        Loan memory loanAfter = sellerFinancing.getLoan(loanId);
+
+        uint256 sellerBalanceAfter = weth.balanceOf(seller1);
+        uint256 royaltiesBalanceAfter = weth.balanceOf(recipients[0]);
+
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + totalMinimumPayment - totalRoyaltiesPaid)
+        );
+
+        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
+
+        assertEq(
+            loanAfter.loanTerms.principalAmount,
+            loan.loanTerms.principalAmount - (totalMinimumPayment - periodInterest)
+        );
+
+        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.loanTerms.periodDuration);
+        assertEq(loanAfter.periodBeginTimestamp, loan.periodBeginTimestamp + loan.loanTerms.periodDuration);
+    }
+
+    function test_fuzz_makePayment_partialRepayment_WETH_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_partialRepayment_WETH_simplest_case(fuzzed);
+    }
+
+    function test_unit_makePayment_partialRepayment_WETH_simplest_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_partialRepayment_WETH_simplest_case(fixedForSpeed);
+    }
+
     function _test_makePayment_partialRepayment_withProtocolFee(
         FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
     ) private {
@@ -1037,6 +1119,94 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_makePayment_partialRepayment_withProtocolFee() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_makePayment_partialRepayment_withProtocolFee(fixedForSpeed, 150);
+    }
+
+    function _test_makePayment_partialRepayment_WETH_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) private {
+        vm.prank(owner);
+        sellerFinancing.updateProtocolFeeBPS(protocolFeeBPS);
+        
+        Offer memory offer = offerStructFromFieldsERC20Payment(fuzzed, defaultFixedOfferFields, WETH_ADDRESS);
+
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        weth.approve(address(sellerFinancing), offer.loanTerms.downPaymentAmount);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
+
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+
+        (uint256 totalMinimumPayment, uint256 periodInterest, uint256 protocolFee) = sellerFinancing
+            .calculateMinimumPayment(loanId);
+
+        (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.tokenId, totalMinimumPayment - protocolFee);
+
+        uint256 sellerBalanceBefore = weth.balanceOf(seller1);
+        uint256 royaltiesBalanceBefore = weth.balanceOf(recipients[0]);
+        uint256 ownerBalanceBefore = weth.balanceOf(owner);
+
+        vm.startPrank(buyer1);
+        weth.approve(address(sellerFinancing), totalMinimumPayment);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.collateralItem.token,
+                offer.collateralItem.tokenId,
+                totalMinimumPayment,
+                protocolFee,
+                amounts[0],
+                periodInterest,
+                loan
+        );
+        sellerFinancing.makePayment(
+            loanId,
+            totalMinimumPayment
+        );
+        vm.stopPrank();
+
+        Loan memory loanAfter = sellerFinancing.getLoan(loanId);
+
+        uint256 sellerBalanceAfter = weth.balanceOf(seller1);
+        uint256 royaltiesBalanceAfter = weth.balanceOf(recipients[0]);
+
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + totalMinimumPayment - protocolFee - amounts[0])
+        );
+
+        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + amounts[0]));
+
+        assertEq(
+            loanAfter.loanTerms.principalAmount,
+            loan.loanTerms.principalAmount - (totalMinimumPayment - protocolFee - periodInterest)
+        );
+
+        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.loanTerms.periodDuration);
+        assertEq(loanAfter.periodBeginTimestamp, loan.periodBeginTimestamp + loan.loanTerms.periodDuration);
+        // protocol fee received by the owner
+        assertEq(weth.balanceOf(owner), ownerBalanceBefore + protocolFee);
+    }
+
+    function test_fuzz_makePayment_partialRepayment_WETH_withProtocolFee(
+        FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
+    ) public validateFuzzedOfferFields(fuzzed) {
+        vm.assume(protocolFeeBPS < 1000);
+        _test_makePayment_partialRepayment_WETH_withProtocolFee(fuzzed, protocolFeeBPS);
+    }
+
+    function test_unit_makePayment_partialRepayment_WETH_withProtocolFee() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_partialRepayment_WETH_withProtocolFee(fixedForSpeed, 150);
     }
 
     function _test_makePayment_fullRepayment_in_gracePeriod(
