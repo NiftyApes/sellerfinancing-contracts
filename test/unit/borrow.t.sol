@@ -17,7 +17,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         super.setUp();
     }
     
-    function _test_borrow_simplest_case(FuzzedOfferFields memory fuzzed) private {
+    function _test_borrow_WETH_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
@@ -50,15 +50,60 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
     }
 
-    function test_fuzz_borrow_simplest_case(
+    function test_fuzz_borrow_WETH_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_borrow_simplest_case(fuzzed);
+        _test_borrow_WETH_simplest_case(fuzzed);
     }
 
-    function test_unit_borrow_simplest_case() public {
+    function test_unit_borrow_WETH_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
-        _test_borrow_simplest_case(fixedForSpeed);
+        _test_borrow_WETH_simplest_case(fixedForSpeed);
+    }
+
+    function _test_borrow_USDC_simplest_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingUSDC);
+
+        mintUsdc(lender1, offer.loanTerms.principalAmount);
+        uint256 lender1BalanceBefore = usdc.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = usdc.balanceOf(borrower1);
+    
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        (uint256 loanId) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, address(borrower1), loanId);
+
+        uint256 lender1BalanceAfter = usdc.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = usdc.balanceOf(borrower1);
+
+        // lender1 balance reduced by loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance increased by loan principal amount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
+    }
+
+    function test_fuzz_borrow_USDC_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFieldsForUSDC(fuzzed) {
+        _test_borrow_USDC_simplest_case(fuzzed);
+    }
+
+    function test_unit_borrow_USDC_simplest_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTestingUSDC;
+        _test_borrow_USDC_simplest_case(fixedForSpeed);
     }
 
     function _test_borrow_emits_expectedEvents(FuzzedOfferFields memory fuzzed) private {

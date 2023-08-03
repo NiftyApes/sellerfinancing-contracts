@@ -33,6 +33,9 @@ contract UsersFixtures is Test {
     address wethWhale = 0xf584F8728B874a6a5c7A8d4d387C9aae9172D621;
     IERC20Upgradeable weth =
         IERC20Upgradeable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    address USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    IERC20Upgradeable usdc =
+        IERC20Upgradeable(USDC_ADDRESS);
 
     // current total supply of ether
     uint256 internal defaultInitialEthBalance = ~uint128(0);

@@ -42,9 +42,15 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     FixedOfferFields internal defaultFixedOfferFieldsForLending;
 
+    FixedOfferFields internal defaultFixedOfferFieldsForLendingUSDC;
+
     FuzzedOfferFields internal defaultFixedFuzzedFieldsForFastUnitTesting;
 
     FuzzedOfferFields internal defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+
+    FuzzedOfferFields internal defaultFixedFuzzedFieldsForFastUnitTestingUSDC;
+
+    FuzzedOfferFields internal defaultFixedFuzzedFieldsForLendingForFastUnitTestingUSDC;
 
     function setUp() public virtual override {
         super.setUp();
@@ -81,12 +87,35 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             loanTokenAddress: address(WETH_ADDRESS)
         });
 
+        defaultFixedOfferFieldsForLendingUSDC = FixedOfferFields({
+            offerType: INiftyApesStructs.OfferType.LENDING,
+            creator: seller1,
+            collateralItemType: ItemType.ERC721,
+            tokenContractAddress: address(boredApeYachtClub),
+            tokenId: 8661,
+            tokenAmount: 0,
+            isCollectionOffer: false,
+            collectionOfferLimit: 1,
+            creatorOfferNonce: 0,
+            loanItemType: ItemType.ERC20,
+            loanTokenAddress: address(USDC_ADDRESS)
+        });
+
         // in addition to fuzz tests, we have fast unit tests
         // using these default values instead of fuzzing
         defaultFixedFuzzedFieldsForFastUnitTesting = FuzzedOfferFields({
             principalAmount: 0.7 ether,
             downPaymentAmount: 0.3 ether,
             minimumPrincipalPerPeriod: 0.07 ether,
+            periodInterestRateBps: 25,
+            periodDuration: 30 days,
+            expiration: uint32(block.timestamp) + 1 days
+        });
+
+        defaultFixedFuzzedFieldsForFastUnitTestingUSDC = FuzzedOfferFields({
+            principalAmount: 7e10,
+            downPaymentAmount: 3e10,
+            minimumPrincipalPerPeriod: 7e9,
             periodInterestRateBps: 25,
             periodDuration: 30 days,
             expiration: uint32(block.timestamp) + 1 days
@@ -102,6 +131,15 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             periodDuration: 30 days,
             expiration: uint32(block.timestamp) + 1 days
         });
+
+        defaultFixedFuzzedFieldsForLendingForFastUnitTestingUSDC = FuzzedOfferFields({
+            principalAmount: 1e10,
+            downPaymentAmount: 0,
+            minimumPrincipalPerPeriod: 1e9,
+            periodInterestRateBps: 25,
+            periodDuration: 30 days,
+            expiration: uint32(block.timestamp) + 1 days
+        });
     }
 
     modifier validateFuzzedOfferFields(FuzzedOfferFields memory fuzzed) {
@@ -109,6 +147,22 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         vm.assume(fuzzed.principalAmount > ~uint8(0));
         vm.assume(fuzzed.downPaymentAmount > ~uint8(0));
         vm.assume(fuzzed.downPaymentAmount < ~uint64(0));
+        vm.assume(fuzzed.minimumPrincipalPerPeriod > ~uint8(0));
+        vm.assume(fuzzed.periodInterestRateBps < 100000);
+
+        vm.assume(fuzzed.principalAmount > 0);
+        vm.assume(fuzzed.principalAmount > fuzzed.minimumPrincipalPerPeriod);
+        vm.assume(fuzzed.periodDuration > 1 minutes);
+        vm.assume(fuzzed.periodDuration <= 180 days);
+        vm.assume(fuzzed.expiration > block.timestamp);
+        _;
+    }
+
+    modifier validateFuzzedOfferFieldsForUSDC(FuzzedOfferFields memory fuzzed) {
+        vm.assume(fuzzed.principalAmount < 1e12);
+        vm.assume(fuzzed.principalAmount > ~uint8(0));
+        vm.assume(fuzzed.downPaymentAmount > ~uint8(0));
+        vm.assume(fuzzed.downPaymentAmount < 1e12);
         vm.assume(fuzzed.minimumPrincipalPerPeriod > ~uint8(0));
         vm.assume(fuzzed.periodInterestRateBps < 100000);
 
@@ -213,7 +267,12 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function lender1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(lender1);
-        weth.approve(address(sellerFinancing), offer.loanTerms.principalAmount);
+        if (offer.loanTerms.token == WETH_ADDRESS) {
+            weth.approve(address(sellerFinancing), offer.loanTerms.principalAmount);
+        }
+        if (offer.loanTerms.token == USDC_ADDRESS) {
+            usdc.approve(address(sellerFinancing), offer.loanTerms.principalAmount);
+        }
         vm.stopPrank();
 
         return signOffer(lender1_private_key, offer);
@@ -238,6 +297,13 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         address wethWhale = 0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E;
         vm.startPrank(wethWhale);
         wethToken.transfer(user, amount);
+        vm.stopPrank();
+    }
+
+    function mintUsdc(address user, uint256 amount) internal {
+        address usdcWhale = 0xcEe284F754E854890e311e3280b767F80797180d;
+        vm.startPrank(usdcWhale);
+        usdc.transfer(user, amount);
         vm.stopPrank();
     }
 

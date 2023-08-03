@@ -17,11 +17,11 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         super.setUp();
     }
 
-    function _test_buyWith3rdPartyFinancing_simplest_case(FuzzedOfferFields memory fuzzed) private {
+    function _test_buyWith3rdPartyFinancing_WETH_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
@@ -55,22 +55,72 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         assertEq(borrower1BalanceAfter, borrower1BalanceBefore - (order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
     }
 
-    function test_fuzz_buyWith3rdPartyFinancing_simplest_case(
+    function test_fuzz_buyWith3rdPartyFinancing_WETH_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_buyWith3rdPartyFinancing_simplest_case(fuzzed);
+        _test_buyWith3rdPartyFinancing_WETH_simplest_case(fuzzed);
     }
 
-    function test_unit_buyWith3rdPartyFinancing_simplest_case() public {
+    function test_unit_buyWith3rdPartyFinancing_WETH_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
-        _test_buyWith3rdPartyFinancing_simplest_case(fixedForSpeed);
+        _test_buyWith3rdPartyFinancing_WETH_simplest_case(fixedForSpeed);
+    }
+
+    function _test_buyWith3rdPartyFinancing_USDC_simplest_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingUSDC);
+        vm.prank(seller1);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(USDC_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        mintUsdc(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
+        mintUsdc(lender1, offer.loanTerms.principalAmount);
+
+        uint256 lender1BalanceBefore = usdc.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = usdc.balanceOf(borrower1);
+        
+        vm.startPrank(borrower1);
+        usdc.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            abi.encode(order)
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, borrower1, loanId);
+
+        uint256 lender1BalanceAfter = usdc.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = usdc.balanceOf(borrower1);
+
+        // lender1 balance reduced by loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance decreased by token price minus offer.loanTerms.principalAmount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - (order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
+    }
+
+    function test_fuzz_buyWith3rdPartyFinancing_USDC_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFieldsForUSDC(fuzzed) {
+        _test_buyWith3rdPartyFinancing_USDC_simplest_case(fuzzed);
+    }
+
+    function test_unit_buyWith3rdPartyFinancing_USDC_simplest_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTestingUSDC;
+        _test_buyWith3rdPartyFinancing_USDC_simplest_case(fixedForSpeed);
     }
 
     function _test_buyWith3rdPartyFinancing_emits_expectedEvents(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
@@ -113,7 +163,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
@@ -149,7 +199,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         offer.loanTerms.itemType = ItemType.NATIVE;
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
@@ -195,8 +245,8 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         vm.prank(SANCTIONED_ADDRESS);
         boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller2, tokenId2);
 
-        ISeaport.Order memory order1 = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, tokenId1);
-        ISeaport.Order memory order2 = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, tokenId2);
+        ISeaport.Order memory order1 = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, tokenId1);
+        ISeaport.Order memory order2 = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, tokenId2);
 
         mintWeth(borrower1, 2*(order1.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
 
@@ -267,8 +317,8 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         vm.prank(SANCTIONED_ADDRESS);
         boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller2, tokenId2);
 
-        ISeaport.Order memory order1 = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, tokenId1);
-        ISeaport.Order memory order2 = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, tokenId2);
+        ISeaport.Order memory order1 = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, tokenId1);
+        ISeaport.Order memory order2 = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, tokenId2);
 
         mintWeth(borrower1, 2*(order1.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
 
@@ -325,7 +375,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
@@ -388,7 +438,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
         mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
@@ -426,7 +476,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         offer.loanTerms.periodDuration = 1 minutes - 1;
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
         mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
@@ -463,7 +513,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         offer.loanTerms.principalAmount = 0;
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
         mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
@@ -499,7 +549,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         offer.loanTerms.minimumPrincipalPerPeriod = uint128(offer.loanTerms.principalAmount + 1);
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
         mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
@@ -541,7 +591,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         offer.loanTerms.minimumPrincipalPerPeriod = uint128(offer.loanTerms.principalAmount + 1);
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
         mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
@@ -581,7 +631,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         offer.loanTerms.minimumPrincipalPerPeriod = uint128(offer.loanTerms.principalAmount + 1);
         vm.prank(seller1);
         boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
         mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
@@ -615,7 +665,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         _test_buyWith3rdPartyFinancing_reverts_if_callerSanctioned(fixedForSpeed);
     }
 
-    function createAndValidateSeaportListingFromSeller2(uint256 tokenPrice, uint256 tokenId) internal returns (ISeaport.Order memory) {
+    function createAndValidateSeaportListingFromSeller2(address considerationToken, uint256 tokenPrice, uint256 tokenId) internal returns (ISeaport.Order memory) {
         ISeaport.Order memory order;
         order.parameters.offerer = seller2;
         order.parameters.zone = address(0x004C00500000aD104D7DBd00e3ae0A5C00560C00);
@@ -627,7 +677,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         order.parameters.offer[0].endAmount = 1;
         order.parameters.consideration = new ISeaport.ConsiderationItem[](1);
         order.parameters.consideration[0].itemType = ISeaport.ItemType.ERC20;
-        order.parameters.consideration[0].token = WETH_ADDRESS;
+        order.parameters.consideration[0].token = considerationToken;
         order.parameters.consideration[0].identifierOrCriteria = 0;
         order.parameters.consideration[0].startAmount = tokenPrice;
         order.parameters.consideration[0].endAmount = tokenPrice;
