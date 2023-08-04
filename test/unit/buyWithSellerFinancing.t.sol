@@ -241,6 +241,46 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         _test_buyWithSellerFinancing_loanWETH_collateralERC1155(fixedForSpeed);
     }
 
+    function _test_buyWithSellerFinancing_loanUSDC_collateralERC1155(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsERC20Payment(fuzzed, defaultFixedOfferFieldsERC1155, address(usdc));
+
+        uint256 sellerBalanceBefore = usdc.balanceOf(seller1);
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        mintUsdc(buyer1, offer.loanTerms.downPaymentAmount);
+        vm.startPrank(buyer1);
+        usdc.approve(address(sellerFinancing), offer.loanTerms.downPaymentAmount);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId);
+
+        uint256 sellerBalanceAfter = usdc.balanceOf(seller1);
+
+        // seller paid out correctly
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount)
+        );
+    }
+
+    function test_fuzz_buyWithSellerFinancing_loanUSDC_collateralERC1155(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFieldsForUSDC(fuzzed) {
+        _test_buyWithSellerFinancing_loanUSDC_collateralERC1155(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_loanUSDC_collateralERC1155() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTestingUSDC;
+        _test_buyWithSellerFinancing_loanUSDC_collateralERC1155(fixedForSpeed);
+    }
+
     function _test_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.payRoyalties = false;
@@ -487,6 +527,55 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
     function test_unit_buyWithSellerFinancing_collection_offer() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithSellerFinancing_collection_offer(fixedForSpeed);
+    }
+
+    function _test_buyWithSellerFinancing_collection_offer_withERC1155(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFieldsERC1155);
+        uint256 tokenId = offer.collateralItem.tokenId;
+        uint256 tokenAmount = offer.collateralItem.amount;
+        offer.isCollectionOffer = true;
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+
+        vm.startPrank(seller1);
+        erc1155Token.setApprovalForAll(address(sellerFinancing), true);
+        vm.stopPrank();
+
+        bytes memory offerSignature = signOffer(seller1_private_key, offer);
+
+        Loan memory loan = sellerFinancing.getLoan(0);
+
+        vm.expectEmit(true, true, false, false);
+        emit LoanExecuted(offer.collateralItem.token, tokenId, tokenAmount, offerSignature, loan);
+        vm.startPrank(buyer1);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
+            offer,
+            offerSignature,
+            buyer1,
+            tokenId,
+            tokenAmount
+        );
+        vm.stopPrank();
+
+        assertionsForExecutedLoanERC1155(offer, tokenId, tokenAmount, buyer1, loanId);
+        uint256 sellerBalanceAfter = address(seller1).balance;
+
+        // seller paid out correctly
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount)
+        );
+    }
+
+    function test_fuzz_buyWithSellerFinancing_collection_offer_withERC1155(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_collection_offer_withERC1155(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_collection_offer_withERC1155() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_collection_offer_withERC1155(fixedForSpeed);
     }
 
     function _test_buyWithSellerFinancing_reverts_if_tokenIdNotEqualToOfferNftId_for_nonCollectionOffer(

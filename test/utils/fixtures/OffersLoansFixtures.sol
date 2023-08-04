@@ -408,11 +408,11 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         );
         assertEq(
             loan.collateralItem.tokenId,
-            offer.collateralItem.tokenId
+            tokenId
         );
         assertEq(
             loan.collateralItem.amount,
-            offer.collateralItem.amount
+            tokenAmount
         );
         // buyer NFT minted to buyer
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId), expectedborrower);
