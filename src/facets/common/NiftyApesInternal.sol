@@ -14,6 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURIUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "../../storage/NiftyApesStorage.sol";
 import "../../interfaces/niftyapes/INiftyApesErrors.sol";
 import "../../interfaces/niftyapes/INiftyApesStructs.sol";
@@ -33,6 +35,7 @@ abstract contract NiftyApesInternal is
     PausableUpgradeable,
     ERC721HolderUpgradeable,
     ERC721URIStorageUpgradeable,
+    ERC1155HolderUpgradeable,
     INiftyApesErrors,
     INiftyApesStructs,
     INiftyApesEvents
@@ -46,6 +49,11 @@ abstract contract NiftyApesInternal is
 
     /// @dev Empty constructor ensures no 3rd party can call initialize before the NiftyApes team on this facet contract.
     constructor() initializer {}
+
+    // overriding required. 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155ReceiverUpgradeable, ERC721Upgradeable) returns (bool) {
+        return interfaceId==bytes4("");
+    }
 
     function _getOfferHash(Offer memory offer) internal view returns (bytes32) {
         bytes32 collateralItemHash = keccak256(
@@ -220,11 +228,13 @@ abstract contract NiftyApesInternal is
         _safeMint(lender, sf.loanId);
         sf.loanId++;
 
-        if (offer.collateralItem.itemType == ItemType.ERC721) {
+        if (offer.collateralItem.itemType == ItemType.ERC721 || offer.collateralItem.itemType == ItemType.ERC1155) {  
             _setTokenURI(
                 sf.loanId-2,
-                IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(offer.collateralItem.tokenId)
+                _getTokenURI(offer.collateralItem)
             );
+        }
+        if (offer.collateralItem.itemType == ItemType.ERC721) {  
             // add borrower delegate.cash delegation
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
                 borrower,
@@ -519,5 +529,13 @@ abstract contract NiftyApesInternal is
         if (loanItemType != expectedType) {
             revert InvalidLoanItemType();
         }
+    }
+
+    function _getTokenURI(CollateralItem memory collateralItem) private view returns (string memory) {
+        if (collateralItem.itemType == ItemType.ERC1155) {
+            return IERC1155MetadataURIUpgradeable(collateralItem.token).uri(collateralItem.tokenId);
+        } else {
+            return IERC721MetadataUpgradeable(collateralItem.token).tokenURI(collateralItem.tokenId);
+        }        
     }
 }

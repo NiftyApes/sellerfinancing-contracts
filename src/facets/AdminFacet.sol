@@ -37,6 +37,7 @@ contract NiftyApesAdminFacet is
         ERC721HolderUpgradeable.__ERC721Holder_init();
         ERC721Upgradeable.__ERC721_init("NiftyApes Seller Financing Tickets", "BANANAS");
         ERC721URIStorageUpgradeable.__ERC721URIStorage_init();
+        ERC1155HolderUpgradeable.__ERC1155Holder_init();
 
         // manually setting interfaceIds to be true,
         // since we have an independent supportsInterface in diamondLoupe facet
@@ -44,6 +45,8 @@ contract NiftyApesAdminFacet is
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         ds.supportedInterfaces[type(IERC721Upgradeable).interfaceId] = true;
         ds.supportedInterfaces[type(IERC721MetadataUpgradeable).interfaceId] = true;
+        ds.supportedInterfaces[type(IERC1155Upgradeable).interfaceId] = true;
+        ds.supportedInterfaces[type(IERC1155MetadataURIUpgradeable).interfaceId] = true;
 
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
 

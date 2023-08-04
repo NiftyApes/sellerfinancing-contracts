@@ -173,6 +173,74 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         _test_buyWithSellerFinancing_USDC_simplest_case(fixedForSpeed);
     }
 
+    function _test_buyWithSellerFinancing_loanETH_collateralERC1155(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFieldsERC1155);
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId);
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+
+        // seller paid out correctly
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount)
+        );
+    }
+
+    function test_fuzz_buyWithSellerFinancing_loanETH_collateralERC1155(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_loanETH_collateralERC1155(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_loanETH_collateralERC1155() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_loanETH_collateralERC1155(fixedForSpeed);
+    }
+
+    function _test_buyWithSellerFinancing_loanWETH_collateralERC1155(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsERC20Payment(fuzzed, defaultFixedOfferFieldsERC1155, WETH_ADDRESS);
+
+        uint256 sellerBalanceBefore = weth.balanceOf(seller1);
+
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        weth.approve(address(sellerFinancing), offer.loanTerms.downPaymentAmount);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId);
+
+        uint256 sellerBalanceAfter = weth.balanceOf(seller1);
+
+        // seller paid out correctly
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount)
+        );
+    }
+
+    function test_fuzz_buyWithSellerFinancing_loanWETH_collateralERC1155(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_loanWETH_collateralERC1155(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_loanWETH_collateralERC1155() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_loanWETH_collateralERC1155(fixedForSpeed);
+    }
+
     function _test_buyWithSellerFinancing_withoutRoyaltyPayments_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.payRoyalties = false;

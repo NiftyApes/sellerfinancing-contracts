@@ -4,7 +4,8 @@ pragma solidity 0.8.18;
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20Upgradeable.sol";
-
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURIUpgradeable.sol";
 import "../../utils/fixtures/NiftyApesDeployment.sol";
 import "../../../src/interfaces/niftyapes/INiftyApesStructs.sol";
 
@@ -43,6 +44,10 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
     FixedOfferFields internal defaultFixedOfferFieldsForLending;
 
     FixedOfferFields internal defaultFixedOfferFieldsForLendingUSDC;
+
+    FixedOfferFields internal defaultFixedOfferFieldsERC1155;
+
+    FixedOfferFields internal defaultFixedOfferFieldsForLendingERC1155;
 
     FuzzedOfferFields internal defaultFixedFuzzedFieldsForFastUnitTesting;
 
@@ -99,6 +104,38 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             creatorOfferNonce: 0,
             loanItemType: ItemType.ERC20,
             loanTokenAddress: address(USDC_ADDRESS)
+        });
+
+        // these fields are fixed, not fuzzed
+        // but specific fields can be overridden in tests
+        defaultFixedOfferFieldsERC1155 = FixedOfferFields({
+            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
+            creator: seller1,
+            collateralItemType: ItemType.ERC1155,
+            tokenContractAddress: address(erc1155Token),
+            tokenId: erc1155Token27638,
+            tokenAmount: 10,
+            isCollectionOffer: false,
+            collectionOfferLimit: 1,
+            creatorOfferNonce: 0,
+            loanItemType: ItemType.NATIVE,
+            loanTokenAddress: address(0)
+        });
+
+        // these fields are fixed for Lending offer, not fuzzed
+        // but specific fields can be overridden in tests
+        defaultFixedOfferFieldsForLendingERC1155 = FixedOfferFields({
+            offerType: INiftyApesStructs.OfferType.LENDING,
+            creator: seller1,
+            collateralItemType: ItemType.ERC1155,
+            tokenContractAddress: address(erc1155Token),
+            tokenId: erc1155Token27638,
+            tokenAmount: 10,
+            isCollectionOffer: false,
+            collectionOfferLimit: 1,
+            creatorOfferNonce: 0,
+            loanItemType: ItemType.ERC20,
+            loanTokenAddress: address(WETH_ADDRESS)
         });
 
         // in addition to fuzz tests, we have fast unit tests
@@ -259,7 +296,12 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function seller1CreateOffer(Offer memory offer) internal returns (bytes memory signature) {
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        if (offer.collateralItem.itemType == ItemType.ERC721) {
+            boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        }
+        if (offer.collateralItem.itemType == ItemType.ERC1155) {
+            erc1155Token.setApprovalForAll(address(sellerFinancing), true);
+        }
         vm.stopPrank();
 
         return signOffer(seller1_private_key, offer);
@@ -336,6 +378,51 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loanId),
             IERC721MetadataUpgradeable(offer.collateralItem.token).tokenURI(tokenId)
+        );
+        // check loan struct values
+        assertEq(loan.loanTerms.principalAmount, offer.loanTerms.principalAmount);
+        assertEq(loan.loanTerms.minimumPrincipalPerPeriod, offer.loanTerms.minimumPrincipalPerPeriod);
+        assertEq(loan.loanTerms.periodInterestRateBps, offer.loanTerms.periodInterestRateBps);
+        assertEq(loan.loanTerms.periodDuration, offer.loanTerms.periodDuration);
+        assertEq(loan.periodEndTimestamp, block.timestamp + offer.loanTerms.periodDuration);
+        assertEq(loan.periodBeginTimestamp, block.timestamp);
+    }
+
+    function assertionsForExecutedLoanERC1155(Offer memory offer, uint256 tokenId, uint256 tokenAmount, address expectedborrower, uint256 loanId) internal {
+        // sellerFinancing contract has collateral
+        assertEq(IERC1155Upgradeable(offer.collateralItem.token).balanceOf(address(sellerFinancing), tokenId), offer.collateralItem.amount);
+        
+        // loan auction exists
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+        assertEq(
+            loan.periodBeginTimestamp,
+            block.timestamp
+        );
+        assertEq(
+            uint(loan.collateralItem.itemType),
+            uint(ItemType.ERC1155)
+        );
+        assertEq(
+            loan.collateralItem.token,
+            offer.collateralItem.token
+        );
+        assertEq(
+            loan.collateralItem.tokenId,
+            offer.collateralItem.tokenId
+        );
+        assertEq(
+            loan.collateralItem.amount,
+            offer.collateralItem.amount
+        );
+        // buyer NFT minted to buyer
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId), expectedborrower);
+        // seller NFT minted to seller
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId + 1), offer.creator);
+
+        //buyer tokenId has tokenURI same as original token
+        assertEq(
+            IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loanId),
+            IERC1155MetadataURIUpgradeable(offer.collateralItem.token).uri(tokenId)
         );
         // check loan struct values
         assertEq(loan.loanTerms.principalAmount, offer.loanTerms.principalAmount);
