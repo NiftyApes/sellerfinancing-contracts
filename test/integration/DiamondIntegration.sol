@@ -63,7 +63,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[4].functionSelectors[1], offerFacet.getOfferSigner.selector);
         assertEq(allFacets[4].functionSelectors[5], offerFacet.withdrawAllOffers.selector);
 
-        assertEq(allFacets[5].functionSelectors.length, 17);
+        assertEq(allFacets[5].functionSelectors.length, 18);
         assertEq(allFacets[5].functionSelectors[0], loanExecFacet.onERC721Received.selector);
         assertEq(allFacets[5].functionSelectors[1], loanExecFacet.buyWithSellerFinancing.selector);
         assertEq(allFacets[5].functionSelectors[2], loanExecFacet.borrow.selector);
@@ -109,7 +109,7 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(facetFunctionSelectors[5], offerFacet.withdrawAllOffers.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(loanExecFacet));
-        assertEq(facetFunctionSelectors.length, 17);
+        assertEq(facetFunctionSelectors.length, 18);
         assertEq(facetFunctionSelectors[0], loanExecFacet.onERC721Received.selector);
         assertEq(facetFunctionSelectors[15], loanExecFacet.isApprovedForAll.selector);
 

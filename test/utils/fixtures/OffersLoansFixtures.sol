@@ -287,6 +287,40 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             });
     }
 
+    function saleOfferStructFromFields(
+        FuzzedOfferFields memory fuzzed,
+        FixedOfferFields memory fixedFields,
+        address erc20TokenAddress
+    ) internal pure returns (Offer memory) {
+        return
+            Offer({
+                offerType: INiftyApesStructs.OfferType.SALE,
+                collateralItem: CollateralItem({
+                    itemType: fixedFields.collateralItemType,
+                    token: fixedFields.tokenContractAddress,
+                    tokenId: fixedFields.tokenId,
+                    amount: fixedFields.tokenAmount
+                }),
+                loanTerms: LoanTerms({
+                    itemType: erc20TokenAddress==address(0)? ItemType.NATIVE : ItemType.ERC20,
+                    token: erc20TokenAddress,
+                    tokenId: 0,
+                    principalAmount: 0,
+                    minimumPrincipalPerPeriod: 0,
+                    downPaymentAmount: fuzzed.downPaymentAmount,
+                    periodInterestRateBps: 0,
+                    periodDuration: 0
+                }),
+                creator: fixedFields.creator,
+                expiration: fuzzed.expiration,
+                isCollectionOffer: fixedFields.isCollectionOffer,
+                collectionOfferLimit: fixedFields.collectionOfferLimit,
+                creatorOfferNonce: fixedFields.creatorOfferNonce,
+                payRoyalties: true,
+                marketplaceRecipients: new MarketplaceRecipient[](0)
+            });
+    }
+
     function signOffer(uint256 signerPrivateKey, Offer memory offer) public returns (bytes memory) {
         // This is the EIP712 signed hash
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
@@ -331,6 +365,31 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             offer.collateralItem.tokenId,
             offer.collateralItem.amount
         );
+        vm.stopPrank();
+    }
+
+    function createOfferAndBuyNow(Offer memory offer) internal {
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        if (offer.loanTerms.itemType == ItemType.NATIVE) {
+            sellerFinancing.buyNow{ value: offer.loanTerms.downPaymentAmount }(
+                offer,
+                offerSignature,
+                buyer1,
+                offer.collateralItem.tokenId,
+                offer.collateralItem.amount
+            );
+        } else {
+            IERC20Upgradeable(offer.loanTerms.token).approve(address(sellerFinancing), offer.loanTerms.downPaymentAmount);
+            sellerFinancing.buyNow(
+                offer,
+                offerSignature,
+                buyer1,
+                offer.collateralItem.tokenId,
+                offer.collateralItem.amount
+            );
+        }
         vm.stopPrank();
     }
 
