@@ -4,7 +4,7 @@ pragma solidity 0.8.18;
 interface INiftyApesStructs {
     enum OfferType {
         SELLER_FINANCING,
-        LENDING, 
+        LENDING,
         SALE
     }
 
@@ -43,7 +43,6 @@ interface INiftyApesStructs {
         uint256 amount;
     }
 
-    
     struct Offer {
         // SLOT 0
         OfferType offerType;
@@ -64,7 +63,7 @@ interface INiftyApesStructs {
         // Current offer nonce value of the creator
         // Offer becomes invalid if current offerNonce is increased
         uint32 creatorOfferNonce;
-        // royalties will be paid from the buyer payments if offerType is SELLER_FINANCING 
+        // royalties will be paid from the buyer payments if offerType is SELLER_FINANCING
         // and this set to true. Ignored in all other cases
         bool payRoyalties;
         // SLOT 9

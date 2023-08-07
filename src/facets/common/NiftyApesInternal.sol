@@ -43,16 +43,18 @@ abstract contract NiftyApesInternal is
     using AddressUpgradeable for address payable;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// @dev This empty reserved space is put in place for any variables 
+    /// @dev This empty reserved space is put in place for any variables
     ///      that may get added as part of any additional imports in future updates
     uint256[1000] private __gap;
 
     /// @dev Empty constructor ensures no 3rd party can call initialize before the NiftyApes team on this facet contract.
     constructor() initializer {}
 
-    // overriding required. 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155ReceiverUpgradeable, ERC721Upgradeable) returns (bool) {
-        return interfaceId==bytes4("");
+    // overriding required.
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(ERC1155ReceiverUpgradeable, ERC721Upgradeable) returns (bool) {
+        return interfaceId == bytes4("");
     }
 
     function _getOfferHash(Offer memory offer) internal view returns (bytes32) {
@@ -81,7 +83,9 @@ abstract contract NiftyApesInternal is
         );
 
         // Creating a hash for each MarketplaceRecipient
-        bytes32[] memory marketplaceRecipientHashes = new bytes32[](offer.marketplaceRecipients.length);
+        bytes32[] memory marketplaceRecipientHashes = new bytes32[](
+            offer.marketplaceRecipients.length
+        );
         for (uint i; i < offer.marketplaceRecipients.length; ++i) {
             marketplaceRecipientHashes[i] = keccak256(
                 abi.encode(
@@ -94,23 +98,24 @@ abstract contract NiftyApesInternal is
         // Generate a final hash for the array of MarketplaceRecipient by hashing the concatenation of all hashes
         bytes32 marketplaceRecipientsHash = keccak256(abi.encodePacked(marketplaceRecipientHashes));
 
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    NiftyApesStorage._OFFER_TYPEHASH,
-                    offer.offerType,
-                    collateralItemHash,
-                    loanTermsHash,
-                    offer.creator,
-                    offer.expiration,
-                    offer.isCollectionOffer,
-                    offer.collectionOfferLimit,
-                    offer.creatorOfferNonce,
-                    offer.payRoyalties,
-                    marketplaceRecipientsHash
+        return
+            _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        NiftyApesStorage._OFFER_TYPEHASH,
+                        offer.offerType,
+                        collateralItemHash,
+                        loanTermsHash,
+                        offer.creator,
+                        offer.expiration,
+                        offer.isCollectionOffer,
+                        offer.collectionOfferLimit,
+                        offer.creatorOfferNonce,
+                        offer.payRoyalties,
+                        marketplaceRecipientsHash
+                    )
                 )
-            )
-        );
+            );
     }
 
     function _getOfferSigner(
@@ -120,11 +125,17 @@ abstract contract NiftyApesInternal is
         return ECDSABridge.recover(_getOfferHash(offer), signature);
     }
 
-    function _getOfferSignatureStatus(bytes memory signature, NiftyApesStorage.SellerFinancingStorage storage sf) internal view returns (bool) {
+    function _getOfferSignatureStatus(
+        bytes memory signature,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal view returns (bool) {
         return sf.cancelledOrFinalized[signature];
     }
 
-    function _getCollectionOfferCount(bytes memory signature, NiftyApesStorage.SellerFinancingStorage storage sf) internal view returns (uint64 count) {
+    function _getCollectionOfferCount(
+        bytes memory signature,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal view returns (uint64 count) {
         return sf.collectionOfferCounters[signature];
     }
 
@@ -143,9 +154,14 @@ abstract contract NiftyApesInternal is
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal {
         sf.cancelledOrFinalized[signature] = true;
-        emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.tokenId, offer, signature);
+        emit OfferSignatureUsed(
+            offer.collateralItem.token,
+            offer.collateralItem.tokenId,
+            offer,
+            signature
+        );
     }
-    
+
     function _commonLoanChecks(
         Offer memory offer,
         bytes calldata signature,
@@ -158,7 +174,10 @@ abstract contract NiftyApesInternal is
             if (tokenId != offer.collateralItem.tokenId) {
                 revert CollateralDetailsMustMatch();
             }
-            if (offer.collateralItem.itemType == ItemType.ERC1155 && tokenAmount != offer.collateralItem.amount) {
+            if (
+                offer.collateralItem.itemType == ItemType.ERC1155 &&
+                tokenAmount != offer.collateralItem.amount
+            ) {
                 revert CollateralDetailsMustMatch();
             }
             _requireAvailableSignature(signature, sf);
@@ -172,7 +191,10 @@ abstract contract NiftyApesInternal is
         }
 
         // loan item must be either ETH or ERC20
-        if (offer.loanTerms.itemType != ItemType.NATIVE && offer.loanTerms.itemType != ItemType.ERC20) {
+        if (
+            offer.loanTerms.itemType != ItemType.NATIVE &&
+            offer.loanTerms.itemType != ItemType.ERC20
+        ) {
             revert InvalidLoanItemType();
         }
 
@@ -228,13 +250,13 @@ abstract contract NiftyApesInternal is
         _safeMint(lender, sf.loanId);
         sf.loanId++;
 
-        if (offer.collateralItem.itemType == ItemType.ERC721 || offer.collateralItem.itemType == ItemType.ERC1155) {  
-            _setTokenURI(
-                sf.loanId-2,
-                _getTokenURI(offer.collateralItem)
-            );
+        if (
+            offer.collateralItem.itemType == ItemType.ERC721 ||
+            offer.collateralItem.itemType == ItemType.ERC1155
+        ) {
+            _setTokenURI(sf.loanId - 2, _getTokenURI(offer.collateralItem));
         }
-        if (offer.collateralItem.itemType == ItemType.ERC721) {  
+        if (offer.collateralItem.itemType == ItemType.ERC721) {
             // add borrower delegate.cash delegation
             IDelegationRegistry(sf.delegateRegistryContractAddress).delegateForToken(
                 borrower,
@@ -248,14 +270,16 @@ abstract contract NiftyApesInternal is
         _createLoan(loan, offer, sf.loanId - 2);
 
         // emit loan executed event
-        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offer.collateralItem.amount, signature, loan);
+        emit LoanExecuted(
+            offer.collateralItem.token,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
+            signature,
+            loan
+        );
     }
 
-    function _createLoan(
-        Loan storage loan,
-        Offer memory offer,
-        uint256 loanId
-    ) internal {
+    function _createLoan(Loan storage loan, Offer memory offer, uint256 loanId) internal {
         loan.loanId = loanId;
         loan.collateralItem.itemType = offer.collateralItem.itemType;
         loan.collateralItem.token = offer.collateralItem.token;
@@ -301,39 +325,19 @@ abstract contract NiftyApesInternal is
                 collateralItem.amount
             );
         } else if (collateralItem.itemType == ItemType.ERC721) {
-            _transferNft(
-                collateralItem.token,
-                from,
-                to,
-                collateralItem.tokenId
-            );
+            _transferNft(collateralItem.token, from, to, collateralItem.tokenId);
         } else if (collateralItem.itemType == ItemType.ERC20) {
-            _transferERC20(
-                collateralItem.token,
-                from,
-                to,
-                collateralItem.amount
-            );
+            _transferERC20(collateralItem.token, from, to, collateralItem.amount);
         } else {
             revert InvalidCollateralItemType();
         }
     }
 
-    function _transferNft(
-        address token,
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal {
+    function _transferNft(address token, address from, address to, uint256 tokenId) internal {
         IERC721Upgradeable(token).safeTransferFrom(from, to, tokenId);
     }
 
-    function _transferERC20(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) internal {
+    function _transferERC20(address token, address from, address to, uint256 amount) internal {
         IERC20Upgradeable(token).safeTransferFrom(from, to, amount);
     }
 
@@ -387,14 +391,17 @@ abstract contract NiftyApesInternal is
         uint256 loanId,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal view returns (Loan storage) {
-        if (loanId % 2 == 0 ){
+        if (loanId % 2 == 0) {
             return sf.loans[loanId];
         } else {
             return sf.loans[loanId - 1];
         }
     }
 
-    function _requireExpectedOfferType(Offer memory offer, OfferType expectedOfferType) internal pure {
+    function _requireExpectedOfferType(
+        Offer memory offer,
+        OfferType expectedOfferType
+    ) internal pure {
         if (offer.offerType != expectedOfferType) {
             revert InvalidOfferType(offer.offerType, expectedOfferType);
         }
@@ -402,7 +409,8 @@ abstract contract NiftyApesInternal is
 
     function _transfer(address from, address to, uint256 tokenId) internal override {
         // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         _requireIsNotSanctioned(from, sf);
         _requireIsNotSanctioned(to, sf);
         // if the token is a borrower ticket
@@ -522,20 +530,20 @@ abstract contract NiftyApesInternal is
         }
     }
 
-    function _requireItemType(
-            ItemType loanItemType,
-            ItemType expectedType
-        ) internal pure {
+    function _requireItemType(ItemType loanItemType, ItemType expectedType) internal pure {
         if (loanItemType != expectedType) {
             revert InvalidLoanItemType();
         }
     }
 
-    function _getTokenURI(CollateralItem memory collateralItem) private view returns (string memory) {
+    function _getTokenURI(
+        CollateralItem memory collateralItem
+    ) private view returns (string memory) {
         if (collateralItem.itemType == ItemType.ERC1155) {
             return IERC1155MetadataURIUpgradeable(collateralItem.token).uri(collateralItem.tokenId);
         } else {
-            return IERC721MetadataUpgradeable(collateralItem.token).tokenURI(collateralItem.tokenId);
-        }        
+            return
+                IERC721MetadataUpgradeable(collateralItem.token).tokenURI(collateralItem.tokenId);
+        }
     }
 }

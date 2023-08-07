@@ -10,11 +10,9 @@ import { LibDiamond } from "../diamond/libraries/LibDiamond.sol";
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
-contract NiftyApesAdminFacet is
-    NiftyApesInternal,
-    INiftyApesAdmin
-{
+contract NiftyApesAdminFacet is NiftyApesInternal, INiftyApesAdmin {
     using AddressUpgradeable for address payable;
+
     /// @notice The initializer for the NiftyApes protocol.
     ///         NiftyApes is intended to be deployed as one of the facets to a diamond and thus needs to initialize
     ///         its state outside of a constructor.
@@ -48,7 +46,8 @@ contract NiftyApesAdminFacet is
         ds.supportedInterfaces[type(IERC1155Upgradeable).interfaceId] = true;
         ds.supportedInterfaces[type(IERC1155MetadataURIUpgradeable).interfaceId] = true;
 
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
 
         sf.royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
         sf.delegateRegistryContractAddress = newDelegateRegistryContractAddress;
@@ -63,7 +62,8 @@ contract NiftyApesAdminFacet is
     ) external {
         LibDiamond.enforceIsContractOwner();
         _requireNonZeroAddress(newRoyaltiesEngineContractAddress);
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         sf.royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
     }
 
@@ -73,7 +73,8 @@ contract NiftyApesAdminFacet is
     ) external {
         LibDiamond.enforceIsContractOwner();
         _requireNonZeroAddress(newDelegateRegistryContractAddress);
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         sf.delegateRegistryContractAddress = newDelegateRegistryContractAddress;
     }
 
@@ -81,7 +82,8 @@ contract NiftyApesAdminFacet is
     function updateSeaportContractAddress(address newSeaportContractAddress) external {
         LibDiamond.enforceIsContractOwner();
         _requireNonZeroAddress(newSeaportContractAddress);
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         sf.seaportContractAddress = newSeaportContractAddress;
     }
 
@@ -89,31 +91,36 @@ contract NiftyApesAdminFacet is
     function updateWethContractAddress(address newWethContractAddress) external {
         LibDiamond.enforceIsContractOwner();
         _requireNonZeroAddress(newWethContractAddress);
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         sf.wethContractAddress = newWethContractAddress;
     }
 
     /// @inheritdoc INiftyApesAdmin
     function royaltiesEngineContractAddress() external view returns (address) {
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         return sf.royaltiesEngineContractAddress;
     }
 
     /// @inheritdoc INiftyApesAdmin
     function delegateRegistryContractAddress() external view returns (address) {
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         return sf.delegateRegistryContractAddress;
     }
 
     /// @inheritdoc INiftyApesAdmin
     function seaportContractAddress() external view returns (address) {
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         return sf.seaportContractAddress;
     }
 
     /// @inheritdoc INiftyApesAdmin
     function wethContractAddress() external view returns (address) {
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         return sf.wethContractAddress;
     }
 
@@ -132,27 +139,31 @@ contract NiftyApesAdminFacet is
     /// @inheritdoc INiftyApesAdmin
     function pauseSanctions() external {
         LibDiamond.enforceIsContractOwner();
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         sf.sanctionsPause = true;
     }
 
     /// @inheritdoc INiftyApesAdmin
     function unpauseSanctions() external {
         LibDiamond.enforceIsContractOwner();
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         sf.sanctionsPause = false;
     }
 
     /// @inheritdoc INiftyApesAdmin
     function updateProtocolFeeBPS(uint96 newProtocolFeeBPS) external {
         LibDiamond.enforceIsContractOwner();
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         sf.protocolFeeBPS = newProtocolFeeBPS;
     }
 
     /// @inheritdoc INiftyApesAdmin
-    function protocolFeeBPS() external view returns(uint256) {
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+    function protocolFeeBPS() external view returns (uint256) {
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         return sf.protocolFeeBPS;
     }
 
@@ -160,13 +171,15 @@ contract NiftyApesAdminFacet is
     function updateProtocolFeeRecipient(address newProtocolFeeRecipient) external {
         LibDiamond.enforceIsContractOwner();
         _requireNonZeroAddress(newProtocolFeeRecipient);
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         sf.protocolFeeRecipient = payable(newProtocolFeeRecipient);
     }
 
     /// @inheritdoc INiftyApesAdmin
-    function protocolFeeRecipient() external view returns(address) {
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+    function protocolFeeRecipient() external view returns (address) {
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         return sf.protocolFeeRecipient;
     }
 }

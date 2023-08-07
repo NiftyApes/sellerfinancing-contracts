@@ -4,8 +4,7 @@ pragma solidity 0.8.18;
 import "../INiftyApesStructs.sol";
 
 /// @title The LoanManagement interface for NiftyApes
-interface ILoanExecution
-{
+interface ILoanExecution {
     /// @notice Start a loan as buyer using a signed offer.
     /// @param offer The details of the financing offer
     /// @param signature A signed offerHash

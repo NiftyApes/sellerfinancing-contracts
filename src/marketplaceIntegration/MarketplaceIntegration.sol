@@ -10,7 +10,6 @@ import "../interfaces/niftyapes/INiftyApes.sol";
 import "../interfaces/niftyapes/INiftyApesStructs.sol";
 import "../interfaces/sanctions/SanctionsList.sol";
 
-
 /// @title MarketplaceIntegration
 /// @custom:version 1.0
 /// @author zishansami102 (zishansami.eth)
@@ -113,19 +112,24 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         _requireIsNotSanctioned(buyer);
 
         // calculate marketplace fee
-        uint256 marketplaceFeeAmount = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
+        uint256 marketplaceFeeAmount = ((offer.loanTerms.principalAmount +
+            offer.loanTerms.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
 
         if (msg.value < offer.loanTerms.downPaymentAmount + marketplaceFeeAmount) {
-            revert InsufficientMsgValue(msg.value, offer.loanTerms.downPaymentAmount + marketplaceFeeAmount);
+            revert InsufficientMsgValue(
+                msg.value,
+                offer.loanTerms.downPaymentAmount + marketplaceFeeAmount
+            );
         }
 
         // send marketplace fee to marketplace fee recipient
         marketplaceFeeRecipient.sendValue(marketplaceFeeAmount);
 
         // execute buyWithSellerFinancing
-        return INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
-            value: msg.value - marketplaceFeeAmount
-        }(offer, signature, buyer, tokenId, tokenAmount);
+        return
+            INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
+                value: msg.value - marketplaceFeeAmount
+            }(offer, signature, buyer, tokenId, tokenAmount);
     }
 
     /// @notice Execute loan offers in batch for buyer
@@ -160,10 +164,13 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             INiftyApesStructs.Offer memory offer = offers[i];
 
             // calculate marketplace fee for ith offer
-            uint256 marketplaceFeeAmount = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
+            uint256 marketplaceFeeAmount = ((offer.loanTerms.principalAmount +
+                offer.loanTerms.downPaymentAmount) * marketplaceFeeBps) / BASE_BPS;
 
             // if remaining value is not sufficient to execute ith offer
-            if (msg.value - valueConsumed < offer.loanTerms.downPaymentAmount + marketplaceFeeAmount) {
+            if (
+                msg.value - valueConsumed < offer.loanTerms.downPaymentAmount + marketplaceFeeAmount
+            ) {
                 // if partial execution is allowed then move to next offer
                 if (partialExecution) {
                     loanIds[i] = ~uint256(0);
@@ -181,8 +188,8 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             try
                 INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                     value: offer.loanTerms.downPaymentAmount
-                }(offer, signatures[i], buyer, tokenIds[i], 0) returns (uint256 loanId)
-            {
+                }(offer, signatures[i], buyer, tokenIds[i], 0)
+            returns (uint256 loanId) {
                 loanIds[i] = loanId;
                 // if successful
                 // increment marketplaceFeeAccumulated
@@ -207,7 +214,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             payable(msg.sender).sendValue(msg.value - valueConsumed);
         }
     }
-    
+
     /// @notice Execute instantSell on all the NFTs in the provided input
     /// @param loanIds The list of all the token IDs
     /// @param minProfitAmounts List of minProfitAmount for each `instantSell` call
@@ -224,26 +231,43 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
 
         uint256 executionCount = loanIds.length;
         // requireLengthOfAllInputArraysAreEqual
-        if(minProfitAmounts.length != executionCount || data.length != executionCount) {
+        if (minProfitAmounts.length != executionCount || data.length != executionCount) {
             revert InvalidInputLength();
         }
-        
+
         uint256 contractBalanceBefore = address(this).balance;
         for (uint256 i; i < executionCount; ++i) {
             // intantiate loanId
             uint256 loanId = loanIds[i];
             // fetech active loan details
-            INiftyApesStructs.Loan memory loan = INiftyApes(sellerFinancingContractAddress).getLoan(loanId);
+            INiftyApesStructs.Loan memory loan = INiftyApes(sellerFinancingContractAddress).getLoan(
+                loanId
+            );
             // transfer buyerNft from caller to this contract.
             // this call also ensures that loan exists and caller is the current buyer
-            try IERC721(sellerFinancingContractAddress).safeTransferFrom(msg.sender, address(this), loan.loanId) {
+            try
+                IERC721(sellerFinancingContractAddress).safeTransferFrom(
+                    msg.sender,
+                    address(this),
+                    loan.loanId
+                )
+            {
                 // call instantSell to close the loan
-                try INiftyApes(sellerFinancingContractAddress).instantSell(loanId, minProfitAmounts[i], data[i]) {}
-                catch {
+                try
+                    INiftyApes(sellerFinancingContractAddress).instantSell(
+                        loanId,
+                        minProfitAmounts[i],
+                        data[i]
+                    )
+                {} catch {
                     if (!partialExecution) {
                         revert InstantSellCallRevertedAt(i);
                     } else {
-                        IERC721(sellerFinancingContractAddress).safeTransferFrom(address(this), msg.sender, loan.loanId);
+                        IERC721(sellerFinancingContractAddress).safeTransferFrom(
+                            address(this),
+                            msg.sender,
+                            loan.loanId
+                        );
                     }
                 }
             } catch {
@@ -251,12 +275,11 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
                     revert BuyerTicketTransferRevertedAt(i, msg.sender, address(this));
                 }
             }
-            
         }
         // accumulate value received
         uint256 valueReceived = address(this).balance - contractBalanceBefore;
         // send all the amount received to the caller
-        if( valueReceived > 0) {
+        if (valueReceived > 0) {
             payable(msg.sender).sendValue(valueReceived);
         }
     }

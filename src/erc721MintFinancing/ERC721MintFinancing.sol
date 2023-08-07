@@ -101,7 +101,7 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             count,
             (offer.collectionOfferLimit - collectionOfferLimitCount)
         );
-        
+
         tokenIds = new uint256[](nftsToMint);
         loanIds = new uint256[](nftsToMint);
 

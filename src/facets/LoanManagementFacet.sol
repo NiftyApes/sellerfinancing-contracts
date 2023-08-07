@@ -10,28 +10,23 @@ import "./common/NiftyApesInternal.sol";
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
-contract NiftyApesLoanManagementFacet is
-    NiftyApesInternal,
-    ILoanManagement
-{
+contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
     using AddressUpgradeable for address payable;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// @inheritdoc ILoanManagement
-    function getLoan(
-        uint256 loanId
-    ) external view returns (Loan memory) {
+    function getLoan(uint256 loanId) external view returns (Loan memory) {
         // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         return _getLoan(loanId, sf);
     }
 
     /// @inheritdoc ILoanManagement
-    function getUnderlyingNft(
-        uint256 ticketId
-    ) external view returns (CollateralItem memory) {
+    function getUnderlyingNft(uint256 ticketId) external view returns (CollateralItem memory) {
         // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         Loan memory loan = _getLoan(ticketId, sf);
         return loan.collateralItem;
     }
@@ -39,9 +34,14 @@ contract NiftyApesLoanManagementFacet is
     /// @inheritdoc ILoanManagement
     function calculateMinimumPayment(
         uint256 loanId
-    ) public view returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) {
+    )
+        public
+        view
+        returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount)
+    {
         // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         Loan memory loan = _getLoan(loanId, sf);
         return _calculateMinimumPayment(loan, sf);
     }
@@ -49,7 +49,11 @@ contract NiftyApesLoanManagementFacet is
     function _calculateMinimumPayment(
         Loan memory loan,
         NiftyApesStorage.SellerFinancingStorage storage sf
-    ) private view returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) {
+    )
+        private
+        view
+        returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolFeeAmount)
+    {
         // if in the current period, else prior to period minimumPayment and interest should remain 0
         if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
             // calculate periods passed
@@ -57,7 +61,8 @@ contract NiftyApesLoanManagementFacet is
                 loan.loanTerms.periodDuration) + 1;
 
             // calculate minimum principal to be paid
-            uint256 minimumPrincipalPayment = loan.loanTerms.minimumPrincipalPerPeriod * numPeriodsPassed;
+            uint256 minimumPrincipalPayment = loan.loanTerms.minimumPrincipalPerPeriod *
+                numPeriodsPassed;
 
             // if remainingPrincipal is less than minimumPrincipalPayment make minimum payment the remainder of the principal
             if (loan.loanTerms.principalAmount < minimumPrincipalPayment) {
@@ -66,12 +71,14 @@ contract NiftyApesLoanManagementFacet is
             // calculate % interest to be paid to lender
             if (loan.loanTerms.periodInterestRateBps != 0) {
                 periodInterest =
-                    ((loan.loanTerms.principalAmount * loan.loanTerms.periodInterestRateBps) / NiftyApesStorage.BASE_BPS) *
+                    ((loan.loanTerms.principalAmount * loan.loanTerms.periodInterestRateBps) /
+                        NiftyApesStorage.BASE_BPS) *
                     numPeriodsPassed;
             }
             // calculate fee to be paid to protocolFeeRecpient
             if (loan.loanTerms.periodInterestRateBps != 0) {
-                protocolFeeAmount = _calculateProtocolFee(loan.loanTerms.principalAmount, sf) *
+                protocolFeeAmount =
+                    _calculateProtocolFee(loan.loanTerms.principalAmount, sf) *
                     numPeriodsPassed;
             }
             minimumPayment = minimumPrincipalPayment + periodInterest + protocolFeeAmount;
@@ -84,7 +91,8 @@ contract NiftyApesLoanManagementFacet is
         uint256 paymentAmount
     ) external payable whenNotPaused nonReentrant {
         // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         Loan storage loan = _getLoan(loanId, sf);
         if (loan.loanTerms.itemType == ItemType.NATIVE && msg.value != paymentAmount) {
             revert ValueReceivedNotEqualToPaymentAmount();
@@ -110,8 +118,9 @@ contract NiftyApesLoanManagementFacet is
         }
 
         // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
+
         uint256 valueConsumed;
 
         // loop through the list to execute payment
@@ -124,10 +133,7 @@ contract NiftyApesLoanManagementFacet is
                 }
                 // else revert
                 else {
-                    revert InsufficientMsgValue(
-                        msg.value,
-                        valueConsumed + payments[i]
-                    );
+                    revert InsufficientMsgValue(msg.value, valueConsumed + payments[i]);
                 }
             }
             Loan storage loan = _getLoan(loanIds[i], sf);
@@ -147,14 +153,13 @@ contract NiftyApesLoanManagementFacet is
     }
 
     /// @inheritdoc ILoanManagement
-    function seizeAsset(
-        uint256[] memory loanIds
-    ) external whenNotPaused nonReentrant {
+    function seizeAsset(uint256[] memory loanIds) external whenNotPaused nonReentrant {
         uint256 batchLength = loanIds.length;
 
         // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
-        
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
+
         for (uint256 i; i < batchLength; ++i) {
             _seizeAsset(loanIds[i], sf);
         }
@@ -167,13 +172,17 @@ contract NiftyApesLoanManagementFacet is
         bytes calldata data
     ) external whenNotPaused nonReentrant {
         // get SellerFinancing storage
-        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage.sellerFinancingStorage();
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
         // instantiate loan
         Loan storage loan = _getLoan(loanId, sf);
         // get borrower
         address borrowerAddress = ownerOf(loan.loanId);
 
-        if (loan.collateralItem.itemType != ItemType.ERC721 && loan.collateralItem.itemType != ItemType.ERC1155) {
+        if (
+            loan.collateralItem.itemType != ItemType.ERC721 &&
+            loan.collateralItem.itemType != ItemType.ERC1155
+        ) {
             revert InvalidCollateralItemType();
         }
         _requireIsNotSanctioned(msg.sender, sf);
@@ -185,7 +194,9 @@ contract NiftyApesLoanManagementFacet is
         // calculate period interest
         (, uint256 periodInterest, uint256 protocolFeeAmount) = _calculateMinimumPayment(loan, sf);
         // calculate total payment required to close the loan
-        uint256 totalPaymentRequired = loan.loanTerms.principalAmount + periodInterest + protocolFeeAmount;
+        uint256 totalPaymentRequired = loan.loanTerms.principalAmount +
+            periodInterest +
+            protocolFeeAmount;
 
         // sell the asset to get sufficient funds to repay loan
         uint256 saleAmountReceived = _sellAsset(
@@ -195,7 +206,11 @@ contract NiftyApesLoanManagementFacet is
             sf
         );
         // emit instant sell event
-        emit InstantSell(loan.collateralItem.token, loan.collateralItem.tokenId, saleAmountReceived);
+        emit InstantSell(
+            loan.collateralItem.token,
+            loan.collateralItem.tokenId,
+            saleAmountReceived
+        );
 
         // make payment to close the loan and transfer remainder to the borrower
         _makePayment(loan, saleAmountReceived, sf);
@@ -215,10 +230,16 @@ contract NiftyApesLoanManagementFacet is
         _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.loanTerms.periodDuration);
 
         // get minimum payment, period interest and period protocol fee values
-        (uint256 totalMinimumPayment, uint256 periodInterest, uint256 protocolFeeAmount) = _calculateMinimumPayment(loan, sf);
+        (
+            uint256 totalMinimumPayment,
+            uint256 periodInterest,
+            uint256 protocolFeeAmount
+        ) = _calculateMinimumPayment(loan, sf);
 
         // calculate the total possible payment
-        uint256 totalPossiblePayment = loan.loanTerms.principalAmount + periodInterest + protocolFeeAmount;
+        uint256 totalPossiblePayment = loan.loanTerms.principalAmount +
+            periodInterest +
+            protocolFeeAmount;
 
         //require paymentAmount to be larger than the total minimum payment
         if (paymentAmount < totalMinimumPayment) {
@@ -233,7 +254,7 @@ contract NiftyApesLoanManagementFacet is
             if (loan.loanTerms.itemType == ItemType.NATIVE) {
                 payable(borrowerAddress).sendValue(paymentAmount - totalPossiblePayment);
             }
-            
+
             // adjust paymentAmount value
             paymentAmount = totalPossiblePayment;
         }
@@ -243,7 +264,12 @@ contract NiftyApesLoanManagementFacet is
             if (loan.loanTerms.itemType == ItemType.NATIVE) {
                 sf.protocolFeeRecipient.sendValue(protocolFeeAmount);
             } else {
-                _transferERC20(loan.loanTerms.token, msg.sender, sf.protocolFeeRecipient, protocolFeeAmount);
+                _transferERC20(
+                    loan.loanTerms.token,
+                    msg.sender,
+                    sf.protocolFeeRecipient,
+                    protocolFeeAmount
+                );
             }
         }
 
@@ -262,13 +288,25 @@ contract NiftyApesLoanManagementFacet is
 
         // payout lender
         if (loan.loanTerms.itemType == ItemType.NATIVE) {
-            _conditionalSendValue(ownerOf(loan.loanId + 1), borrowerAddress, paymentAmount - protocolFeeAmount - totalRoyaltiesPaid, sf);
+            _conditionalSendValue(
+                ownerOf(loan.loanId + 1),
+                borrowerAddress,
+                paymentAmount - protocolFeeAmount - totalRoyaltiesPaid,
+                sf
+            );
         } else {
-            _transferERC20(loan.loanTerms.token, msg.sender, ownerOf(loan.loanId + 1), paymentAmount - protocolFeeAmount - totalRoyaltiesPaid);
+            _transferERC20(
+                loan.loanTerms.token,
+                msg.sender,
+                ownerOf(loan.loanId + 1),
+                paymentAmount - protocolFeeAmount - totalRoyaltiesPaid
+            );
         }
 
         // update loan struct
-        loan.loanTerms.principalAmount -= uint128(paymentAmount - protocolFeeAmount - periodInterest);
+        loan.loanTerms.principalAmount -= uint128(
+            paymentAmount - protocolFeeAmount - periodInterest
+        );
 
         // check if remainingPrincipal is 0
         if (loan.loanTerms.principalAmount == 0) {
@@ -281,7 +319,7 @@ contract NiftyApesLoanManagementFacet is
                     false
                 );
             }
-            
+
             // burn borrower token
             _burn(loan.loanId);
             // burn lender token
@@ -310,7 +348,9 @@ contract NiftyApesLoanManagementFacet is
                 uint256 numPeriodsPassed = ((_currentTimestamp32() - loan.periodBeginTimestamp) /
                     loan.loanTerms.periodDuration) + 1;
                 // increment the currentPeriodBegin and End Timestamps equal to the periodDuration times numPeriodsPassed
-                loan.periodBeginTimestamp += loan.loanTerms.periodDuration * uint32(numPeriodsPassed);
+                loan.periodBeginTimestamp +=
+                    loan.loanTerms.periodDuration *
+                    uint32(numPeriodsPassed);
                 loan.periodEndTimestamp += loan.loanTerms.periodDuration * uint32(numPeriodsPassed);
             }
 
@@ -328,7 +368,7 @@ contract NiftyApesLoanManagementFacet is
             return address(0);
         }
     }
-    
+
     function _seizeAsset(
         uint256 loanId,
         NiftyApesStorage.SellerFinancingStorage storage sf
@@ -381,7 +421,10 @@ contract NiftyApesLoanManagementFacet is
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) private returns (uint256 saleAmountReceived) {
         // approve the NFT for Seaport conduit
-        IERC721Upgradeable(loan.collateralItem.token).approve(sf.seaportContractAddress, loan.collateralItem.tokenId);
+        IERC721Upgradeable(loan.collateralItem.token).approve(
+            sf.seaportContractAddress,
+            loan.collateralItem.tokenId
+        );
 
         // decode seaport order data
         ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
@@ -395,7 +438,6 @@ contract NiftyApesLoanManagementFacet is
         } else {
             asset = IERC20Upgradeable(loan.loanTerms.token);
         }
-        
 
         // calculate totalConsiderationAmount
         uint256 totalConsiderationAmount;
@@ -436,7 +478,7 @@ contract NiftyApesLoanManagementFacet is
             // calculate saleAmountReceived
             saleAmountReceived = asset.balanceOf(address(this)) - contractBalanceBefore;
         }
-        
+
         // check amount received is more than minSaleAmount else revert
         if (saleAmountReceived < minSaleAmount) {
             revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
@@ -448,11 +490,10 @@ contract NiftyApesLoanManagementFacet is
         Loan memory loan,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal view {
-        if (uint(order.parameters.consideration[0].itemType) != uint(loan.collateralItem.itemType)) {
-            revert InvalidConsiderationItemType(
-                0,
-                order.parameters.consideration[0].itemType
-            );
+        if (
+            uint(order.parameters.consideration[0].itemType) != uint(loan.collateralItem.itemType)
+        ) {
+            revert InvalidConsiderationItemType(0, order.parameters.consideration[0].itemType);
         }
         if (order.parameters.consideration[0].token != loan.collateralItem.token) {
             revert InvalidConsiderationToken(
@@ -473,10 +514,16 @@ contract NiftyApesLoanManagementFacet is
                 ISeaport.ItemType.ERC20
             );
         }
-        if (loan.loanTerms.itemType == ItemType.NATIVE && order.parameters.offer[0].token != sf.wethContractAddress) {
+        if (
+            loan.loanTerms.itemType == ItemType.NATIVE &&
+            order.parameters.offer[0].token != sf.wethContractAddress
+        ) {
             revert InvalidOffer0Token(order.parameters.offer[0].token, sf.wethContractAddress);
         }
-        if (loan.loanTerms.itemType == ItemType.ERC20 && order.parameters.offer[0].token != loan.loanTerms.token) {
+        if (
+            loan.loanTerms.itemType == ItemType.ERC20 &&
+            order.parameters.offer[0].token != loan.loanTerms.token
+        ) {
             revert InvalidOffer0Token(order.parameters.offer[0].token, loan.loanTerms.token);
         }
         if (order.parameters.offer.length != 1) {
@@ -484,19 +531,22 @@ contract NiftyApesLoanManagementFacet is
         }
         for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
             if (order.parameters.consideration[i].itemType != ISeaport.ItemType.ERC20) {
-                revert InvalidConsiderationItemType(
-                    i,
-                    order.parameters.consideration[i].itemType
-                );
+                revert InvalidConsiderationItemType(i, order.parameters.consideration[i].itemType);
             }
-            if (loan.loanTerms.itemType == ItemType.NATIVE && order.parameters.consideration[i].token != sf.wethContractAddress) {
+            if (
+                loan.loanTerms.itemType == ItemType.NATIVE &&
+                order.parameters.consideration[i].token != sf.wethContractAddress
+            ) {
                 revert InvalidConsiderationToken(
                     i,
                     order.parameters.consideration[i].token,
                     sf.wethContractAddress
                 );
             }
-            if (loan.loanTerms.itemType == ItemType.ERC20 && order.parameters.consideration[i].token != loan.loanTerms.token) {
+            if (
+                loan.loanTerms.itemType == ItemType.ERC20 &&
+                order.parameters.consideration[i].token != loan.loanTerms.token
+            ) {
                 revert InvalidConsiderationToken(
                     i,
                     order.parameters.consideration[i].token,
@@ -506,7 +556,10 @@ contract NiftyApesLoanManagementFacet is
         }
     }
 
-    function _calculateProtocolFee(uint256 loanPaymentAmount, NiftyApesStorage.SellerFinancingStorage storage sf) private view returns (uint256) {
+    function _calculateProtocolFee(
+        uint256 loanPaymentAmount,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) private view returns (uint256) {
         return (loanPaymentAmount * sf.protocolFeeBPS) / NiftyApesStorage.BASE_BPS;
     }
 
