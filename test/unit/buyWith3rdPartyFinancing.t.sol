@@ -37,6 +37,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -66,6 +67,56 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         _test_buyWith3rdPartyFinancing_WETH_simplest_case(fixedForSpeed);
     }
 
+    function _test_buyWith3rdPartyFinancing_WETH_ERC1155_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingERC1155);
+        vm.prank(borrower1);
+        erc1155Token.safeTransferFrom(borrower1, seller2, offer.collateralItem.tokenId, offer.collateralItem.amount, bytes(""));
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2ForERC1155(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
+
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
+        
+        vm.startPrank(borrower1);
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount);
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
+            abi.encode(order)
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, borrower1, loanId);
+
+        uint256 lender1BalanceAfter = weth.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
+
+        // lender1 balance reduced by loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance decreased by token price minus offer.loanTerms.principalAmount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - (order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount));
+    }
+
+    function test_fuzz_buyWith3rdPartyFinancing_WETH_ERC1155_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWith3rdPartyFinancing_WETH_ERC1155_case(fuzzed);
+    }
+
+    function test_unit_buyWith3rdPartyFinancing_WETH_ERC1155_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_buyWith3rdPartyFinancing_WETH_ERC1155_case(fixedForSpeed);
+    }
+
     function _test_buyWith3rdPartyFinancing_USDC_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingUSDC);
         vm.prank(seller1);
@@ -87,6 +138,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -142,6 +194,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -178,6 +231,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -210,6 +264,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -260,6 +315,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             tokenId1,
+            offer.collateralItem.amount,
             abi.encode(order1)
         );
         uint256 loanId2 = sellerFinancing.buyWith3rdPartyFinancing(
@@ -267,6 +323,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             tokenId2,
+            offer.collateralItem.amount,
             abi.encode(order2)
         );
         vm.stopPrank();
@@ -332,6 +389,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             tokenId1,
+            offer.collateralItem.amount,
             abi.encode(order1)
         );
         vm.expectRevert(INiftyApesErrors.CollectionOfferLimitReached.selector);
@@ -340,6 +398,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             tokenId2,
+            offer.collateralItem.amount,
             abi.encode(order2)
         );
         vm.stopPrank();
@@ -388,6 +447,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -417,6 +477,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -453,6 +514,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -490,6 +552,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -526,6 +589,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -568,6 +632,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -609,6 +674,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             SANCTIONED_ADDRESS,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -648,6 +714,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             offerSignature,
             borrower1,
             offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
             abi.encode(order)
         );
         vm.stopPrank();
@@ -700,6 +767,45 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         vm.startPrank(seller2);
         ISeaport(SEAPORT_ADDRESS).validate(orders);
         boredApeYachtClub.approve(SEAPORT_CONDUIT, tokenId);
+        vm.stopPrank();
+        return order;
+    }
+
+    function createAndValidateSeaportListingFromSeller2ForERC1155(address considerationToken, uint256 tokenPrice, uint256 tokenId) internal returns (ISeaport.Order memory) {
+        ISeaport.Order memory order;
+        order.parameters.offerer = seller2;
+        order.parameters.zone = address(0x004C00500000aD104D7DBd00e3ae0A5C00560C00);
+        order.parameters.offer = new ISeaport.OfferItem[](1);
+        order.parameters.offer[0].itemType = ISeaport.ItemType.ERC1155;
+        order.parameters.offer[0].token = address(erc1155Token);
+        order.parameters.offer[0].identifierOrCriteria = erc1155Token27638;
+        order.parameters.offer[0].startAmount = 10;
+        order.parameters.offer[0].endAmount = 10;
+        order.parameters.consideration = new ISeaport.ConsiderationItem[](1);
+        order.parameters.consideration[0].itemType = ISeaport.ItemType.ERC20;
+        order.parameters.consideration[0].token = considerationToken;
+        order.parameters.consideration[0].identifierOrCriteria = 0;
+        order.parameters.consideration[0].startAmount = tokenPrice;
+        order.parameters.consideration[0].endAmount = tokenPrice;
+        order.parameters.consideration[0].recipient = seller2;
+        order.parameters.orderType = ISeaport.OrderType.FULL_OPEN;
+        order.parameters.startTime = block.timestamp;
+        order.parameters.endTime = block.timestamp + 24 hours;
+        order.parameters.zoneHash = bytes32(
+            0x0000000000000000000000000000000000000000000000000000000000000000
+        );
+        order.parameters.salt = 96789058676732069;
+        order.parameters.conduitKey = bytes32(
+            0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000
+        );
+        order.parameters.totalOriginalConsiderationItems = 1;
+        order.signature = bytes("");
+
+        ISeaport.Order[] memory orders = new ISeaport.Order[](1);
+        orders[0] = order;
+        vm.startPrank(seller2);
+        ISeaport(SEAPORT_ADDRESS).validate(orders);
+        erc1155Token.setApprovalForAll(SEAPORT_CONDUIT, true);
         vm.stopPrank();
         return order;
     }

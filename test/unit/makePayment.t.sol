@@ -291,6 +291,63 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_makePayment_withUSDC_sellerFinancing_fullRepayment(fixedForSpeed);
     }
 
+    function _test_makePayment_sellerFinancing_fullRepayment_ERC1155_case(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFieldsERC1155);
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId);
+
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(loanId);
+
+        uint256 buyerERC1155BalanceBefore = erc1155Token.balanceOf(address(buyer1), offer.collateralItem.tokenId);
+        
+        vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+                offer.collateralItem.token,
+                offer.collateralItem.tokenId,
+                loan.loanTerms.principalAmount + periodInterest,
+                0,
+                0,
+                periodInterest,
+                loan
+        );
+        vm.expectEmit(true, true, false, false);
+        emit LoanRepaid(offer.collateralItem.token, offer.collateralItem.tokenId, loan);
+        sellerFinancing.makePayment{ value: (loan.loanTerms.principalAmount + periodInterest) }(
+            loanId,
+            (loan.loanTerms.principalAmount + periodInterest)
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoanERC1155(offer.collateralItem.token, offer.collateralItem.tokenId, loanId);
+        uint256 buyerERC1155BalanceAfter = erc1155Token.balanceOf(address(buyer1), offer.collateralItem.tokenId);
+        // seller paid out correctly
+        assertEq(
+            address(seller1).balance,
+            (sellerBalanceBefore + offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount + periodInterest)
+        );
+        // buyer gets back the collateral
+        assertEq(buyerERC1155BalanceAfter, buyerERC1155BalanceBefore + offer.collateralItem.amount);
+    }
+
+    function test_fuzz_makePayment_sellerFinancing_fullRepayment_ERC1155_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_sellerFinancing_fullRepayment_ERC1155_case(fuzzed);
+    }
+
+    function test_unit_makePayment_sellerFinancing_fullRepayment_ERC1155_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_sellerFinancing_fullRepayment_ERC1155_case(fixedForSpeed);
+    }
+
     function _test_makePayment_fullRepayment_withProtocolFee(
         FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
     ) private {

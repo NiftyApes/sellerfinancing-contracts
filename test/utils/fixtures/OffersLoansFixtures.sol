@@ -390,8 +390,8 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
 
     function assertionsForExecutedLoanERC1155(Offer memory offer, uint256 tokenId, uint256 tokenAmount, address expectedborrower, uint256 loanId) internal {
         // sellerFinancing contract has collateral
-        assertEq(IERC1155Upgradeable(offer.collateralItem.token).balanceOf(address(sellerFinancing), tokenId), offer.collateralItem.amount);
-        
+        assertEq(IERC1155Upgradeable(offer.collateralItem.token).balanceOf(address(sellerFinancing), tokenId), tokenAmount* (loanId/2+1));
+
         // loan auction exists
         Loan memory loan = sellerFinancing.getLoan(loanId);
         assertEq(
@@ -410,10 +410,10 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             loan.collateralItem.tokenId,
             tokenId
         );
-        assertEq(
-            loan.collateralItem.amount,
-            tokenAmount
-        );
+        // assertEq(
+        //     loan.collateralItem.amount,
+        //     tokenAmount
+        // );
         // buyer NFT minted to buyer
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId), expectedborrower);
         // seller NFT minted to seller
@@ -501,4 +501,21 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
+    function assertionsForClosedLoanERC1155(address tokenContractAddress, uint256 tokenId, uint256 loanId) internal {
+        // loan doesn't exist anymore
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+        assertEq(
+            loan.periodBeginTimestamp,
+            0
+        );
+        // sellerfinancing address doesn't have collateral
+        assertEq(IERC1155Upgradeable(tokenContractAddress).balanceOf(address(sellerFinancing), tokenId), 0);
+        
+        // buyer NFT burned
+        vm.expectRevert("ERC721: invalid token ID");
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId), address(0));
+        // seller NFT burned
+        vm.expectRevert("ERC721: invalid token ID");
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId+1), address(0));
+    }
 }

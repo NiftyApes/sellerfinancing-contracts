@@ -61,6 +61,50 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_borrow_WETH_simplest_case(fixedForSpeed);
     }
 
+    function _test_borrow_WETH_with_ERC1155(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingERC1155);
+
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
+        
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        erc1155Token.setApprovalForAll(address(sellerFinancing), true);
+        (uint256 loanId) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, address(borrower1), loanId);
+
+        uint256 lender1BalanceAfter = weth.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
+
+        // lender1 balance reduced by loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance increased by loan principal amount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
+    }
+
+    function test_fuzz_borrow_WETH_with_ERC1155(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_borrow_WETH_with_ERC1155(fuzzed);
+    }
+
+    function test_unit_borrow_WETH_with_ERC1155() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_borrow_WETH_with_ERC1155(fixedForSpeed);
+    }
+
     function _test_borrow_USDC_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingUSDC);
 
@@ -235,6 +279,66 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_borrow_collection_offer_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
         _test_borrow_collection_offer_case(fixedForSpeed);
+    }
+
+    function _test_borrow_collection_offer_ERC1155(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingERC1155);
+        offer.isCollectionOffer = true;
+        offer.collectionOfferLimit = 2;
+        offer.collateralItem.tokenId = 0;
+        offer.collateralItem.amount = 0;
+        uint256 collateralAmount = 10;
+
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
+        
+        bytes memory offerSignature = lender1CreateOffer(offer);
+        vm.startPrank(lender1);
+        weth.approve(address(sellerFinancing), offer.loanTerms.principalAmount*2);
+        vm.stopPrank();
+
+        vm.startPrank(borrower1);
+        erc1155Token.setApprovalForAll(address(sellerFinancing), true);
+        (uint256 loanId1) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            erc1155Token27638,
+            collateralAmount
+        );
+        assertionsForExecutedLoanERC1155(offer, erc1155Token27638, collateralAmount, borrower1, loanId1);
+        (uint256 loanId2) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            erc1155Token27638,
+            collateralAmount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanERC1155(offer, erc1155Token27638, collateralAmount, borrower1, loanId2);
+
+        uint256 lender1BalanceAfter = weth.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
+
+        // lender1 balance reduced by two times the loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - 2 * offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance increased by two times the loan principal amount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + 2 * offer.loanTerms.principalAmount);
+    }
+
+    function test_fuzz_borrow_collection_offer_ERC1155(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_borrow_collection_offer_ERC1155(fuzzed);
+    }
+
+    function test_unit_borrow_collection_offer_ERC1155() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_borrow_collection_offer_ERC1155(fixedForSpeed);
     }
 
     function _test_borrow_collection_offer_reverts_if_limitReached(FuzzedOfferFields memory fuzzed) private {

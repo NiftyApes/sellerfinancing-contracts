@@ -110,6 +110,7 @@ contract NiftyApesLoanExecutionFacet is
         bytes calldata signature,
         address borrower,
         uint256 tokenId,
+        uint256 tokenAmount,
         bytes calldata data
     ) external whenNotPaused nonReentrant returns (uint256 loanId) {
         // validate offerType
@@ -125,8 +126,24 @@ contract NiftyApesLoanExecutionFacet is
         if (offer.collateralItem.itemType != ItemType.ERC721 && offer.collateralItem.itemType != ItemType.ERC1155) {
             revert InvalidCollateralItemType();
         }
-        address lender = _commonLoanChecks(offer, signature, borrower, tokenId, 0, sf);
+        address lender = _commonLoanChecks(offer, signature, borrower, tokenId, tokenAmount, sf);
 
+        _executePurchase(offer, borrower, lender, data, sf);
+
+        offer.collateralItem.tokenId = tokenId;
+        offer.collateralItem.amount = 0;
+        _executeLoan(offer, signature, borrower, lender, sf);
+
+        return sf.loanId - 2;
+    }
+
+    function _executePurchase(
+        Offer memory offer,
+        address borrower,
+        address lender,
+        bytes calldata data,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) private {
         // decode seaport order data
         ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
 
@@ -156,11 +173,5 @@ contract NiftyApesLoanExecutionFacet is
         if (!ISeaport(sf.seaportContractAddress).fulfillOrder(order, bytes32(0))) {
             revert SeaportOrderNotFulfilled();
         }
-
-        offer.collateralItem.tokenId = tokenId;
-        offer.collateralItem.amount = 0;
-        _executeLoan(offer, signature, borrower, lender, sf);
-
-        return sf.loanId - 2;
     }
 }

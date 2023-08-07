@@ -41,6 +41,7 @@ interface ILoanExecution
     /// @param signature    A signed offerHash
     /// @param borrower     The address of the borrower
     /// @param tokenId        The id of a specified token
+    /// @param tokenAmount Amount of the specified token if ERC1155
     /// @param data         Seaport Lsiting Order data encoded as bytes
     /// @dev   borrower provided as param to allow for 3rd party marketplace integrations
     function buyWith3rdPartyFinancing(
@@ -48,6 +49,7 @@ interface ILoanExecution
         bytes calldata signature,
         address borrower,
         uint256 tokenId,
+        uint256 tokenAmount,
         bytes calldata data
     ) external returns (uint256 loanId);
 }
