@@ -14,8 +14,6 @@ interface INiftyApesErrors {
 
     error SanctionedAddress(address account);
 
-    error NotNftOwner(address nftContractAddress, uint256 nftId, address account);
-
     error InvalidSigner(address signer, address expected);
 
     error LoanAlreadyClosed();
@@ -84,4 +82,6 @@ interface INiftyApesErrors {
     error InvalidOfferType(INiftyApesStructs.OfferType given, INiftyApesStructs.OfferType expected);
 
     error InvalidInputLength();
+
+    error InvalidOfferNonce(uint32 offerNonce, uint32 currentNonce);
 }

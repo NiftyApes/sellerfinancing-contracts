@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "../INiftyApesStructs.sol";
+import "./INiftyApesStructs.sol";
 
-/// @title Events emitted by the offers part of the protocol.
-interface ISellerFinancingEvents {
+/// @title Events emitted by the protocol.
+interface INiftyApesEvents {
     /// @notice Emitted when a offer signature gets has been used
     /// @param nftContractAddress The nft contract address
     /// @param nftId The nft id, this field can be meaningless if the offer is a floor term offer
@@ -32,7 +32,8 @@ interface ISellerFinancingEvents {
     /// @notice Emitted when a payment is made toward the loan
     /// @param nftContractAddress The nft contract address
     /// @param nftId The nft id
-    /// @param amount The amount paid towards the loan
+    /// @param amount The total amount received
+    /// @param protocolFee The amount paid as protocol fee
     /// @param totalRoyaltiesPaid The amount paid in royalties
     /// @param interestPaid the amount paid in interest
     /// @param loan The loan details
@@ -40,6 +41,7 @@ interface ISellerFinancingEvents {
         address indexed nftContractAddress,
         uint256 indexed nftId,
         uint256 amount,
+        uint256 protocolFee,
         uint256 totalRoyaltiesPaid,
         uint256 interestPaid,
         INiftyApesStructs.Loan loan
