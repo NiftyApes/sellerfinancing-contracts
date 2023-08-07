@@ -211,24 +211,26 @@ abstract contract NiftyApesInternal is
         _requireOfferNotExpired(offer);
         // requireOfferisValid
         _requireNonZeroAddress(offer.collateralItem.token);
-        // require1MinsMinimumDuration
-        if (offer.loanTerms.periodDuration < 1 minutes) {
-            revert InvalidPeriodDuration();
-        }
-        // requireNonZeroPrincipalAmount
-        if (offer.loanTerms.principalAmount == 0) {
-            revert PrincipalAmountZero();
-        }
-        // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
-        if (offer.loanTerms.principalAmount < offer.loanTerms.minimumPrincipalPerPeriod) {
-            revert InvalidMinimumPrincipalPerPeriod(
-                offer.loanTerms.minimumPrincipalPerPeriod,
-                offer.loanTerms.principalAmount
-            );
-        }
-        // requireNotSellerFinancingTicket
-        if (offer.collateralItem.token == address(this)) {
-            revert CannotBuySellerFinancingTicket();
+        if (offer.offerType != OfferType.SALE) {
+            // require1MinsMinimumDuration
+            if (offer.loanTerms.periodDuration < 1 minutes) {
+                revert InvalidPeriodDuration();
+            }
+            // requireNonZeroPrincipalAmount
+            if (offer.loanTerms.principalAmount == 0) {
+                revert PrincipalAmountZero();
+            }
+            // requireMinimumPrincipalLessThanOrEqualToTotalPrincipal
+            if (offer.loanTerms.principalAmount < offer.loanTerms.minimumPrincipalPerPeriod) {
+                revert InvalidMinimumPrincipalPerPeriod(
+                    offer.loanTerms.minimumPrincipalPerPeriod,
+                    offer.loanTerms.principalAmount
+                );
+            }
+            // requireNotSellerFinancingTicket
+            if (offer.collateralItem.token == address(this)) {
+                revert CannotBuySellerFinancingTicket();
+            }
         }
     }
 
@@ -544,6 +546,18 @@ abstract contract NiftyApesInternal is
         } else {
             return
                 IERC721MetadataUpgradeable(collateralItem.token).tokenURI(collateralItem.tokenId);
+        }
+    }
+
+    function _requireSufficientMsgValue(Offer memory offer, address buyer) internal {
+        if (offer.loanTerms.itemType == ItemType.NATIVE) {
+            if (msg.value < offer.loanTerms.downPaymentAmount) {
+                revert InsufficientMsgValue(msg.value, offer.loanTerms.downPaymentAmount);
+            }
+            // if msg.value is too high, return excess value
+            if (msg.value > offer.loanTerms.downPaymentAmount) {
+                payable(buyer).sendValue(msg.value - offer.loanTerms.downPaymentAmount);
+            }
         }
     }
 }
