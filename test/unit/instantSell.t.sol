@@ -53,6 +53,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -102,6 +103,175 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_instantSell_loanClosed_simplest_case(fixedForSpeed);
     }
 
+    function _test_instantSell_loanClosed_ERC1155_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFieldsERC1155);
+
+        uint256 buyer1BalanceBefore = address(buyer1).balance;
+        uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId, offer.collateralItem.amount);
+
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+
+        (, uint256 periodInterest, uint256 protocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
+
+        // set any minimum profit value
+        uint256 minProfitAmount = 1 ether;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + protocolFee + minProfitAmount) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createERC1155Order(
+            offer.collateralItem.token,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
+            WETH_ADDRESS,
+            bidPrice,
+            buyer2,
+            true
+        );
+
+        vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit InstantSell(offer.collateralItem.token, offer.collateralItem.tokenId, 0);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+            offer.collateralItem.token,
+            offer.collateralItem.tokenId,
+            loan.loanTerms.principalAmount + periodInterest + protocolFee,
+            protocolFee,
+            0,
+            periodInterest,
+            loan
+        );
+
+        uint256 buyer2ERC1155Balance = erc1155Token.balanceOf(buyer2, offer.collateralItem.tokenId);
+        sellerFinancing.instantSell(
+            loanId,
+            minProfitAmount,
+            abi.encode(order[0])
+        );
+        vm.stopPrank();
+        // collateral amount is sold to buyer2
+        assertEq(erc1155Token.balanceOf(buyer2, offer.collateralItem.tokenId), buyer2ERC1155Balance + offer.collateralItem.amount);
+        assertionsForClosedLoanERC1155(offer.collateralItem.token, offer.collateralItem.tokenId, loanId);
+        
+        assertEq(
+            address(buyer1).balance,
+            (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount + minProfitAmount)
+        );
+    }
+
+    function test_fuzz_instantSell_loanClosed_ERC1155_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_instantSell_loanClosed_ERC1155_case(fuzzed);
+    }
+
+    function test_unit_instantSell_loanClosed_ERC1155_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_instantSell_loanClosed_ERC1155_case(fixedForSpeed);
+    }
+
+    function _test_instantSell_loanClosed_USDC_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsERC20Payment(fuzzed, defaultFixedOfferFields, USDC_ADDRESS);
+        mintUsdc(buyer1, offer.loanTerms.downPaymentAmount);
+
+        bytes memory offerSignature = seller1CreateOffer(offer);
+        uint256 buyer1BalanceBefore = usdc.balanceOf(buyer1);
+        vm.startPrank(buyer1);
+        usdc.approve(address(sellerFinancing), offer.loanTerms.downPaymentAmount);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
+
+        Loan memory loan = sellerFinancing.getLoan(loanId);
+
+        (, uint256 periodInterest, uint256 protocolFee) = sellerFinancing.calculateMinimumPayment(loanId);
+
+        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(
+                offer.collateralItem.token,
+                offer.collateralItem.tokenId,
+                (loan.loanTerms.principalAmount + periodInterest)
+            );
+
+        // payout royalties
+        uint256 royaltiesInInstantSell;
+        for (uint256 i = 0; i < recipients1.length; i++) {
+            royaltiesInInstantSell += amounts1[i];
+        }
+
+        // set any minimum profit value
+        uint256 minProfitAmount = 10;
+
+        // adding 2.5% opnesea fee amount
+        uint256 bidPrice = ((loan.loanTerms.principalAmount + periodInterest + protocolFee + minProfitAmount) *
+            40 +
+            38) / 39;
+
+        ISeaport.Order[] memory order = _createOrder(
+            offer.collateralItem.token,
+            offer.collateralItem.tokenId,
+            bidPrice,
+            USDC_ADDRESS,
+            buyer2,
+            true
+        );
+        mintUsdc(buyer2, bidPrice);
+
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(USDC_ADDRESS).approve(SEAPORT_CONDUIT, bidPrice);
+        ISeaport(SEAPORT_ADDRESS).validate(order);
+        vm.stopPrank();
+
+        vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit InstantSell(offer.collateralItem.token, offer.collateralItem.tokenId, 0);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+            offer.collateralItem.token,
+            offer.collateralItem.tokenId,
+            loan.loanTerms.principalAmount + periodInterest + protocolFee,
+            protocolFee,
+            royaltiesInInstantSell,
+            periodInterest,
+            loan
+        );
+
+        sellerFinancing.instantSell(
+            loanId,
+            minProfitAmount,
+            abi.encode(order[0])
+        );
+        vm.stopPrank();
+
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer2, loanId);
+        assertEq(
+            usdc.balanceOf(buyer1),
+            (buyer1BalanceBefore - offer.loanTerms.downPaymentAmount + minProfitAmount)
+        );
+    }
+
+    function test_fuzz_instantSell_loanClosed_USDC_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFieldsForUSDC(fuzzed) {
+        _test_instantSell_loanClosed_USDC_case(fuzzed);
+    }
+
+    function test_unit_instantSell_loanClosed_USDC_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTestingUSDC;
+        _test_instantSell_loanClosed_USDC_case(fixedForSpeed);
+    }
+
     function _test_instantSell_loanClosed_withProtocolFee(FuzzedOfferFields memory fuzzed, uint96 protocolFeeBPS
     ) private {
         vm.prank(owner);
@@ -144,6 +314,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -219,6 +390,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -319,6 +491,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             false
         );
@@ -380,6 +553,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -433,6 +607,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -498,6 +673,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -551,6 +727,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -594,6 +771,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -640,6 +818,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -687,6 +866,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -733,6 +913,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -779,6 +960,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -825,6 +1007,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -871,6 +1054,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -924,6 +1108,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -983,6 +1168,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.token,
             offer.collateralItem.tokenId,
             bidPrice,
+            WETH_ADDRESS,
             buyer2,
             true
         );
@@ -1033,6 +1219,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         address tokenContractAddress,
         uint256 tokenId,
         uint256 bidPrice,
+        address bidToken,
         address orderCreator,
         bool addSeaportFee
     ) internal view returns (ISeaport.Order[] memory order) {
@@ -1044,7 +1231,6 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         }
 
         ISeaport.ItemType offerItemType = ISeaport.ItemType.ERC20;
-        address offerToken = WETH_ADDRESS;
 
         order = new ISeaport.Order[](1);
         order[0] = ISeaport.Order({
@@ -1069,7 +1255,7 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         });
         order[0].parameters.offer[0] = ISeaport.OfferItem({
             itemType: offerItemType,
-            token: offerToken,
+            token: bidToken,
             identifierOrCriteria: 0,
             startAmount: bidPrice,
             endAmount: bidPrice
@@ -1085,12 +1271,83 @@ contract TestInstantSell is Test, OffersLoansFixtures, INiftyApesEvents {
         if (totalOriginalConsiderationItems > 1) {
             order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
                 itemType: offerItemType,
-                token: offerToken,
+                token: bidToken,
                 identifierOrCriteria: 0,
                 startAmount: seaportFeeAmount,
                 endAmount: seaportFeeAmount,
                 recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
             });
         }
+    }
+
+    function _createERC1155Order(
+        address tokenContractAddress,
+        uint256 tokenId,
+        uint256 tokenAmount,
+        address bidToken,
+        uint256 bidPrice,
+        address orderCreator,
+        bool addSeaportFee
+    ) internal returns (ISeaport.Order[] memory order) {
+        uint256 seaportFeeAmount;
+        uint256 totalOriginalConsiderationItems = 1;
+        if (addSeaportFee) {
+            seaportFeeAmount = bidPrice - (bidPrice * 39) / 40;
+            totalOriginalConsiderationItems = 2;
+        }
+
+        ISeaport.ItemType offerItemType = ISeaport.ItemType.ERC20;
+
+        order = new ISeaport.Order[](1);
+        order[0] = ISeaport.Order({
+            parameters: ISeaport.OrderParameters({
+                offerer: payable(orderCreator),
+                zone: address(0),
+                offer: new ISeaport.OfferItem[](1),
+                consideration: new ISeaport.ConsiderationItem[](totalOriginalConsiderationItems),
+                orderType: ISeaport.OrderType.FULL_OPEN,
+                startTime: block.timestamp,
+                endTime: block.timestamp + 24 * 60 * 60,
+                zoneHash: bytes32(
+                    0x0000000000000000000000000000000000000000000000000000000000000000
+                ),
+                salt: 1,
+                conduitKey: bytes32(
+                    0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000
+                ),
+                totalOriginalConsiderationItems: totalOriginalConsiderationItems
+            }),
+            signature: bytes("")
+        });
+        order[0].parameters.offer[0] = ISeaport.OfferItem({
+            itemType: offerItemType,
+            token: bidToken,
+            identifierOrCriteria: 0,
+            startAmount: bidPrice,
+            endAmount: bidPrice
+        });
+        order[0].parameters.consideration[0] = ISeaport.ConsiderationItem({
+            itemType: ISeaport.ItemType.ERC1155,
+            token: tokenContractAddress,
+            identifierOrCriteria: tokenId,
+            startAmount: tokenAmount,
+            endAmount: tokenAmount,
+            recipient: payable(orderCreator)
+        });
+        if (totalOriginalConsiderationItems > 1) {
+            order[0].parameters.consideration[1] = ISeaport.ConsiderationItem({
+                itemType: offerItemType,
+                token: bidToken,
+                identifierOrCriteria: 0,
+                startAmount: seaportFeeAmount,
+                endAmount: seaportFeeAmount,
+                recipient: payable(0x0000a26b00c1F0DF003000390027140000fAa719)
+            });
+        }
+        mintWeth(buyer2, bidPrice);
+        vm.startPrank(buyer2);
+        IERC20Upgradeable(bidToken).approve(SEAPORT_CONDUIT, bidPrice);
+        ISeaport(SEAPORT_ADDRESS).validate(order);
+        vm.stopPrank();
     }
 }

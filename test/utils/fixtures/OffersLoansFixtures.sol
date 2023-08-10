@@ -447,9 +447,15 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
         assertEq(loan.periodBeginTimestamp, block.timestamp);
     }
 
-    function assertionsForExecutedLoanERC1155(Offer memory offer, uint256 tokenId, uint256 tokenAmount, address expectedborrower, uint256 loanId) internal {
+    function assertionsForExecutedLoanERC1155(
+        Offer memory offer, uint256 tokenId,
+        uint256 tokenAmount,
+        address expectedborrower,
+        uint256 loanId,
+        uint256 totalCollateralBalance
+    ) internal {
         // sellerFinancing contract has collateral
-        assertEq(IERC1155Upgradeable(offer.collateralItem.token).balanceOf(address(sellerFinancing), tokenId), tokenAmount* (loanId/2+1));
+        assertEq(IERC1155Upgradeable(offer.collateralItem.token).balanceOf(address(sellerFinancing), tokenId), totalCollateralBalance);
 
         // loan auction exists
         Loan memory loan = sellerFinancing.getLoan(loanId);
@@ -469,10 +475,10 @@ contract OffersLoansFixtures is Test, BaseTest, INiftyApesStructs, NiftyApesDepl
             loan.collateralItem.tokenId,
             tokenId
         );
-        // assertEq(
-        //     loan.collateralItem.amount,
-        //     tokenAmount
-        // );
+        assertEq(
+            loan.collateralItem.amount,
+            tokenAmount
+        );
         // buyer NFT minted to buyer
         assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loanId), expectedborrower);
         // seller NFT minted to seller

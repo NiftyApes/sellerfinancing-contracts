@@ -299,7 +299,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 sellerBalanceBefore = address(seller1).balance;
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId, offer.collateralItem.amount);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 

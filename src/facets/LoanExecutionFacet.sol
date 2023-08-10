@@ -119,7 +119,7 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         // loan item must be ERC20
         _requireItemType(offer.loanTerms.itemType, ItemType.ERC20);
 
-        // revert if collateral not ERC721
+        // revert if collateral not ERC721 or ERC1155
         if (
             offer.collateralItem.itemType != ItemType.ERC721 &&
             offer.collateralItem.itemType != ItemType.ERC1155
@@ -131,7 +131,7 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         _executePurchase(offer, borrower, lender, data, sf);
 
         offer.collateralItem.tokenId = tokenId;
-        offer.collateralItem.amount = 0;
+        offer.collateralItem.amount = tokenAmount;
         _executeLoan(offer, signature, borrower, lender, sf);
 
         return sf.loanId - 2;
