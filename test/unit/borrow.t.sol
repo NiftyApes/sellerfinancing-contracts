@@ -16,29 +16,29 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
     function setUp() public override {
         super.setUp();
     }
-
     
-    function _test_borrow_simplest_case(FuzzedOfferFields memory fuzzed) private {
+    function _test_borrow_WETH_simplest_case(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
-        uint256 borrower1BalanceBefore = address(borrower1).balance;
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
-        (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, address(borrower1), loanId);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, address(borrower1), loanId);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
-        uint256 borrower1BalanceAfter = address(borrower1).balance;
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
 
         // lender1 balance reduced by loan principal amount
         assertEq(
@@ -48,18 +48,106 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // borrower1 balance increased by loan principal amount
         assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
-        assertEq(ethRecieved, offer.loanTerms.principalAmount);
     }
 
-    function test_fuzz_borrow_simplest_case(
+    function test_fuzz_borrow_WETH_simplest_case(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_borrow_simplest_case(fuzzed);
+        _test_borrow_WETH_simplest_case(fuzzed);
     }
 
-    function test_unit_borrow_simplest_case() public {
+    function test_unit_borrow_WETH_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
-        _test_borrow_simplest_case(fixedForSpeed);
+        _test_borrow_WETH_simplest_case(fixedForSpeed);
+    }
+
+    function _test_borrow_WETH_with_ERC1155(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingERC1155);
+
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
+        
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        erc1155Token.setApprovalForAll(address(sellerFinancing), true);
+        (uint256 loanId) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, address(borrower1), loanId);
+
+        uint256 lender1BalanceAfter = weth.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
+
+        // lender1 balance reduced by loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance increased by loan principal amount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
+    }
+
+    function test_fuzz_borrow_WETH_with_ERC1155(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_borrow_WETH_with_ERC1155(fuzzed);
+    }
+
+    function test_unit_borrow_WETH_with_ERC1155() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_borrow_WETH_with_ERC1155(fixedForSpeed);
+    }
+
+    function _test_borrow_USDC_simplest_case(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingUSDC);
+
+        mintUsdc(lender1, offer.loanTerms.principalAmount);
+        uint256 lender1BalanceBefore = usdc.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = usdc.balanceOf(borrower1);
+    
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        (uint256 loanId) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, address(borrower1), loanId);
+
+        uint256 lender1BalanceAfter = usdc.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = usdc.balanceOf(borrower1);
+
+        // lender1 balance reduced by loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance increased by loan principal amount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
+    }
+
+    function test_fuzz_borrow_USDC_simplest_case(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFieldsForUSDC(fuzzed) {
+        _test_borrow_USDC_simplest_case(fuzzed);
+    }
+
+    function test_unit_borrow_USDC_simplest_case() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTestingUSDC;
+        _test_borrow_USDC_simplest_case(fixedForSpeed);
     }
 
     function _test_borrow_emits_expectedEvents(FuzzedOfferFields memory fuzzed) private {
@@ -70,23 +158,23 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         Loan memory loan = sellerFinancing.getLoan(0);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
 
         vm.expectEmit(true, true, false, false);
-        emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.identifier, offer, offerSignature);
+        emit OfferSignatureUsed(offer.collateralItem.token, offer.collateralItem.tokenId, offer, offerSignature);
 
         vm.expectEmit(true, true, false, false);
-        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.identifier, offerSignature, loan);
+        emit LoanExecuted(offer.collateralItem.token, offer.collateralItem.tokenId, offer.collateralItem.amount, offerSignature, loan);
 
-        (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
-        assertEq(ethRecieved, offer.loanTerms.principalAmount);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, borrower1, loanId);
     }
 
     function test_fuzz_borrow_emits_expectedEvents(
@@ -106,14 +194,15 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
 
         vm.expectRevert(abi.encodeWithSelector(INiftyApesErrors.InvalidOfferType.selector, INiftyApesStructs.OfferType.SELLER_FINANCING, INiftyApesStructs.OfferType.LENDING));
         sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -133,12 +222,12 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
-        uint256 borrower1BalanceBefore = address(borrower1).balance;
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         bytes memory offerSignature = lender1CreateOffer(offer);
         vm.startPrank(lender1);
@@ -146,28 +235,30 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, tokenId2);
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
-        (uint256 loanId1, uint256 ethRecieved1) = sellerFinancing.borrow(
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
+        (uint256 loanId1) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
-        (uint256 loanId2, uint256 ethRecieved2) = sellerFinancing.borrow(
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
+        (uint256 loanId2) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1, borrower1, loanId1);
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId2, borrower1, loanId2);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, tokenId1, borrower1, loanId1);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, tokenId2, borrower1, loanId2);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
-        uint256 borrower1BalanceAfter = address(borrower1).balance;
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
 
         // lender1 balance reduced by two times the loan principal amount
         assertEq(
@@ -177,9 +268,6 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // borrower1 balance increased by two times the loan principal amount
         assertEq(borrower1BalanceAfter, borrower1BalanceBefore + 2 * offer.loanTerms.principalAmount);
-
-        assertEq(ethRecieved1, offer.loanTerms.principalAmount);
-        assertEq(ethRecieved2, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_collection_offer_case(
@@ -193,16 +281,76 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_borrow_collection_offer_case(fixedForSpeed);
     }
 
+    function _test_borrow_collection_offer_ERC1155(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingERC1155);
+        offer.isCollectionOffer = true;
+        offer.collectionOfferLimit = 2;
+        offer.collateralItem.tokenId = 0;
+        offer.collateralItem.amount = 0;
+        uint256 collateralAmount = 10;
+
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
+        
+        bytes memory offerSignature = lender1CreateOffer(offer);
+        vm.startPrank(lender1);
+        weth.approve(address(sellerFinancing), offer.loanTerms.principalAmount*2);
+        vm.stopPrank();
+
+        vm.startPrank(borrower1);
+        erc1155Token.setApprovalForAll(address(sellerFinancing), true);
+        (uint256 loanId1) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            erc1155Token27638,
+            collateralAmount
+        );
+        assertionsForExecutedLoanERC1155(offer, erc1155Token27638, collateralAmount, borrower1, loanId1);
+        (uint256 loanId2) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            erc1155Token27638,
+            collateralAmount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanERC1155(offer, erc1155Token27638, collateralAmount, borrower1, loanId2);
+
+        uint256 lender1BalanceAfter = weth.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
+
+        // lender1 balance reduced by two times the loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - 2 * offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance increased by two times the loan principal amount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + 2 * offer.loanTerms.principalAmount);
+    }
+
+    function test_fuzz_borrow_collection_offer_ERC1155(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_borrow_collection_offer_ERC1155(fuzzed);
+    }
+
+    function test_unit_borrow_collection_offer_ERC1155() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_borrow_collection_offer_ERC1155(fixedForSpeed);
+    }
+
     function _test_borrow_collection_offer_reverts_if_limitReached(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 1;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         uint256 lender1BalanceBefore = weth.balanceOf(lender1);
-        uint256 borrower1BalanceBefore = address(borrower1).balance;
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
         
         bytes memory offerSignature = lender1CreateOffer(offer);
         vm.startPrank(lender1);
@@ -210,31 +358,33 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.stopPrank();
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, borrower1, tokenId2);
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
-        (uint256 loanId1, uint256 ethRecieved1) = sellerFinancing.borrow(
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
+        (uint256 loanId1) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
         vm.expectRevert(INiftyApesErrors.CollectionOfferLimitReached.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, nftId1, borrower1, loanId1);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, tokenId1, borrower1, loanId1);
 
-        // borrower1 still owns second nft
-        assertEq(boredApeYachtClub.ownerOf(nftId2), borrower1);
+        // borrower1 still owns second token
+        assertEq(boredApeYachtClub.ownerOf(tokenId2), borrower1);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
-        uint256 borrower1BalanceAfter = address(borrower1).balance;
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
 
         // lender1 balance reduced by only one loan principal amount
         assertEq(
@@ -244,7 +394,6 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
 
         // borrower1 balance increased by only one loan principal amount
         assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount);
-        assertEq(ethRecieved1, offer.loanTerms.principalAmount);
     }
 
     function test_fuzz_borrow_collection_offer_reverts_if_limitReached(
@@ -264,16 +413,16 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
-        (uint256 loanId, uint256 ethRecieved) = sellerFinancing.borrow(
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        (uint256 loanId) = sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.identifier, borrower1, loanId);
-        assertEq(ethRecieved, offer.loanTerms.principalAmount);
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, borrower1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -297,7 +446,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -321,13 +471,14 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         vm.warp(uint256(offer.expiration) + 1);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
         vm.expectRevert(INiftyApesErrors.OfferExpired.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -349,13 +500,14 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         bytes memory offerSignature = lender1CreateOffer(offer);
 
         vm.startPrank(borrower1);
-        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.identifier);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
         vm.expectRevert(INiftyApesErrors.InvalidPeriodDuration.selector);
         sellerFinancing.borrow(
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -382,7 +534,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -415,7 +568,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -446,7 +600,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -477,7 +632,8 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             borrower1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -491,5 +647,36 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_borrow_reverts_if_callerSanctioned() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
         _test_borrow_reverts_if_callerSanctioned(fixedForSpeed);
+    }
+
+    function _test_borrow_reverts_for_loanItemType_NonERC20(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
+        offer.loanTerms.itemType = ItemType.NATIVE;
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        vm.expectRevert(
+            INiftyApesErrors.InvalidLoanItemType.selector
+        );
+        sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+    }
+
+    function test_fuzz_borrow_reverts_for_loanItemType_NonERC20(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_borrow_reverts_for_loanItemType_NonERC20(fuzzed);
+    }
+
+    function test_unit_reverts_for_loanItemType_NonERC20() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_borrow_reverts_for_loanItemType_NonERC20(fixedForSpeed);
     }
 }

@@ -45,7 +45,8 @@ contract TestWithdrawAllOffers is
             offer1,
             signature1,
             buyer1,
-            offer1.collateralItem.identifier
+            offer1.collateralItem.tokenId,
+            offer1.collateralItem.amount
         );
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -58,7 +59,8 @@ contract TestWithdrawAllOffers is
             offer2,
             signature2,
             buyer1,
-            offer2.collateralItem.identifier
+            offer2.collateralItem.tokenId,
+            offer2.collateralItem.amount
         );
         vm.stopPrank();
     }
@@ -84,7 +86,8 @@ contract TestWithdrawAllOffers is
             offer,
             signature1,
             buyer1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
 
@@ -97,9 +100,10 @@ contract TestWithdrawAllOffers is
             offer,
             signature2,
             buyer1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
     }
 }

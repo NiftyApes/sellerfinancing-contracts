@@ -23,7 +23,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(loanId);
 
@@ -41,7 +41,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         );
         vm.stopPrank();
 
-        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer1, loanId);
     }
 
     function test_fuzz_makePaymentBatch_fullRepayment_case_with_oneLoan(
@@ -61,17 +61,17 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, tokenId2);
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
         vm.stopPrank();
 
         vm.startPrank(buyer1);
@@ -79,17 +79,19 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             buyer1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
         uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
-        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
+        assertionsForExecutedLoan(offer, tokenId1, buyer1, loanId1);
+        assertionsForExecutedLoan(offer, tokenId2, buyer1, loanId2);
 
         Loan memory loan1 = sellerFinancing.getLoan(loanId1);
         Loan memory loan2 = sellerFinancing.getLoan(loanId2);
@@ -111,8 +113,8 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
             false
         );
         vm.stopPrank();
-        assertionsForClosedLoan(offer.collateralItem.token, nftId1, buyer1, loanIds[0]);
-        assertionsForClosedLoan(offer.collateralItem.token, nftId2, buyer1, loanIds[1]);
+        assertionsForClosedLoan(offer.collateralItem.token, tokenId1, buyer1, loanIds[0]);
+        assertionsForClosedLoan(offer.collateralItem.token, tokenId2, buyer1, loanIds[1]);
     }
 
     function test_fuzz_makePaymentBatch_fullRepayment_case_with_twoLoans(
@@ -135,17 +137,17 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, tokenId2);
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
         vm.stopPrank();
 
         uint256[] memory loanIds = new uint256[](2);
@@ -154,17 +156,19 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             buyer1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
         loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1, buyer1, loanIds[0]);
-        assertionsForExecutedLoan(offer, nftId2, buyer1, loanIds[1]);
+        assertionsForExecutedLoan(offer, tokenId1, buyer1, loanIds[0]);
+        assertionsForExecutedLoan(offer, tokenId2, buyer1, loanIds[1]);
 
         Loan memory loan1 = sellerFinancing.getLoan(loanIds[0]);
         Loan memory loan2 = sellerFinancing.getLoan(loanIds[1]);
@@ -184,8 +188,8 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
             false
         );
         vm.stopPrank();
-        assertionsForClosedLoan(offer.collateralItem.token, nftId1, buyer1, loanIds[0]);
-        assertionsForClosedLoan(offer.collateralItem.token, nftId2, buyer1, loanIds[1]);
+        assertionsForClosedLoan(offer.collateralItem.token, tokenId1, buyer1, loanIds[0]);
+        assertionsForClosedLoan(offer.collateralItem.token, tokenId2, buyer1, loanIds[1]);
     }
 
     function test_fuzz_makePaymentBatch_fullRepayment_case_with_twoLoans_withProtocolFee(
@@ -206,7 +210,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
        
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoan(offer, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
 
         Loan memory loan = sellerFinancing.getLoan(
             loanId
@@ -230,7 +234,7 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
             false
         );
         vm.stopPrank();
-        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.identifier, buyer1, loanId);
+        assertionsForClosedLoan(offer.collateralItem.token, offer.collateralItem.tokenId, buyer1, loanId);
 
         uint256 buyer1BalanceAfterPayment = address(buyer1).balance;
         assertEq(
@@ -256,17 +260,17 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, tokenId2);
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
         vm.stopPrank();
 
         vm.startPrank(buyer1);
@@ -274,17 +278,19 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             buyer1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
         uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
-        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
+        assertionsForExecutedLoan(offer, tokenId1, buyer1, loanId1);
+        assertionsForExecutedLoan(offer, tokenId2, buyer1, loanId2);
 
         Loan memory loan1 = sellerFinancing.getLoan(loanId1);
         Loan memory loan2 = sellerFinancing.getLoan(loanId2);
@@ -329,17 +335,17 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
-        offer.collateralItem.identifier = 0;
-        uint256 nftId1 = 8661;
-        uint256 nftId2 = 6974;
+        offer.collateralItem.tokenId = 0;
+        uint256 tokenId1 = 8661;
+        uint256 tokenId2 = 6974;
 
         bytes memory offerSignature = signOffer(seller1_private_key, offer);
 
         vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, nftId2);
+        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1, tokenId2);
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId2);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId1);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId2);
         vm.stopPrank();
 
         vm.startPrank(buyer1);
@@ -347,17 +353,19 @@ contract TestMakePaymentBatch is Test, OffersLoansFixtures, INiftyApesEvents {
             offer,
             offerSignature,
             buyer1,
-            nftId1
+            tokenId1,
+            offer.collateralItem.amount
         );
         uint256 loanId2 = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             offerSignature,
             buyer1,
-            nftId2
+            tokenId2,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, nftId1, buyer1, loanId1);
-        assertionsForExecutedLoan(offer, nftId2, buyer1, loanId2);
+        assertionsForExecutedLoan(offer, tokenId1, buyer1, loanId1);
+        assertionsForExecutedLoan(offer, tokenId2, buyer1, loanId2);
 
         Loan memory loan1 = sellerFinancing.getLoan(loanId1);
         Loan memory loan2 = sellerFinancing.getLoan(loanId2);

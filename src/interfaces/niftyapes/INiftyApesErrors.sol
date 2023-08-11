@@ -22,7 +22,7 @@ interface INiftyApesErrors {
 
     error CannotBuySellerFinancingTicket();
 
-    error NftIdsMustMatch();
+    error CollateralDetailsMustMatch();
 
     error CollectionOfferLimitReached();
 
@@ -34,11 +34,7 @@ interface INiftyApesErrors {
 
     error InvalidConsideration0Identifier(uint256 given, uint256 expected);
 
-    error InvalidConsiderationItemType(
-        uint256 index,
-        ISeaport.ItemType given,
-        ISeaport.ItemType expected
-    );
+    error InvalidConsiderationItemType(uint256 index, ISeaport.ItemType given);
 
     error InvalidConsiderationToken(uint256 index, address given, address expected);
 
@@ -55,8 +51,8 @@ interface INiftyApesErrors {
 
     error SoftGracePeriodEnded();
 
-    error AmountReceivedLessThanRequiredMinimumPayment(
-        uint256 amountReceived,
+    error PaymentReceivedLessThanRequiredMinimumPayment(
+        uint256 paymentAmount,
         uint256 minExpectedAmount
     );
 
@@ -84,4 +80,12 @@ interface INiftyApesErrors {
     error InvalidInputLength();
 
     error InvalidOfferNonce(uint32 offerNonce, uint32 currentNonce);
+
+    error InvalidCollateralItemType();
+
+    error InvalidLoanItemType();
+
+    error InvalidLoanItemToken(address given);
+
+    error ValueReceivedNotEqualToPaymentAmount();
 }

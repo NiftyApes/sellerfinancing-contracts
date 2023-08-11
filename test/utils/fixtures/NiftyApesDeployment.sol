@@ -73,7 +73,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allOfferSelectors[5] = offerFacet.withdrawAllOffers.selector;
 
         loanExecFacet = new NiftyApesLoanExecutionFacet();
-        bytes4[] memory allLoanExecutionSelectors = new bytes4[](16);
+        bytes4[] memory allLoanExecutionSelectors = new bytes4[](17);
         // while loan is created: misc
         allLoanExecutionSelectors[0] = loanExecFacet.onERC721Received.selector;
         allLoanExecutionSelectors[1] = loanExecFacet.buyWithSellerFinancing.selector;
@@ -92,6 +92,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allLoanExecutionSelectors[13] = loanExecFacet.getApproved.selector;
         allLoanExecutionSelectors[14] = loanExecFacet.setApprovalForAll.selector;
         allLoanExecutionSelectors[15] = loanExecFacet.isApprovedForAll.selector;
+        allLoanExecutionSelectors[16] = loanExecFacet.onERC1155Received.selector;
         
         loanManagFacet = new NiftyApesLoanManagementFacet();
         bytes4[] memory allLoanManagementSelectors = new bytes4[](7);

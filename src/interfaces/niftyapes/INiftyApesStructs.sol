@@ -4,7 +4,7 @@ pragma solidity 0.8.18;
 interface INiftyApesStructs {
     enum OfferType {
         SELLER_FINANCING,
-        LENDING, 
+        LENDING,
         SALE
     }
 
@@ -18,14 +18,14 @@ interface INiftyApesStructs {
     struct CollateralItem {
         ItemType itemType;
         address token;
-        uint256 identifier;
+        uint256 tokenId;
         uint256 amount;
     }
 
     struct LoanTerms {
         ItemType itemType;
         address token;
-        uint256 identifier;
+        uint256 tokenId;
         // Loan amount
         uint128 principalAmount;
         // Minimum amount of total principal to be paid each period
@@ -43,7 +43,6 @@ interface INiftyApesStructs {
         uint256 amount;
     }
 
-    
     struct Offer {
         // SLOT 0
         OfferType offerType;
@@ -64,7 +63,7 @@ interface INiftyApesStructs {
         // Current offer nonce value of the creator
         // Offer becomes invalid if current offerNonce is increased
         uint32 creatorOfferNonce;
-        // royalties will be paid from the buyer payments if offerType is SELLER_FINANCING 
+        // royalties will be paid from the buyer payments if offerType is SELLER_FINANCING
         // and this set to true. Ignored in all other cases
         bool payRoyalties;
         // SLOT 9
@@ -73,7 +72,7 @@ interface INiftyApesStructs {
 
     struct Loan {
         // SLOT 0
-        // Buyer loan receipt nftId
+        // Buyer loan receipt tokenId
         uint256 loanId;
         // SLOT 1, 2, 3, 4
         LoanTerms loanTerms;

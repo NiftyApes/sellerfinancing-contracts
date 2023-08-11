@@ -27,7 +27,8 @@ contract TestPauseMarketplace is Test, BaseTest, OffersLoansFixtures {
             offer,
             offerSignature,
             buyer1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
     }
 }

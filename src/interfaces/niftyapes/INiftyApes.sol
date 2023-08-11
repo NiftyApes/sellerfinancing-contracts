@@ -18,4 +18,6 @@ interface INiftyApes is
     IOfferManagement,
     ILoanExecution,
     ILoanManagement
-    {}
+{
+
+}

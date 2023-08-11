@@ -17,7 +17,7 @@ contract TestGetOfferHash is Test, INiftyApesStructs, OffersLoansFixtures {
 
         bytes32 functionOfferHash = sellerFinancing.getOfferHash(offer);
 
-        bytes32 expectedFunctionHash = 0x456887ad435e623b2f6910c6a4c423a099e0f32c3fb9b753b53009d2d2561e7e;
+        bytes32 expectedFunctionHash = 0xf2381ac90a4a7a02a31d7e2de30c5171126acf660db54ed8573c8e9625c704f3;
 
         assertEq(functionOfferHash, expectedFunctionHash);
     }

@@ -101,7 +101,7 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             count,
             (offer.collectionOfferLimit - collectionOfferLimitCount)
         );
-        
+
         tokenIds = new uint256[](nftsToMint);
         loanIds = new uint256[](nftsToMint);
 
@@ -111,13 +111,13 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             _tokenIdTracker.increment();
             // mint nft
             _safeMint(owner(), _tokenIdTracker.current());
-            // append new nftId to returned tokensIds
+            // append new tokenId to returned tokensIds
             tokenIds[i] = _tokenIdTracker.current();
 
             // Execute loan
             loanIds[i] = INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                 value: offer.loanTerms.downPaymentAmount
-            }(offer, signature, msg.sender, _tokenIdTracker.current());
+            }(offer, signature, msg.sender, _tokenIdTracker.current(), 0);
         }
 
         // if there is a greater number of NFTs requested than available return value

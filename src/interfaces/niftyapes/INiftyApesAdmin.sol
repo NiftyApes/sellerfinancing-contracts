@@ -10,7 +10,7 @@ interface INiftyApesAdmin {
         address newWethContractAddress,
         address newProtocolFeeRecipient
     ) external;
-    
+
     /// @notice Pauses all interactions with the contract.
     ///         This is intended to be used as an emergency measure to avoid loosing funds.
     function pause() external;
@@ -63,8 +63,8 @@ interface INiftyApesAdmin {
     function updateProtocolFeeRecipient(address newProtocolFeeRecipient) external;
 
     /// @notice Returns current protocol fee basis points
-    function protocolFeeBPS() external view returns(uint256);
+    function protocolFeeBPS() external view returns (uint256);
 
     /// @notice Returns current protocol fee basis points
-    function protocolFeeRecipient() external view returns(address);
+    function protocolFeeRecipient() external view returns (address);
 }

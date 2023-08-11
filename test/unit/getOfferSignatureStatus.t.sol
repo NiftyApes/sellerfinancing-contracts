@@ -49,7 +49,8 @@ contract TestGetOfferSignatureStatus is
             offer,
             signature,
             buyer1,
-            offer.collateralItem.identifier
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
 
