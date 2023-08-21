@@ -39,6 +39,9 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         offer.collateralItem.amount = tokenAmount;
         _transferCollateral(offer.collateralItem, seller, address(this));
 
+        // payout marketplace recepient fees
+        _payMarketplaceFees(offer, signature, buyer);
+
         uint256 totalRoyaltiesPaid;
         if (offer.payRoyalties && offer.collateralItem.itemType == ItemType.ERC721) {
             totalRoyaltiesPaid = _payRoyalties(
@@ -94,8 +97,11 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         _transferCollateral(offer.collateralItem, borrower, address(this));
         _executeLoan(offer, signature, borrower, lender, sf);
 
+        // payout marketplace recepient fees
+        uint256 totalMarketplaceFeesPaid = _payMarketplaceFees(offer, signature, lender);
+
         // payout borrower
-        _transferERC20(offer.loanTerms.token, lender, borrower, offer.loanTerms.principalAmount);
+        _transferERC20(offer.loanTerms.token, lender, borrower, offer.loanTerms.principalAmount - totalMarketplaceFeesPaid);
 
         return (sf.loanId - 2);
     }
@@ -127,6 +133,9 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
             revert InvalidCollateralItemType();
         }
         address lender = _commonLoanChecks(offer, signature, borrower, tokenId, tokenAmount, sf);
+
+        // payout marketplace recepient fees
+        _payMarketplaceFees(offer, signature, lender);
 
         _executePurchase(offer, borrower, lender, data, sf);
 
@@ -195,6 +204,9 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
 
         address seller = _commonLoanChecks(offer, signature, buyer, tokenId, tokenAmount, sf);
 
+        // payout marketplace recepient fees
+        _payMarketplaceFees(offer, signature, buyer);
+
         uint256 totalRoyaltiesPaid;
         if (offer.payRoyalties && offer.collateralItem.itemType == ItemType.ERC721) {
             totalRoyaltiesPaid = _payRoyalties(
@@ -232,5 +244,28 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
             offer.loanTerms.token,
             offer.loanTerms.downPaymentAmount
         );
+    }
+
+    function _payMarketplaceFees(
+        Offer memory offer,
+        bytes calldata signature,
+        address buyer
+    ) private returns(uint256 totalFeesPaid) {
+        for (uint256 i = 0; i < offer.marketplaceRecipients.length; i++) {
+            address feeRecipient = offer.marketplaceRecipients[i].recipient;
+            uint256 feeAmount = offer.marketplaceRecipients[i].amount;
+            if (offer.loanTerms.itemType == ItemType.NATIVE) {
+                payable(feeRecipient).sendValue(feeAmount);
+            } else {
+                _transferERC20(
+                    offer.loanTerms.token,
+                    buyer,
+                    feeRecipient,
+                    feeAmount
+                );
+            }
+            emit MarketplaceFeesPaid(signature, feeRecipient, offer.loanTerms.token, feeAmount);
+            totalFeesPaid += feeAmount;
+        }
     }
 }

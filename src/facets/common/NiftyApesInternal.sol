@@ -551,12 +551,16 @@ abstract contract NiftyApesInternal is
 
     function _requireSufficientMsgValue(Offer memory offer, address buyer) internal {
         if (offer.loanTerms.itemType == ItemType.NATIVE) {
-            if (msg.value < offer.loanTerms.downPaymentAmount) {
+            uint256 totalMarketPlaceFees; 
+            for (uint256 i; i < offer.marketplaceRecipients.length; ++i) {
+                totalMarketPlaceFees += offer.marketplaceRecipients[i].amount;
+            }
+            if (msg.value < offer.loanTerms.downPaymentAmount + totalMarketPlaceFees) {
                 revert InsufficientMsgValue(msg.value, offer.loanTerms.downPaymentAmount);
             }
             // if msg.value is too high, return excess value
-            if (msg.value > offer.loanTerms.downPaymentAmount) {
-                payable(buyer).sendValue(msg.value - offer.loanTerms.downPaymentAmount);
+            if (msg.value > offer.loanTerms.downPaymentAmount + totalMarketPlaceFees) {
+                payable(buyer).sendValue(msg.value - offer.loanTerms.downPaymentAmount - totalMarketPlaceFees);
             }
         }
     }

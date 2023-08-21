@@ -121,4 +121,16 @@ interface INiftyApesEvents {
         address paymentToken,
         uint256 paymentAmount
     );
+
+    /// @notice Emitted when a fee amount is paid to the marketplace address
+    /// @param offerSignature The offer signature
+    /// @param marketplace The address of the marketplace
+    /// @param feeToken the address of the fee token
+    /// @param feeAmount The fee amount paid
+    event MarketplaceFeesPaid(
+        bytes indexed offerSignature,
+        address indexed marketplace,
+        address indexed feeToken,
+        uint256 feeAmount
+    );
 }
