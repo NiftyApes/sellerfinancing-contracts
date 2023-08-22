@@ -107,4 +107,18 @@ interface INiftyApesEvents {
     /// @param tokenId The id of the specified NFT
     /// @param receiverAddress The address of the external contract that will receive and return the token
     event FlashClaim(address tokenContractAddress, uint256 tokenId, address receiverAddress);
+
+    /// @notice Emitted when a buyNow sale is executed on an offer
+    /// @param tokenContractAddress The address of the offered token
+    /// @param tokenId The id of the offered token
+    /// @param tokenAmount The offered amount
+    /// @param paymentToken The address of the payment token
+    /// @param paymentAmount The ask amount
+    event SaleExecuted(
+        address indexed tokenContractAddress,
+        uint256 indexed tokenId,
+        uint256 indexed tokenAmount,
+        address paymentToken,
+        uint256 paymentAmount
+    );
 }

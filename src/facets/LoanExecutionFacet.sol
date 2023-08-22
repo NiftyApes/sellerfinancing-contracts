@@ -26,15 +26,7 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         _requireExpectedOfferType(offer, OfferType.SELLER_FINANCING);
 
         // requireSufficientMsgValue
-        if (offer.loanTerms.itemType == ItemType.NATIVE) {
-            if (msg.value < offer.loanTerms.downPaymentAmount) {
-                revert InsufficientMsgValue(msg.value, offer.loanTerms.downPaymentAmount);
-            }
-            // if msg.value is too high, return excess value
-            if (msg.value > offer.loanTerms.downPaymentAmount) {
-                payable(buyer).sendValue(msg.value - offer.loanTerms.downPaymentAmount);
-            }
-        }
+        _requireSufficientMsgValue(offer, buyer);
 
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
@@ -127,7 +119,7 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         // loan item must be ERC20
         _requireItemType(offer.loanTerms.itemType, ItemType.ERC20);
 
-        // revert if collateral not ERC721
+        // revert if collateral not ERC721 or ERC1155
         if (
             offer.collateralItem.itemType != ItemType.ERC721 &&
             offer.collateralItem.itemType != ItemType.ERC1155
@@ -139,7 +131,7 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         _executePurchase(offer, borrower, lender, data, sf);
 
         offer.collateralItem.tokenId = tokenId;
-        offer.collateralItem.amount = 0;
+        offer.collateralItem.amount = tokenAmount;
         _executeLoan(offer, signature, borrower, lender, sf);
 
         return sf.loanId - 2;
@@ -181,5 +173,64 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         if (!ISeaport(sf.seaportContractAddress).fulfillOrder(order, bytes32(0))) {
             revert SeaportOrderNotFulfilled();
         }
+    }
+
+    /// @inheritdoc ILoanExecution
+    function buyNow(
+        Offer memory offer,
+        bytes calldata signature,
+        address buyer,
+        uint256 tokenId,
+        uint256 tokenAmount
+    ) external payable whenNotPaused nonReentrant {
+        // validate offerType
+        _requireExpectedOfferType(offer, OfferType.SALE);
+
+        // requireSufficientMsgValue
+        _requireSufficientMsgValue(offer, buyer);
+
+        // get SellerFinancing storage
+        NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
+            .sellerFinancingStorage();
+
+        address seller = _commonLoanChecks(offer, signature, buyer, tokenId, tokenAmount, sf);
+
+        uint256 totalRoyaltiesPaid;
+        if (offer.payRoyalties && offer.collateralItem.itemType == ItemType.ERC721) {
+            totalRoyaltiesPaid = _payRoyalties(
+                offer.collateralItem.token,
+                offer.collateralItem.tokenId,
+                buyer,
+                offer.loanTerms.itemType,
+                offer.loanTerms.token,
+                offer.loanTerms.downPaymentAmount,
+                sf
+            );
+        }
+
+        // payout seller
+        if (offer.loanTerms.itemType == ItemType.NATIVE) {
+            payable(seller).sendValue(offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid);
+        } else {
+            _transferERC20(
+                offer.loanTerms.token,
+                buyer,
+                seller,
+                offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid
+            );
+        }
+
+        // transfer token from seller to buyer, revert on failure
+        offer.collateralItem.tokenId = tokenId;
+        offer.collateralItem.amount = tokenAmount;
+        _transferCollateral(offer.collateralItem, seller, buyer);
+
+        emit SaleExecuted(
+            offer.collateralItem.token,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
+            offer.loanTerms.token,
+            offer.loanTerms.downPaymentAmount
+        );
     }
 }

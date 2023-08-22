@@ -51,4 +51,19 @@ interface ILoanExecution {
         uint256 tokenAmount,
         bytes calldata data
     ) external returns (uint256 loanId);
+
+    /// @notice Executes a purchase of collateral item from the signed offer without any loan.
+    /// @param offer The details of the offer
+    /// @param signature A signed offerHash
+    /// @param buyer The address of the buyer
+    /// @param tokenId The id of a specified token
+    /// @param tokenAmount Amount of the specified token if ERC1155
+    /// @dev   buyer provided as param to allow for 3rd party marketplace integrations
+    function buyNow(
+        INiftyApesStructs.Offer memory offer,
+        bytes calldata signature,
+        address buyer,
+        uint256 tokenId,
+        uint256 tokenAmount
+    ) external payable;
 }

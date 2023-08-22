@@ -79,7 +79,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, address(borrower1), loanId);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, address(borrower1), loanId, offer.collateralItem.amount);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
@@ -306,7 +306,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             erc1155Token27638,
             collateralAmount
         );
-        assertionsForExecutedLoanERC1155(offer, erc1155Token27638, collateralAmount, borrower1, loanId1);
+        assertionsForExecutedLoanERC1155(offer, erc1155Token27638, collateralAmount, borrower1, loanId1, collateralAmount);
         (uint256 loanId2) = sellerFinancing.borrow(
             offer,
             offerSignature,
@@ -315,7 +315,7 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
             collateralAmount
         );
         vm.stopPrank();
-        assertionsForExecutedLoanERC1155(offer, erc1155Token27638, collateralAmount, borrower1, loanId2);
+        assertionsForExecutedLoanERC1155(offer, erc1155Token27638, collateralAmount, borrower1, loanId2, collateralAmount*2);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);

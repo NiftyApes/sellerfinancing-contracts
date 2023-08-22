@@ -71,7 +71,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLendingERC1155);
         vm.prank(borrower1);
         erc1155Token.safeTransferFrom(borrower1, seller2, offer.collateralItem.tokenId, offer.collateralItem.amount, bytes(""));
-        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2ForERC1155(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2ForERC1155(WETH_ADDRESS, offer.loanTerms.principalAmount*2);
 
         bytes memory offerSignature = lender1CreateOffer(offer);
 
@@ -91,7 +91,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
             abi.encode(order)
         );
         vm.stopPrank();
-        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, borrower1, loanId);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, borrower1, loanId, offer.collateralItem.amount);
 
         uint256 lender1BalanceAfter = weth.balanceOf(lender1);
         uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
@@ -771,7 +771,7 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         return order;
     }
 
-    function createAndValidateSeaportListingFromSeller2ForERC1155(address considerationToken, uint256 tokenPrice, uint256 tokenId) internal returns (ISeaport.Order memory) {
+    function createAndValidateSeaportListingFromSeller2ForERC1155(address considerationToken, uint256 tokenPrice) internal returns (ISeaport.Order memory) {
         ISeaport.Order memory order;
         order.parameters.offerer = seller2;
         order.parameters.zone = address(0x004C00500000aD104D7DBd00e3ae0A5C00560C00);

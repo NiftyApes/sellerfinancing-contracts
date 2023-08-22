@@ -137,6 +137,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     /// @param signatures The list of corresponding signatures from the offer creators
     /// @param buyer The address of the buyer
     /// @param tokenIds The tokenIds of the tokens the buyer intends to buy
+    /// @param tokenAmounts The amount of the tokens the buyer intends to buy
     /// @param partialExecution If set to true, will continue to attempt transaction executions regardless
     ///        if previous transactions have failed or had insufficient value available
     function buyWithSellerFinancingBatch(
@@ -144,13 +145,14 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
         bytes[] calldata signatures,
         address buyer,
         uint256[] calldata tokenIds,
+        uint256[] calldata tokenAmounts,
         bool partialExecution
     ) external payable whenNotPaused returns (uint256[] memory loanIds) {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
-
+        
         // requireLengthOfAllInputArraysAreEqual
-        if (offers.length != signatures.length || offers.length != tokenIds.length) {
+        if (offers.length != signatures.length || offers.length != tokenIds.length || offers.length != tokenAmounts.length) {
             revert InvalidInputLength();
         }
 
@@ -160,8 +162,12 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
 
         // loop through list of offers to execute
         for (uint256 i; i < offers.length; ++i) {
-            // instantiate ith offer
+            // instantiate calldata params to bypass stack too deep error
             INiftyApesStructs.Offer memory offer = offers[i];
+            bytes calldata signature = signatures[i];
+            uint256 tokenId = tokenIds[i];
+            uint256 tokenAmount = tokenAmounts[i];
+            address buyerRe = buyer;
 
             // calculate marketplace fee for ith offer
             uint256 marketplaceFeeAmount = ((offer.loanTerms.principalAmount +
@@ -188,7 +194,7 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
             try
                 INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
                     value: offer.loanTerms.downPaymentAmount
-                }(offer, signatures[i], buyer, tokenIds[i], 0)
+                }(offer, signature, buyerRe, tokenId, tokenAmount)
             returns (uint256 loanId) {
                 loanIds[i] = loanId;
                 // if successful

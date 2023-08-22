@@ -179,7 +179,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         uint256 sellerBalanceBefore = address(seller1).balance;
 
         uint256 loanId = createOfferAndBuyWithSellerFinancing(offer);
-        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId, offer.collateralItem.amount);
 
         uint256 sellerBalanceAfter = address(seller1).balance;
 
@@ -219,7 +219,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         );
         vm.stopPrank();
         
-        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId, offer.collateralItem.amount);
 
         uint256 sellerBalanceAfter = weth.balanceOf(seller1);
 
@@ -259,7 +259,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         );
         vm.stopPrank();
         
-        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId);
+        assertionsForExecutedLoanERC1155(offer, offer.collateralItem.tokenId, offer.collateralItem.amount, buyer1, loanId, offer.collateralItem.amount);
 
         uint256 sellerBalanceAfter = usdc.balanceOf(seller1);
 
@@ -557,7 +557,7 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         );
         vm.stopPrank();
 
-        assertionsForExecutedLoanERC1155(offer, tokenId, tokenAmount, buyer1, loanId);
+        assertionsForExecutedLoanERC1155(offer, tokenId, tokenAmount, buyer1, loanId, tokenAmount);
         uint256 sellerBalanceAfter = address(seller1).balance;
 
         // seller paid out correctly

@@ -99,7 +99,7 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
         }
         CollateralItem memory collateralItem = loan.collateralItem;
         // make payment
-        address borrower = _makePayment(loan, paymentAmount, sf);
+        address borrower = _makePayment(loan, paymentAmount, msg.sender, sf);
         // transfer token to borrower if loan closed
         if (borrower != address(0)) {
             _transferCollateral(collateralItem, address(this), borrower);
@@ -138,7 +138,7 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
             }
             Loan storage loan = _getLoan(loanIds[i], sf);
             CollateralItem memory collateralItem = loan.collateralItem;
-            address borrower = _makePayment(loan, payments[i], sf);
+            address borrower = _makePayment(loan, payments[i], msg.sender, sf);
             // transfer token to borrower if loan closed
             if (borrower != address(0)) {
                 _transferCollateral(collateralItem, address(this), borrower);
@@ -211,14 +211,21 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
             loan.collateralItem.tokenId,
             saleAmountReceived
         );
+        
+        // approve ourselves to avoid revert in erc20 transfers
+        if (loan.loanTerms.itemType == ItemType.ERC20) {
+            IERC20Upgradeable(loan.loanTerms.token).approve(address(this), saleAmountReceived);
+        } 
 
-        // make payment to close the loan and transfer remainder to the borrower
-        _makePayment(loan, saleAmountReceived, sf);
+        // make payment to close the loan
+        _makePayment(loan, saleAmountReceived, address(this), sf);
+        
     }
 
     function _makePayment(
         Loan storage loan,
         uint256 paymentAmount,
+        address fromAddress,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) internal returns (address borrowerAddress) {
         // get borrower
@@ -254,6 +261,9 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
             if (loan.loanTerms.itemType == ItemType.NATIVE) {
                 payable(borrowerAddress).sendValue(paymentAmount - totalPossiblePayment);
             }
+            if (fromAddress == address(this) && loan.loanTerms.itemType == ItemType.ERC20) {
+                _transferERC20(loan.loanTerms.token, address(this), borrowerAddress, paymentAmount - totalPossiblePayment);
+            }
 
             // adjust paymentAmount value
             paymentAmount = totalPossiblePayment;
@@ -266,7 +276,7 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
             } else {
                 _transferERC20(
                     loan.loanTerms.token,
-                    msg.sender,
+                    fromAddress,
                     sf.protocolFeeRecipient,
                     protocolFeeAmount
                 );
@@ -275,15 +285,28 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
 
         uint256 totalRoyaltiesPaid;
         if (loan.payRoyalties && loan.collateralItem.itemType == ItemType.ERC721) {
-            totalRoyaltiesPaid = _payRoyalties(
-                loan.collateralItem.token,
-                loan.collateralItem.tokenId,
-                borrowerAddress,
-                loan.loanTerms.itemType,
-                loan.loanTerms.token,
-                paymentAmount - protocolFeeAmount,
-                sf
-            );
+            if (loan.loanTerms.itemType == ItemType.NATIVE) {
+                totalRoyaltiesPaid = _payRoyalties(
+                    loan.collateralItem.token,
+                    loan.collateralItem.tokenId,
+                    borrowerAddress,
+                    loan.loanTerms.itemType,
+                    loan.loanTerms.token,
+                    paymentAmount - protocolFeeAmount,
+                    sf
+                );
+            } else {
+                totalRoyaltiesPaid = _payRoyalties(
+                    loan.collateralItem.token,
+                    loan.collateralItem.tokenId,
+                    fromAddress,
+                    loan.loanTerms.itemType,
+                    loan.loanTerms.token,
+                    paymentAmount - protocolFeeAmount,
+                    sf
+                );
+            }
+            
         }
 
         // payout lender
@@ -297,7 +320,7 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
         } else {
             _transferERC20(
                 loan.loanTerms.token,
-                msg.sender,
+                fromAddress,
                 ownerOf(loan.loanId + 1),
                 paymentAmount - protocolFeeAmount - totalRoyaltiesPaid
             );
@@ -308,6 +331,26 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
             paymentAmount - protocolFeeAmount - periodInterest
         );
 
+        return _updateLoan(
+            loan,
+            paymentAmount,
+            protocolFeeAmount,
+            totalRoyaltiesPaid,
+            periodInterest,
+            borrowerAddress,
+            sf
+        );
+    }
+
+    function _updateLoan(
+        Loan storage loan,
+        uint256 paymentAmount,
+        uint256 protocolFeeAmount,
+        uint256 totalRoyaltiesPaid,
+        uint256 periodInterest,
+        address borrowerAddress,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) private returns (address) {
         // check if remainingPrincipal is 0
         if (loan.loanTerms.principalAmount == 0) {
             // remove borrower delegate.cash delegation if collateral ERC721
@@ -420,11 +463,18 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
         bytes calldata data,
         NiftyApesStorage.SellerFinancingStorage storage sf
     ) private returns (uint256 saleAmountReceived) {
-        // approve the NFT for Seaport conduit
-        IERC721Upgradeable(loan.collateralItem.token).approve(
-            sf.seaportContractAddress,
-            loan.collateralItem.tokenId
-        );
+        // approve the collateral for Seaport conduit
+        if (loan.collateralItem.itemType == ItemType.ERC1155) {
+            IERC1155Upgradeable(loan.collateralItem.token).setApprovalForAll(
+                sf.seaportContractAddress,
+                true
+            );
+        } else {
+            IERC721Upgradeable(loan.collateralItem.token).approve(
+                sf.seaportContractAddress,
+                loan.collateralItem.tokenId
+            );
+        }
 
         // decode seaport order data
         ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
@@ -459,6 +509,14 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
         // execute sale on Seaport
         if (!ISeaport(sf.seaportContractAddress).fulfillOrder(order, bytes32(0))) {
             revert SeaportOrderNotFulfilled();
+        }
+
+        // set the seaport approval to false if erc1155
+        if (loan.collateralItem.itemType == ItemType.ERC1155) {
+            IERC1155Upgradeable(loan.collateralItem.token).setApprovalForAll(
+                sf.seaportContractAddress,
+                false
+            );
         }
 
         if (loan.loanTerms.itemType == ItemType.NATIVE) {
