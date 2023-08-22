@@ -31,23 +31,22 @@ contract TestGetUnderlyingNft is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature,
             buyer1,
-            offer.nftId
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        CollateralItem memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loanId);
+        CollateralItem memory underlyingSeller = sellerFinancing.getUnderlyingNft(loanId + 1);
 
-        UnderlyingNft memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.borrowerNftId);
-        UnderlyingNft memory underlyingSeller = sellerFinancing.getUnderlyingNft(loan.lenderNftId);
-
-        assertEq(underlyingBuyer.nftContractAddress, offer.nftContractAddress);
-        assertEq(underlyingBuyer.nftId, offer.nftId);
-        assertEq(underlyingSeller.nftContractAddress, offer.nftContractAddress);
-        assertEq(underlyingSeller.nftId, offer.nftId);
+        assertEq(underlyingBuyer.token, offer.collateralItem.token);
+        assertEq(underlyingBuyer.tokenId, offer.collateralItem.tokenId);
+        assertEq(underlyingSeller.token, offer.collateralItem.token);
+        assertEq(underlyingSeller.tokenId, offer.collateralItem.tokenId);
     }
 
     function test_unit_getUnderlyingNft_returns_underylingNftDetails_whenLoanActiveWithCollectionOffer() public {
@@ -55,33 +54,32 @@ contract TestGetUnderlyingNft is
             defaultFixedFuzzedFieldsForFastUnitTesting,
             defaultFixedOfferFields
         );
-        uint256 nftId = offer.nftId;
+        uint256 tokenId = offer.collateralItem.tokenId;
         offer.isCollectionOffer = true;
 
         vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), nftId);
+        boredApeYachtClub.approve(address(sellerFinancing), tokenId);
         vm.stopPrank();
 
         bytes memory signature =  signOffer(seller1_private_key, offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature,
             buyer1,
-            nftId
+            tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, nftId);
+        CollateralItem memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loanId);
+        CollateralItem memory underlyingSeller = sellerFinancing.getUnderlyingNft(loanId + 1);
 
-        UnderlyingNft memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.borrowerNftId);
-        UnderlyingNft memory underlyingSeller = sellerFinancing.getUnderlyingNft(loan.lenderNftId);
-
-        assertEq(underlyingBuyer.nftContractAddress, offer.nftContractAddress);
-        assertEq(underlyingBuyer.nftId, nftId);
-        assertEq(underlyingSeller.nftContractAddress, offer.nftContractAddress);
-        assertEq(underlyingSeller.nftId, nftId);
+        assertEq(underlyingBuyer.token, offer.collateralItem.token);
+        assertEq(underlyingBuyer.tokenId, tokenId);
+        assertEq(underlyingSeller.token, offer.collateralItem.token);
+        assertEq(underlyingSeller.tokenId, tokenId);
     }
 
     function test_unit_getUnderlyingNft_returns_Zeros_whenLoanClosed() public {
@@ -93,40 +91,39 @@ contract TestGetUnderlyingNft is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature,
             buyer1,
-            offer.nftId
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
 
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+        CollateralItem memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loanId);
+        CollateralItem memory underlyingSeller = sellerFinancing.getUnderlyingNft(loanId + 1);
 
-        UnderlyingNft memory underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.borrowerNftId);
-        UnderlyingNft memory underlyingSeller = sellerFinancing.getUnderlyingNft(loan.lenderNftId);
+        assertEq(underlyingBuyer.token, offer.collateralItem.token);
+        assertEq(underlyingBuyer.tokenId, offer.collateralItem.tokenId);
+        assertEq(underlyingSeller.token, offer.collateralItem.token);
+        assertEq(underlyingSeller.tokenId, offer.collateralItem.tokenId);
 
-        assertEq(underlyingBuyer.nftContractAddress, offer.nftContractAddress);
-        assertEq(underlyingBuyer.nftId, offer.nftId);
-        assertEq(underlyingSeller.nftContractAddress, offer.nftContractAddress);
-        assertEq(underlyingSeller.nftId, offer.nftId);
-
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(
-            loan
+        (, uint256 periodInterest,) = sellerFinancing.calculateMinimumPayment(
+            loanId
         );
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{
-            value: ((loan.remainingPrincipal + periodInterest))
-        }(offer.nftContractAddress, offer.nftId);
+            value: ((offer.loanTerms.principalAmount + periodInterest))
+        }(loanId, (offer.loanTerms.principalAmount + periodInterest));
         vm.stopPrank();
 
-        underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.borrowerNftId);
-        underlyingSeller = sellerFinancing.getUnderlyingNft(loan.lenderNftId);
+        underlyingBuyer = sellerFinancing.getUnderlyingNft(loanId);
+        underlyingSeller = sellerFinancing.getUnderlyingNft(loanId + 1);
 
-        assertEq(underlyingBuyer.nftContractAddress, address(0));
-        assertEq(underlyingBuyer.nftId, 0);
-        assertEq(underlyingSeller.nftContractAddress, address(0));
-        assertEq(underlyingSeller.nftId, 0);
+        assertEq(underlyingBuyer.token, address(0));
+        assertEq(underlyingBuyer.tokenId, 0);
+        assertEq(underlyingSeller.token, address(0));
+        assertEq(underlyingSeller.tokenId, 0);
     }
 }

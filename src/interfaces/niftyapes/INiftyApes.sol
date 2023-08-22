@@ -1,18 +1,23 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "./sellerFinancing/ISellerFinancing.sol";
-import "./sellerFinancing/ISellerFinancingEvents.sol";
-import "./INiftyApesStructs.sol";
+import "./INiftyApesAdmin.sol";
 import "./INiftyApesErrors.sol";
-import "./lending/ILending.sol";
-
+import "./INiftyApesEvents.sol";
+import "./INiftyApesStructs.sol";
+import "./offerManagement/IOfferManagement.sol";
+import "./loanExecution/ILoanExecution.sol";
+import "./loanManagement/ILoanManagement.sol";
 
 /// @title The overall interface for NiftyApes
 interface INiftyApes is
-    ISellerFinancing,
-    ISellerFinancingEvents,
-    INiftyApesStructs,
+    INiftyApesAdmin,
     INiftyApesErrors,
-    ILending
-    {}
+    INiftyApesEvents,
+    INiftyApesStructs,
+    IOfferManagement,
+    ILoanExecution,
+    ILoanManagement
+{
+
+}

@@ -23,20 +23,7 @@ contract TestGetOfferSignatureStatus is
     }
 
     function test_unit_getOfferSignature_returnsTrue_whenWithdrawn() public {
-        Offer memory offer = Offer({
-            creator: seller1,
-            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
-            nftId: 1,
-            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
-            principalAmount: 0.7 ether,
-            isCollectionOffer: false,
-            downPaymentAmount: 0.3 ether,
-            minimumPrincipalPerPeriod: 0.07 ether,
-            periodInterestRateBps: 25,
-            periodDuration: 30 days,
-            expiration: uint32(1657217355),
-            collectionOfferLimit: 1
-        });
+        Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
 
@@ -58,11 +45,12 @@ contract TestGetOfferSignatureStatus is
         bytes memory signature = seller1CreateOffer(offer);
 
         vm.startPrank(buyer1);
-        sellerFinancing.buyWithSellerFinancing{ value: offer.downPaymentAmount }(
+        sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
             offer,
             signature,
             buyer1,
-            offer.nftId
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
 
@@ -70,20 +58,7 @@ contract TestGetOfferSignatureStatus is
     }
 
     function test_unit_getOfferSignature_returnsFalse_whenNotWithdrawnOrUsed() public {
-        Offer memory offer = Offer({
-            creator: seller1,
-            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
-            nftId: 1,
-            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
-            principalAmount: 0.7 ether,
-            isCollectionOffer: false,
-            downPaymentAmount: 0.3 ether,
-            minimumPrincipalPerPeriod: 0.07 ether,
-            periodInterestRateBps: 25,
-            periodDuration: 30 days,
-            expiration: uint32(1657217355),
-            collectionOfferLimit: 1
-        });
+        Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
         bytes32 offerHash = sellerFinancing.getOfferHash(offer);
 

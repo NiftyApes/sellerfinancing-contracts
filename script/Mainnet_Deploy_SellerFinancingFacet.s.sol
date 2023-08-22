@@ -8,10 +8,16 @@ import "../src/diamond/facets/DiamondLoupeFacet.sol";
 import "../src/diamond/facets/OwnershipFacet.sol";
 import "../src/diamond/Diamond.sol";
 import "../src/diamond/interfaces/IERC173.sol";
-import "../src/facets/SellerFinancingFacet.sol";
+import "../src/facets/AdminFacet.sol";
+import "../src/facets/OfferFacet.sol";
+import "../src/facets/LoanExecutionFacet.sol";
+import "../src/facets/LoanManagementFacet.sol";
 
 contract DeploySellerFinancingFacetMainnet is Script {
-    NiftyApesSellerFinancingFacet sellerFinancingFacet;
+    NiftyApesAdminFacet adminFacet;
+    NiftyApesOfferFacet offerFacet;
+    NiftyApesLoanExecutionFacet loanExecFacet;
+    NiftyApesLoanManagementFacet loanManagFacet;
     IDiamondCut diamond;
 
     address constant DIAMOND_PROXY_ADDRESS = 0xa99755b549e9BfaBE0969CcA4Ea0f652272C896F;
@@ -27,50 +33,78 @@ contract DeploySellerFinancingFacetMainnet is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        sellerFinancingFacet = new NiftyApesSellerFinancingFacet();
-
         diamond = IDiamondCut(DIAMOND_PROXY_ADDRESS);
 
-        bytes4[] memory allSellerFinancingSelectors = new bytes4[](30);
-        allSellerFinancingSelectors[0] = sellerFinancingFacet.updateRoyaltiesEngineContractAddress.selector;
-        allSellerFinancingSelectors[1] = sellerFinancingFacet.updateDelegateRegistryContractAddress.selector;
-        allSellerFinancingSelectors[2] = sellerFinancingFacet.updateSeaportContractAddress.selector;
-        allSellerFinancingSelectors[3] = sellerFinancingFacet.updateWethContractAddress.selector;
-        allSellerFinancingSelectors[4] = sellerFinancingFacet.royaltiesEngineContractAddress.selector;
-        allSellerFinancingSelectors[5] = sellerFinancingFacet.delegateRegistryContractAddress.selector;
-        allSellerFinancingSelectors[6] = sellerFinancingFacet.seaportContractAddress.selector;
-        allSellerFinancingSelectors[7] = sellerFinancingFacet.wethContractAddress.selector;
-        allSellerFinancingSelectors[8] = sellerFinancingFacet.pause.selector;
-        allSellerFinancingSelectors[9] = sellerFinancingFacet.unpause.selector;
-        allSellerFinancingSelectors[10] = sellerFinancingFacet.pauseSanctions.selector;
-        allSellerFinancingSelectors[11] = sellerFinancingFacet.unpauseSanctions.selector;
-        allSellerFinancingSelectors[12] = sellerFinancingFacet.getOfferHash.selector;
-        allSellerFinancingSelectors[13] = sellerFinancingFacet.getOfferSigner.selector;
-        allSellerFinancingSelectors[14] = sellerFinancingFacet.getOfferSignatureStatus.selector;
-        allSellerFinancingSelectors[15] = sellerFinancingFacet.getCollectionOfferCount.selector;
-        allSellerFinancingSelectors[16] = sellerFinancingFacet.withdrawOfferSignature.selector;
-        allSellerFinancingSelectors[17] = sellerFinancingFacet.buyWithSellerFinancing.selector;
-        allSellerFinancingSelectors[18] = sellerFinancingFacet.makePayment.selector;
-        allSellerFinancingSelectors[19] = sellerFinancingFacet.seizeAsset.selector;
-        allSellerFinancingSelectors[20] = sellerFinancingFacet.instantSell.selector;
-        allSellerFinancingSelectors[21] = sellerFinancingFacet.calculateMinimumPayment.selector;
-        allSellerFinancingSelectors[22] = sellerFinancingFacet.getLoan.selector;
-        allSellerFinancingSelectors[23] = sellerFinancingFacet.getUnderlyingNft.selector;
-        allSellerFinancingSelectors[24] = bytes4(keccak256("safeTransferFrom(address,address,uint256)"));
-        allSellerFinancingSelectors[25] = bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)"));
-        allSellerFinancingSelectors[26] = sellerFinancingFacet.transferFrom.selector;
-        allSellerFinancingSelectors[27] = sellerFinancingFacet.ownerOf.selector;
-        allSellerFinancingSelectors[28] = sellerFinancingFacet.tokenURI.selector;
-        allSellerFinancingSelectors[29] = sellerFinancingFacet.onERC721Received.selector;
+        adminFacet = new NiftyApesAdminFacet();
 
-        IDiamondCut.FacetCut[] memory diamondCut = new IDiamondCut.FacetCut[](1);
-        diamondCut[0] = IDiamondCut.FacetCut(address(sellerFinancingFacet), IDiamondCut.FacetCutAction.Add, allSellerFinancingSelectors);
+        bytes4[] memory allAdminSelectors = new bytes4[](12);
+        allAdminSelectors[0] = adminFacet.updateRoyaltiesEngineContractAddress.selector;
+        allAdminSelectors[1] = adminFacet.updateDelegateRegistryContractAddress.selector;
+        allAdminSelectors[2] = adminFacet.updateSeaportContractAddress.selector;
+        allAdminSelectors[3] = adminFacet.updateWethContractAddress.selector;
+        allAdminSelectors[4] = adminFacet.royaltiesEngineContractAddress.selector;
+        allAdminSelectors[5] = adminFacet.delegateRegistryContractAddress.selector;
+        allAdminSelectors[6] = adminFacet.seaportContractAddress.selector;
+        allAdminSelectors[7] = adminFacet.wethContractAddress.selector;
+        allAdminSelectors[8] = adminFacet.pause.selector;
+        allAdminSelectors[9] = adminFacet.unpause.selector;
+        allAdminSelectors[10] = adminFacet.pauseSanctions.selector;
+        allAdminSelectors[11] = adminFacet.unpauseSanctions.selector;
 
-        diamond.diamondCut(
-            diamondCut, 
-            address(sellerFinancingFacet),
+        offerFacet = new NiftyApesOfferFacet();
+        bytes4[] memory allOfferSelectors = new bytes4[](6);
+        // before loan is created: offer related functions
+        allOfferSelectors[0] = offerFacet.getOfferHash.selector;
+        allOfferSelectors[1] = offerFacet.getOfferSigner.selector;
+        allOfferSelectors[2] = offerFacet.getOfferSignatureStatus.selector;
+        allOfferSelectors[3] = offerFacet.getCollectionOfferCount.selector;
+        allOfferSelectors[4] = offerFacet.withdrawOfferSignature.selector;
+        allOfferSelectors[5] = offerFacet.withdrawAllOffers.selector;
+
+        loanExecFacet = new NiftyApesLoanExecutionFacet();
+        bytes4[] memory allLoanExecutionSelectors = new bytes4[](16);
+        // while loan is created: misc
+        allLoanExecutionSelectors[0] = loanExecFacet.onERC721Received.selector;
+        allLoanExecutionSelectors[1] = loanExecFacet.buyWithSellerFinancing.selector;
+        allLoanExecutionSelectors[2] = loanExecFacet.borrow.selector;
+        allLoanExecutionSelectors[3] = loanExecFacet.buyWith3rdPartyFinancing.selector;
+        // after loan is created: ticket management
+        allLoanExecutionSelectors[4] = bytes4(keccak256("safeTransferFrom(address,address,uint256)"));
+        allLoanExecutionSelectors[5] = bytes4(keccak256("safeTransferFrom(address,address,uint256,bytes)"));
+        allLoanExecutionSelectors[6] = loanExecFacet.transferFrom.selector;
+        allLoanExecutionSelectors[7] = loanExecFacet.ownerOf.selector;
+        allLoanExecutionSelectors[8] = loanExecFacet.tokenURI.selector;
+        allLoanExecutionSelectors[9] = loanExecFacet.balanceOf.selector;
+        allLoanExecutionSelectors[10] = loanExecFacet.name.selector;
+        allLoanExecutionSelectors[11] = loanExecFacet.symbol.selector;
+        allLoanExecutionSelectors[12] = loanExecFacet.approve.selector;
+        allLoanExecutionSelectors[13] = loanExecFacet.getApproved.selector;
+        allLoanExecutionSelectors[14] = loanExecFacet.setApprovalForAll.selector;
+        allLoanExecutionSelectors[15] = loanExecFacet.isApprovedForAll.selector;
+        
+        loanManagFacet = new NiftyApesLoanManagementFacet();
+        bytes4[] memory allLoanManagementSelectors = new bytes4[](7);
+        // after loan is created: loan management
+        allLoanManagementSelectors[0] = loanManagFacet.makePayment.selector;
+        allLoanManagementSelectors[1] = loanManagFacet.seizeAsset.selector;
+        allLoanManagementSelectors[2] = loanManagFacet.instantSell.selector;
+        allLoanManagementSelectors[3] = loanManagFacet.calculateMinimumPayment.selector;
+        allLoanManagementSelectors[4] = loanManagFacet.getLoan.selector;
+        allLoanManagementSelectors[5] = loanManagFacet.getUnderlyingNft.selector;
+        allLoanManagementSelectors[6] = loanManagFacet.makePaymentBatch.selector;
+        
+
+        IDiamondCut.FacetCut[] memory diamondCuts = new IDiamondCut.FacetCut[](4);
+        diamondCuts[0] = IDiamondCut.FacetCut(address(adminFacet), IDiamondCut.FacetCutAction.Add, allAdminSelectors);
+        diamondCuts[1] = IDiamondCut.FacetCut(address(offerFacet), IDiamondCut.FacetCutAction.Add, allOfferSelectors);
+        diamondCuts[2] = IDiamondCut.FacetCut(address(loanExecFacet), IDiamondCut.FacetCutAction.Add, allLoanExecutionSelectors);
+        diamondCuts[3] = IDiamondCut.FacetCut(address(loanManagFacet), IDiamondCut.FacetCutAction.Add, allLoanManagementSelectors);
+
+        IDiamondCut(address(diamond)).diamondCut(
+            diamondCuts, 
+            address(adminFacet),
             abi.encodeWithSelector(
-                sellerFinancingFacet.initialize.selector,
+                adminFacet.initialize.selector, 
                 mainnetRoyaltiesEngineAddress, 
                 mainnetDelegateRegistryAddress,
                 SEAPORT_ADDRESS,

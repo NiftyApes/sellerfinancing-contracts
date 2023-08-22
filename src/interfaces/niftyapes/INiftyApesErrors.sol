@@ -14,10 +14,6 @@ interface INiftyApesErrors {
 
     error SanctionedAddress(address account);
 
-    error NotNftOwner(address nftContractAddress, uint256 nftId, address account);
-
-    error NotNonFungibleToken(address nftContractAddress, uint256 nftId);
-
     error InvalidSigner(address signer, address expected);
 
     error LoanAlreadyClosed();
@@ -26,7 +22,7 @@ interface INiftyApesErrors {
 
     error CannotBuySellerFinancingTicket();
 
-    error NftIdsMustMatch();
+    error CollateralDetailsMustMatch();
 
     error CollectionOfferLimitReached();
 
@@ -38,11 +34,7 @@ interface INiftyApesErrors {
 
     error InvalidConsideration0Identifier(uint256 given, uint256 expected);
 
-    error InvalidConsiderationItemType(
-        uint256 index,
-        ISeaport.ItemType given,
-        ISeaport.ItemType expected
-    );
+    error InvalidConsiderationItemType(uint256 index, ISeaport.ItemType given);
 
     error InvalidConsiderationToken(uint256 index, address given, address expected);
 
@@ -59,8 +51,8 @@ interface INiftyApesErrors {
 
     error SoftGracePeriodEnded();
 
-    error AmountReceivedLessThanRequiredMinimumPayment(
-        uint256 amountReceived,
+    error PaymentReceivedLessThanRequiredMinimumPayment(
+        uint256 paymentAmount,
         uint256 minExpectedAmount
     );
 
@@ -84,4 +76,16 @@ interface INiftyApesErrors {
     error ConditionSendValueFailed(address from, address to, uint256 amount);
 
     error InvalidOfferType(INiftyApesStructs.OfferType given, INiftyApesStructs.OfferType expected);
+
+    error InvalidInputLength();
+
+    error InvalidOfferNonce(uint32 offerNonce, uint32 currentNonce);
+
+    error InvalidCollateralItemType();
+
+    error InvalidLoanItemType();
+
+    error InvalidLoanItemToken(address given);
+
+    error ValueReceivedNotEqualToPaymentAmount();
 }

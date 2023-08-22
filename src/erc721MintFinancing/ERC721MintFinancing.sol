@@ -7,7 +7,7 @@ import "@openzeppelin-norm/contracts/security/ReentrancyGuard.sol";
 
 import "@openzeppelin-norm/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-norm/contracts/utils/Counters.sol";
-import "../interfaces/niftyapes/sellerFinancing/ISellerFinancing.sol";
+import "../interfaces/niftyapes/INiftyApes.sol";
 
 /// @title ERC721MintFinancing
 /// @custom:version 1.0
@@ -66,28 +66,26 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
         INiftyApesStructs.Offer memory offer,
         bytes calldata signature,
         uint256 count
-    ) external payable nonReentrant returns (uint256[] memory tokenIds) {
-        address signer = ISellerFinancing(sellerFinancingContractAddress).getOfferSigner(
+    ) external payable nonReentrant returns (uint256[] memory tokenIds, uint256[] memory loanIds) {
+        address signer = INiftyApes(sellerFinancingContractAddress).getOfferSigner(
             offer,
             signature
         );
 
-        uint64 collectionOfferLimitCount = ISellerFinancing(sellerFinancingContractAddress)
+        uint64 collectionOfferLimitCount = INiftyApes(sellerFinancingContractAddress)
             .getCollectionOfferCount(signature);
-
-        tokenIds = new uint256[](count);
 
         // requireSignerIsOwner
         if (signer != owner()) {
             revert InvalidSigner(signer, owner());
         }
         // requireValidNftContractAddress
-        if (offer.nftContractAddress != address(this)) {
-            revert InvalidNftContractAddress(offer.nftContractAddress, address(this));
+        if (offer.collateralItem.token != address(this)) {
+            revert InvalidNftContractAddress(offer.collateralItem.token, address(this));
         }
         // requireMsgValueGreaterThanOrEqualToOfferDownPaymentAmountTimesCount
-        if (msg.value < (offer.downPaymentAmount * count)) {
-            revert InsufficientMsgValue(msg.value, (offer.downPaymentAmount * count));
+        if (msg.value < (offer.loanTerms.downPaymentAmount * count)) {
+            revert InsufficientMsgValue(msg.value, (offer.loanTerms.downPaymentAmount * count));
         }
         // requireCountIsNot0
         if (count == 0) {
@@ -104,25 +102,28 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             (offer.collectionOfferLimit - collectionOfferLimitCount)
         );
 
+        tokenIds = new uint256[](nftsToMint);
+        loanIds = new uint256[](nftsToMint);
+
         // loop through and mint nfts
         for (uint i; i < nftsToMint; ++i) {
             // increment nftid tracker
             _tokenIdTracker.increment();
             // mint nft
             _safeMint(owner(), _tokenIdTracker.current());
-            // append new nftId to returned tokensIds
+            // append new tokenId to returned tokensIds
             tokenIds[i] = _tokenIdTracker.current();
 
             // Execute loan
-            ISellerFinancing(sellerFinancingContractAddress).buyWithSellerFinancing{
-                value: offer.downPaymentAmount
-            }(offer, signature, msg.sender, _tokenIdTracker.current());
+            loanIds[i] = INiftyApes(sellerFinancingContractAddress).buyWithSellerFinancing{
+                value: offer.loanTerms.downPaymentAmount
+            }(offer, signature, msg.sender, _tokenIdTracker.current(), 0);
         }
 
         // if there is a greater number of NFTs requested than available return value
         if (nftsToMint < count) {
             (bool success, ) = address(msg.sender).call{
-                value: msg.value - (offer.downPaymentAmount * nftsToMint)
+                value: msg.value - (offer.loanTerms.downPaymentAmount * nftsToMint)
             }("");
             // require ETH is successfully sent to msg.sender
             // we do not want ETH hanging in contract.

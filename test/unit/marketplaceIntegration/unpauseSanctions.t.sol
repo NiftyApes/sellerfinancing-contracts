@@ -12,40 +12,6 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         super.setUp();
     }
 
-    function assertionsForExecutedLoan(Offer memory offer, address expectedBuyer) private {
-        // sellerFinancing contract has NFT
-        assertEq(boredApeYachtClub.ownerOf(offer.nftId), address(sellerFinancing));
-        // require delegate.cash has buyer delegation
-        assertEq(
-            IDelegationRegistry(mainnetDelegateRegistryAddress).checkDelegateForToken(
-                address(SANCTIONED_ADDRESS),
-                address(sellerFinancing),
-                address(boredApeYachtClub),
-                offer.nftId
-            ),
-            true
-        );
-        // loan auction exists
-        assertEq(
-            sellerFinancing.getLoan(address(boredApeYachtClub), offer.nftId).periodBeginTimestamp,
-            block.timestamp
-        );
-        // buyer NFT minted to buyer
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(0), expectedBuyer);
-        // seller NFT minted to seller
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(1), seller1);
-
-        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
-        assertEq(loan.borrowerNftId, 0);
-        assertEq(loan.lenderNftId, 1);
-        assertEq(loan.remainingPrincipal, offer.principalAmount);
-        assertEq(loan.minimumPrincipalPerPeriod, offer.minimumPrincipalPerPeriod);
-        assertEq(loan.periodInterestRateBps, offer.periodInterestRateBps);
-        assertEq(loan.periodDuration, offer.periodDuration);
-        assertEq(loan.periodEndTimestamp, block.timestamp + offer.periodDuration);
-        assertEq(loan.periodBeginTimestamp, block.timestamp);
-    }
-
     function test_unit_unpauseSanctions_Marketplace_simple_case() public {
         Offer memory offer = offerStructFromFields(
             defaultFixedFuzzedFieldsForFastUnitTesting,
@@ -53,7 +19,7 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        uint256 marketplaceFee = ((offer.principalAmount + offer.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
 
         vm.startPrank(owner);
         marketplaceIntegration.pauseSanctions();
@@ -61,14 +27,15 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
         vm.stopPrank();
 
         vm.startPrank(SANCTIONED_ADDRESS);
-        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        uint256 loanId = marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.nftId
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
-        assertionsForExecutedLoan(offer, SANCTIONED_ADDRESS);
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, SANCTIONED_ADDRESS, loanId);
 
         vm.prank(owner);
         marketplaceIntegration.unpauseSanctions();
@@ -80,11 +47,12 @@ contract TestUnpauseSanctionsMarketplace is Test, BaseTest, OffersLoansFixtures 
             )
         );
         vm.startPrank(SANCTIONED_ADDRESS);
-        marketplaceIntegration.buyWithSellerFinancing{ value: offer.downPaymentAmount + marketplaceFee }(
+        marketplaceIntegration.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount + marketplaceFee }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.nftId
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
         );
         vm.stopPrank();
     }

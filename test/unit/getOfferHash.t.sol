@@ -13,24 +13,11 @@ contract TestGetOfferHash is Test, INiftyApesStructs, OffersLoansFixtures {
     }
 
     function test_unit_getOfferHash() public {
-        Offer memory offer = Offer({
-            creator: seller1,
-            nftContractAddress: address(0xB4FFCD625FefD541b77925c7A37A55f488bC69d9),
-            nftId: 1,
-            offerType: INiftyApesStructs.OfferType.SELLER_FINANCING,
-            principalAmount: 0.7 ether,
-            isCollectionOffer: false,
-            downPaymentAmount: 0.3 ether,
-            minimumPrincipalPerPeriod: 0.07 ether,
-            periodInterestRateBps: 25,
-            periodDuration: 30 days,
-            expiration: uint32(1657217355),
-            collectionOfferLimit: 1
-        });
+        Offer memory offer = offerStructFromFields(defaultFixedFuzzedFieldsForFastUnitTesting, defaultFixedOfferFields);
 
         bytes32 functionOfferHash = sellerFinancing.getOfferHash(offer);
 
-        bytes32 expectedFunctionHash = 0x1931828706b2c87ed52a7279457e40b7c645f94098632948f94e7c34e61ed7e5;
+        bytes32 expectedFunctionHash = 0xf2381ac90a4a7a02a31d7e2de30c5171126acf660db54ed8573c8e9625c704f3;
 
         assertEq(functionOfferHash, expectedFunctionHash);
     }
