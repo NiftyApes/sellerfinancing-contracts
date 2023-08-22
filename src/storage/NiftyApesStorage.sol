@@ -3,7 +3,7 @@ pragma solidity 0.8.18;
 
 import "../interfaces/niftyapes/INiftyApesStructs.sol";
 
-/// @title Storage contract for first facet SellerFinancingFacet
+/// @title Storage contract for protocol facets
 /// @custom:version 2.0
 /// @author zishansami102 (zishansami.eth)
 /// @custom:contributor captnseagraves (captnseagraves.eth)
