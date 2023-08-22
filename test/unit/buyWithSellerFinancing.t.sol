@@ -1102,4 +1102,174 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithSellerFinancing_reverts_if_offerForSellerFinancingTicket(fixedForSpeed);
     }
+
+    function _test_buyWithSellerFinancing_withMarketplaceFees_ETH(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+
+        offer.marketplaceRecipients = new MarketplaceRecipient[](1);
+        offer.marketplaceRecipients[0] = MarketplaceRecipient(address(SUPERRARE_MARKETPLACE), marketplaceFee);
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        uint256 marketplaceBalanceBefore = address(SUPERRARE_MARKETPLACE).balance;
+
+        vm.startPrank(buyer1);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing{value: offer.loanTerms.downPaymentAmount + marketplaceFee}(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
+
+        uint256 marketplaceBalanceAfter = address(SUPERRARE_MARKETPLACE).balance;
+
+        assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
+    }
+
+    function test_fuzz_buyWithSellerFinancing_withMarketplaceFees_ETH(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_withMarketplaceFees_ETH(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_withMarketplaceFees_ETH() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_withMarketplaceFees_ETH(fixedForSpeed);
+    }
+
+    function _test_buyWithSellerFinancing_withMarketplaceFees_WETH(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFieldsERC20Payment(fuzzed, defaultFixedOfferFields, WETH_ADDRESS);
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+
+        offer.marketplaceRecipients = new MarketplaceRecipient[](1);
+        offer.marketplaceRecipients[0] = MarketplaceRecipient(address(SUPERRARE_MARKETPLACE), marketplaceFee);
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.tokenId, offer.loanTerms.downPaymentAmount);
+
+        uint256 totalRoyaltiesPaid;
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients1.length; i++) {
+            totalRoyaltiesPaid += amounts1[i];
+        }
+
+        uint256 sellerBalanceBefore = weth.balanceOf(seller1);
+        uint256 royaltiesBalanceBefore = weth.balanceOf(recipients1[0]);
+        uint256 marketplaceBalanceBefore = weth.balanceOf(address(SUPERRARE_MARKETPLACE));
+
+        vm.startPrank(buyer1);
+        weth.approve(address(sellerFinancing), offer.loanTerms.downPaymentAmount + marketplaceFee);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
+
+        uint256 marketplaceBalanceAfter = weth.balanceOf(address(SUPERRARE_MARKETPLACE));
+
+        assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
+
+        uint256 sellerBalanceAfter = weth.balanceOf(seller1);
+        uint256 royaltiesBalanceAfter = weth.balanceOf(recipients1[0]);
+
+        // seller paid out correctly
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid)
+        );
+
+        // royatlies paid out correctly
+        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
+    }
+
+    function test_fuzz_buyWithSellerFinancing_withMarketplaceFees_WETH(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_withMarketplaceFees_WETH(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_withMarketplaceFees_WETH() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_withMarketplaceFees_WETH(fixedForSpeed);
+    }
+
+    function _test_buyWithSellerFinancing_withTwoMarketplaceRecipients_WETH(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFieldsERC20Payment(fuzzed, defaultFixedOfferFields, WETH_ADDRESS);
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+
+        offer.marketplaceRecipients = new MarketplaceRecipient[](2);
+        offer.marketplaceRecipients[0] = MarketplaceRecipient(address(SUPERRARE_MARKETPLACE), marketplaceFee);
+        offer.marketplaceRecipients[1] = MarketplaceRecipient(address(SUPERRARE_MARKETPLACE), marketplaceFee);
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        (address payable[] memory recipients1, uint256[] memory amounts1) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.collateralItem.token, offer.collateralItem.tokenId, offer.loanTerms.downPaymentAmount);
+
+        uint256 totalRoyaltiesPaid;
+
+        // payout royalties
+        for (uint256 i = 0; i < recipients1.length; i++) {
+            totalRoyaltiesPaid += amounts1[i];
+        }
+
+        uint256 sellerBalanceBefore = weth.balanceOf(seller1);
+        uint256 royaltiesBalanceBefore = weth.balanceOf(recipients1[0]);
+        uint256 marketplaceBalanceBefore = weth.balanceOf(address(SUPERRARE_MARKETPLACE));
+
+        vm.startPrank(buyer1);
+        weth.approve(address(sellerFinancing), offer.loanTerms.downPaymentAmount + 2*marketplaceFee);
+        uint256 loanId = sellerFinancing.buyWithSellerFinancing(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoan(offer, offer.collateralItem.tokenId, buyer1, loanId);
+
+        uint256 marketplaceBalanceAfter = weth.balanceOf(address(SUPERRARE_MARKETPLACE));
+
+        assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + 2*marketplaceFee));
+
+        uint256 sellerBalanceAfter = weth.balanceOf(seller1);
+        uint256 royaltiesBalanceAfter = weth.balanceOf(recipients1[0]);
+
+        // seller paid out correctly
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + offer.loanTerms.downPaymentAmount - totalRoyaltiesPaid)
+        );
+
+        // royatlies paid out correctly
+        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
+    }
+
+    function test_fuzz_buyWithSellerFinancing_withTwoMarketplaceRecipients_WETH(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_withTwoMarketplaceRecipients_WETH(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_withTwoMarketplaceRecipients_WETH() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_withTwoMarketplaceRecipients_WETH(fixedForSpeed);
+    }
 }
