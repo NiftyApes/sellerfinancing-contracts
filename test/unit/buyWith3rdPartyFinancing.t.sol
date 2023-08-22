@@ -732,6 +732,66 @@ contract TestBuyWith3rdPartyFinancing is Test, OffersLoansFixtures, INiftyApesEv
         _test_buyWith3rdPartyFinancing_reverts_if_callerSanctioned(fixedForSpeed);
     }
 
+    function _test_buyWith3rdPartyFinancing_WETH_withMarketplaceFees(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+
+        offer.marketplaceRecipients = new MarketplaceRecipient[](1);
+        offer.marketplaceRecipients[0] = MarketplaceRecipient(address(SUPERRARE_MARKETPLACE), marketplaceFee);
+        
+        vm.prank(seller1);
+        boredApeYachtClub.transferFrom(seller1, seller2, offer.collateralItem.tokenId);
+        ISeaport.Order memory order = createAndValidateSeaportListingFromSeller2(WETH_ADDRESS, offer.loanTerms.principalAmount*2, offer.collateralItem.tokenId);
+
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        mintWeth(borrower1, order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount + marketplaceFee);
+
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
+
+        uint256 marketplaceBalanceBefore = weth.balanceOf(SUPERRARE_MARKETPLACE);
+        
+        vm.startPrank(borrower1);
+        weth.approve(address(sellerFinancing), order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount + marketplaceFee);
+        uint256 loanId = sellerFinancing.buyWith3rdPartyFinancing(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount,
+            abi.encode(order)
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, borrower1, loanId);
+
+        uint256 lender1BalanceAfter = weth.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
+        uint256 marketplaceBalanceAfter = weth.balanceOf(SUPERRARE_MARKETPLACE);
+
+        assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
+
+        // lender1 balance reduced by loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance decreased by token price minus offer.loanTerms.principalAmount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore - (order.parameters.consideration[0].endAmount - offer.loanTerms.principalAmount +  marketplaceFee));
+    }
+
+    function test_fuzz_buyWith3rdPartyFinancing_WETH_withMarketplaceFees(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWith3rdPartyFinancing_WETH_withMarketplaceFees(fuzzed);
+    }
+
+    function test_unit_buyWith3rdPartyFinancing_WETH_withMarketplaceFees() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_buyWith3rdPartyFinancing_WETH_withMarketplaceFees(fixedForSpeed);
+    }
+
     function createAndValidateSeaportListingFromSeller2(address considerationToken, uint256 tokenPrice, uint256 tokenId) internal returns (ISeaport.Order memory) {
         ISeaport.Order memory order;
         order.parameters.offerer = seller2;

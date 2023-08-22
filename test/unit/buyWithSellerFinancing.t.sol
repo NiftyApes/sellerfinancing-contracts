@@ -1272,4 +1272,44 @@ contract TestBuyWithSellerFinancing is Test, OffersLoansFixtures, INiftyApesEven
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_buyWithSellerFinancing_withTwoMarketplaceRecipients_WETH(fixedForSpeed);
     }
+
+    function _test_buyWithSellerFinancing_reverts_withMarketplaceFees_ifInsufficientPayment(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+
+        offer.marketplaceRecipients = new MarketplaceRecipient[](1);
+        offer.marketplaceRecipients[0] = MarketplaceRecipient(address(SUPERRARE_MARKETPLACE), marketplaceFee);
+        bytes memory offerSignature = seller1CreateOffer(offer);
+
+        vm.startPrank(buyer1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                INiftyApesErrors.InsufficientMsgValue.selector,
+                offer.loanTerms.downPaymentAmount+marketplaceFee-1,
+                offer.loanTerms.downPaymentAmount+marketplaceFee
+            )
+        );
+        sellerFinancing.buyWithSellerFinancing{value: offer.loanTerms.downPaymentAmount + marketplaceFee - 1}(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        
+    }
+
+    function test_fuzz_buyWithSellerFinancing_reverts_withMarketplaceFees_ifInsufficientPayment(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_buyWithSellerFinancing_reverts_withMarketplaceFees_ifInsufficientPayment(fuzzed);
+    }
+
+    function test_unit_buyWithSellerFinancing_reverts_withMarketplaceFees_ifInsufficientPayment() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_buyWithSellerFinancing_reverts_withMarketplaceFees_ifInsufficientPayment(fixedForSpeed);
+    }
 }

@@ -150,9 +150,13 @@ contract MarketplaceIntegration is Ownable, Pausable, ERC721Holder {
     ) external payable whenNotPaused returns (uint256[] memory loanIds) {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
-        
+
         // requireLengthOfAllInputArraysAreEqual
-        if (offers.length != signatures.length || offers.length != tokenIds.length || offers.length != tokenAmounts.length) {
+        if (
+            offers.length != signatures.length ||
+            offers.length != tokenIds.length ||
+            offers.length != tokenAmounts.length
+        ) {
             revert InvalidInputLength();
         }
 
