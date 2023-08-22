@@ -679,4 +679,59 @@ contract TestBorrow is Test, OffersLoansFixtures, INiftyApesEvents {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
         _test_borrow_reverts_for_loanItemType_NonERC20(fixedForSpeed);
     }
+
+    function _test_borrow_WETH_withMarketplaceFees(FuzzedOfferFields memory fuzzed) private {
+        Offer memory offer = offerStructFromFieldsForLending(fuzzed, defaultFixedOfferFieldsForLending);
+        uint256 marketplaceFee = ((offer.loanTerms.principalAmount + offer.loanTerms.downPaymentAmount) * SUPERRARE_MARKET_FEE_BPS) / 10_000;
+
+        offer.marketplaceRecipients = new MarketplaceRecipient[](1);
+        offer.marketplaceRecipients[0] = MarketplaceRecipient(address(SUPERRARE_MARKETPLACE), marketplaceFee);
+
+        uint256 lender1BalanceBefore = weth.balanceOf(lender1);
+        uint256 borrower1BalanceBefore = weth.balanceOf(borrower1);
+        uint256 marketplaceBalanceBefore = weth.balanceOf(address(SUPERRARE_MARKETPLACE));
+
+        bytes memory offerSignature = lender1CreateOffer(offer);
+
+        vm.startPrank(borrower1);
+        boredApeYachtClub.approve(address(sellerFinancing), offer.collateralItem.tokenId);
+        (uint256 loanId) = sellerFinancing.borrow(
+            offer,
+            offerSignature,
+            borrower1,
+            offer.collateralItem.tokenId,
+            offer.collateralItem.amount
+        );
+        vm.stopPrank();
+        assertionsForExecutedLoanThrough3rdPartyLender(offer, offer.collateralItem.tokenId, address(borrower1), loanId);
+
+        uint256 lender1BalanceAfter = weth.balanceOf(lender1);
+        uint256 borrower1BalanceAfter = weth.balanceOf(borrower1);
+        uint256 marketplaceBalanceAfter = weth.balanceOf(address(SUPERRARE_MARKETPLACE));
+
+        assertEq(marketplaceBalanceAfter, (marketplaceBalanceBefore + marketplaceFee));
+
+        // lender1 balance reduced by loan principal amount
+        assertEq(
+            lender1BalanceAfter,
+            (lender1BalanceBefore - offer.loanTerms.principalAmount)
+        );
+
+        // borrower1 balance increased by loan principal amount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount - marketplaceFee);
+
+        // borrower1 balance increased by loan principal amount
+        assertEq(borrower1BalanceAfter, borrower1BalanceBefore + offer.loanTerms.principalAmount - marketplaceFee);
+    }
+
+    function test_fuzz_borrow_WETH_withMarketplaceFees(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_borrow_WETH_withMarketplaceFees(fuzzed);
+    }
+
+    function test_unit_borrow_WETH_withMarketplaceFees() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForLendingForFastUnitTesting;
+        _test_borrow_WETH_withMarketplaceFees(fixedForSpeed);
+    }
 }

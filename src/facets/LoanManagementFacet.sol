@@ -211,15 +211,14 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
             loan.collateralItem.tokenId,
             saleAmountReceived
         );
-        
+
         // approve ourselves to avoid revert in erc20 transfers
         if (loan.loanTerms.itemType == ItemType.ERC20) {
             IERC20Upgradeable(loan.loanTerms.token).approve(address(this), saleAmountReceived);
-        } 
+        }
 
         // make payment to close the loan
         _makePayment(loan, saleAmountReceived, address(this), sf);
-        
     }
 
     function _makePayment(
@@ -262,7 +261,12 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
                 payable(borrowerAddress).sendValue(paymentAmount - totalPossiblePayment);
             }
             if (fromAddress == address(this) && loan.loanTerms.itemType == ItemType.ERC20) {
-                _transferERC20(loan.loanTerms.token, address(this), borrowerAddress, paymentAmount - totalPossiblePayment);
+                _transferERC20(
+                    loan.loanTerms.token,
+                    address(this),
+                    borrowerAddress,
+                    paymentAmount - totalPossiblePayment
+                );
             }
 
             // adjust paymentAmount value
@@ -306,7 +310,6 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
                     sf
                 );
             }
-            
         }
 
         // payout lender
@@ -331,15 +334,16 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
             paymentAmount - protocolFeeAmount - periodInterest
         );
 
-        return _updateLoan(
-            loan,
-            paymentAmount,
-            protocolFeeAmount,
-            totalRoyaltiesPaid,
-            periodInterest,
-            borrowerAddress,
-            sf
-        );
+        return
+            _updateLoan(
+                loan,
+                paymentAmount,
+                protocolFeeAmount,
+                totalRoyaltiesPaid,
+                periodInterest,
+                borrowerAddress,
+                sf
+            );
     }
 
     function _updateLoan(
