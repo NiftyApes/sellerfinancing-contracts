@@ -16,7 +16,8 @@ contract DeploySellerFinancingScript is Script {
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
 
-    address SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
+    // seaport v1.5
+    address SEAPORT_ADDRESS = 0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC;
     address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     function run() external {
@@ -50,8 +51,7 @@ contract DeploySellerFinancingScript is Script {
             WETH_ADDRESS
         );
 
-        // change ownership of implementation contracts
-        sellerFinancingImplementation.transferOwnership(mainnetMultisigAddress);
+        // removed implementation transferOwnership because of empty constructor alleviating the need
 
         // change ownership of proxies
         IOwnership(address(sellerFinancing)).transferOwnership(mainnetMultisigAddress);

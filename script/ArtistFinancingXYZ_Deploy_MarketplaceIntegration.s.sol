@@ -9,12 +9,12 @@ contract DeployMarketplaceIntegrationScript is Script {
     MarketplaceIntegration marketplaceIntegration;
 
     function run() external {
-        address goerliMultisigAddress = 0x213dE8CcA7C414C0DE08F456F9c4a2Abc4104028;
+        address mainnetMultisigAddress = 0xbe9B799D066A51F77d353Fc72e832f3803789362;
 
         // provide deployed sellerFinaningContractAddress here
-        address sellerFinancingContractAddress = 0x02C33A7baFf11FDd8A029F9380b9B7CD81534091;
+        address sellerFinancingContractAddress = 0x1AD9752A86BBDB4b9B33Addc00e008D6E0308d03;
         // provide your desired fee recipient address here
-        address marketplaceFeeRecipient = goerliMultisigAddress;
+        address marketplaceFeeRecipient = mainnetMultisigAddress;
         // provide your desired fee basis points for each transaction here
         uint256 marketplaceFeeBps = 0;
 
@@ -27,11 +27,8 @@ contract DeployMarketplaceIntegrationScript is Script {
             marketplaceFeeBps
         );
 
-        // pauseSanctions for Goerli as Chainalysis contact doesnt exists there
-        marketplaceIntegration.pauseSanctions();
-
         // change ownership
-        IOwnership(address(marketplaceIntegration)).transferOwnership(goerliMultisigAddress);
+        IOwnership(address(marketplaceIntegration)).transferOwnership(mainnetMultisigAddress);
 
         vm.stopBroadcast();
     }

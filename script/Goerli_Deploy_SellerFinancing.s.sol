@@ -53,8 +53,7 @@ contract DeploySellerFinancingScript is Script {
         // pauseSanctions for Goerli as Chainalysis contact doesnt exists there
         sellerFinancing.pauseSanctions();
 
-        // change ownership of implementation contracts
-        sellerFinancingImplementation.transferOwnership(goerliMultisigAddress);
+        // removed implementation transferOwnership because of empty constructor alleviating the need
 
         // change ownership of proxies
         IOwnership(address(sellerFinancing)).transferOwnership(goerliMultisigAddress);
