@@ -26,7 +26,7 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         _requireExpectedOfferType(offer, OfferType.SELLER_FINANCING);
 
         // requireSufficientMsgValue
-        _requireSufficientMsgValue(offer, buyer);
+        _requireSufficientMsgValue(offer);
 
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage
@@ -201,7 +201,7 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         _requireExpectedOfferType(offer, OfferType.SALE);
 
         // requireSufficientMsgValue
-        _requireSufficientMsgValue(offer, buyer);
+        _requireSufficientMsgValue(offer);
 
         // get SellerFinancing storage
         NiftyApesStorage.SellerFinancingStorage storage sf = NiftyApesStorage

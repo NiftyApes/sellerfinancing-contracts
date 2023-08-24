@@ -9,6 +9,7 @@ import "../../../src/facets/AdminFacet.sol";
 import "../../../src/facets/OfferFacet.sol";
 import "../../../src/facets/LoanExecutionFacet.sol";
 import "../../../src/facets/LoanManagementFacet.sol";
+import "../../../src/facets/BatchExecutionFacet.sol";
 import "../../../src/marketplaceIntegration/MarketplaceIntegration.sol";
 import "../../../src/erc721MintFinancing/ERC721MintFinancing.sol";
 import { DiamondDeployment } from "./DiamondDeployment.sol";
@@ -23,6 +24,7 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
     NiftyApesOfferFacet offerFacet;
     NiftyApesLoanExecutionFacet loanExecFacet;
     NiftyApesLoanManagementFacet loanManagFacet;
+    NiftyApesBatchExecutionFacet batchFacet;
     INiftyApes sellerFinancing;
 
     MarketplaceIntegration marketplaceIntegration;
@@ -106,11 +108,17 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allLoanManagementSelectors[5] = loanManagFacet.getUnderlyingNft.selector;
         allLoanManagementSelectors[6] = loanManagFacet.makePaymentBatch.selector;
 
-        IDiamondCut.FacetCut[] memory diamondCuts = new IDiamondCut.FacetCut[](4);
+        batchFacet = new NiftyApesBatchExecutionFacet();
+        bytes4[] memory allBatchSelectors = new bytes4[](1);
+        // after loan is created: loan management
+        allBatchSelectors[0] = batchFacet.buyWithSellerFinancingBatch.selector;
+
+        IDiamondCut.FacetCut[] memory diamondCuts = new IDiamondCut.FacetCut[](5);
         diamondCuts[0] = IDiamondCut.FacetCut(address(adminFacet), IDiamondCut.FacetCutAction.Add, allAdminSelectors);
         diamondCuts[1] = IDiamondCut.FacetCut(address(offerFacet), IDiamondCut.FacetCutAction.Add, allOfferSelectors);
         diamondCuts[2] = IDiamondCut.FacetCut(address(loanExecFacet), IDiamondCut.FacetCutAction.Add, allLoanExecutionSelectors);
         diamondCuts[3] = IDiamondCut.FacetCut(address(loanManagFacet), IDiamondCut.FacetCutAction.Add, allLoanManagementSelectors);
+        diamondCuts[4] = IDiamondCut.FacetCut(address(batchFacet), IDiamondCut.FacetCutAction.Add, allBatchSelectors);
 
         IDiamondCut(address(diamond)).diamondCut(
             diamondCuts, 

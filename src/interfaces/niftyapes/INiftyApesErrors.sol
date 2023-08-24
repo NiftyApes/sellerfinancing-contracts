@@ -88,4 +88,6 @@ interface INiftyApesErrors {
     error InvalidLoanItemToken(address given);
 
     error ValueReceivedNotEqualToPaymentAmount();
+
+    error BatchCallRevertedAt(uint256 index);
 }

@@ -549,7 +549,7 @@ abstract contract NiftyApesInternal is
         }
     }
 
-    function _requireSufficientMsgValue(Offer memory offer, address buyer) internal {
+    function _requireSufficientMsgValue(Offer memory offer) internal {
         if (offer.loanTerms.itemType == ItemType.NATIVE) {
             uint256 totalMarketPlaceFees;
             for (uint256 i; i < offer.marketplaceRecipients.length; ++i) {
@@ -563,7 +563,7 @@ abstract contract NiftyApesInternal is
             }
             // if msg.value is too high, return excess value
             if (msg.value > offer.loanTerms.downPaymentAmount + totalMarketPlaceFees) {
-                payable(buyer).sendValue(
+                payable(msg.sender).sendValue(
                     msg.value - offer.loanTerms.downPaymentAmount - totalMarketPlaceFees
                 );
             }

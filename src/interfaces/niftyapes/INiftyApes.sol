@@ -8,6 +8,7 @@ import "./INiftyApesStructs.sol";
 import "./offerManagement/IOfferManagement.sol";
 import "./loanExecution/ILoanExecution.sol";
 import "./loanManagement/ILoanManagement.sol";
+import "./batchExecution/IBatchExecution.sol";
 
 /// @title The overall interface for NiftyApes
 interface INiftyApes is
@@ -17,7 +18,8 @@ interface INiftyApes is
     INiftyApesStructs,
     IOfferManagement,
     ILoanExecution,
-    ILoanManagement
+    ILoanManagement,
+    IBatchExecution
 {
 
 }
