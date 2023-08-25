@@ -21,4 +21,17 @@ interface IBatchExecution {
         uint256[] calldata tokenAmounts,
         bool partialExecution
     ) external payable returns (uint256[] memory loanIds);
+
+    /// @notice Execute instantSell on all the NFTs in the provided input
+    /// @param loanIds The list of all the token IDs
+    /// @param minProfitAmounts List of minProfitAmount for each `instantSell` call
+    /// @param data The list of data to be passed to each `instantSell` call
+    /// @param partialExecution If set to true, will continue to attempt next request in the loop
+    ///        when one `instantSell` or transfer ticket call fails
+    function instantSellBatch(
+        uint256[] memory loanIds,
+        uint256[] memory minProfitAmounts,
+        bytes[] calldata data,
+        bool partialExecution
+    ) external;
 }

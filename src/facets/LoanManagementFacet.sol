@@ -187,7 +187,10 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
         }
         _requireIsNotSanctioned(msg.sender, sf);
         // requireMsgSenderIsBuyer
-        _requireMsgSenderIsValidCaller(borrowerAddress);
+        if (msg.sender != address(this)) {
+            _requireMsgSenderIsValidCaller(borrowerAddress);
+        }
+        
         // requireLoanNotInHardDefault
         _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.loanTerms.periodDuration);
 
@@ -624,10 +627,4 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
     ) private view returns (uint256) {
         return (loanPaymentAmount * sf.protocolFeeBPS) / NiftyApesStorage.BASE_BPS;
     }
-
-    // function _sendProtocolFeeToRecipient(uint256 amount, NiftyApesStorage.SellerFinancingStorage storage sf) private {
-    //     if (sf.protocolFeeRecipient != address(0) && amount > 0) {
-    //         sf.protocolFeeRecipient.sendValue(amount);
-    //     }
-    // }
 }

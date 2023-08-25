@@ -10,7 +10,6 @@ import "../../../src/facets/OfferFacet.sol";
 import "../../../src/facets/LoanExecutionFacet.sol";
 import "../../../src/facets/LoanManagementFacet.sol";
 import "../../../src/facets/BatchExecutionFacet.sol";
-import "../../../src/marketplaceIntegration/MarketplaceIntegration.sol";
 import "../../../src/erc721MintFinancing/ERC721MintFinancing.sol";
 import { DiamondDeployment } from "./DiamondDeployment.sol";
 import "../../../src/diamond/interfaces/IDiamondCut.sol";
@@ -27,7 +26,6 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
     NiftyApesBatchExecutionFacet batchFacet;
     INiftyApes sellerFinancing;
 
-    MarketplaceIntegration marketplaceIntegration;
     ERC721MintFinancing erc721MintFinancing;
 
     address SEAPORT_ADDRESS = 0x00000000000001ad428e4906aE43D8F9852d0dD6;
@@ -109,9 +107,10 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allLoanManagementSelectors[6] = loanManagFacet.makePaymentBatch.selector;
 
         batchFacet = new NiftyApesBatchExecutionFacet();
-        bytes4[] memory allBatchSelectors = new bytes4[](1);
+        bytes4[] memory allBatchSelectors = new bytes4[](2);
         // after loan is created: loan management
         allBatchSelectors[0] = batchFacet.buyWithSellerFinancingBatch.selector;
+        allBatchSelectors[1] = batchFacet.instantSellBatch.selector;
 
         IDiamondCut.FacetCut[] memory diamondCuts = new IDiamondCut.FacetCut[](5);
         diamondCuts[0] = IDiamondCut.FacetCut(address(adminFacet), IDiamondCut.FacetCutAction.Add, allAdminSelectors);
@@ -135,13 +134,6 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
 
         // declare interfaces
         sellerFinancing = INiftyApes(address(diamond));
-
-        // deploy marketplace integration
-        marketplaceIntegration = new MarketplaceIntegration(
-            address(sellerFinancing),
-            SUPERRARE_MARKETPLACE,
-            SUPERRARE_MARKET_FEE_BPS
-        );
 
         vm.stopPrank();
         vm.startPrank(seller1);

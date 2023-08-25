@@ -5,11 +5,11 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 
-import "../../utils/fixtures/OffersLoansFixtures.sol";
-import "../../../src/interfaces/niftyapes/INiftyApesStructs.sol";
-import "../../../src/interfaces/seaport/ISeaport.sol";
-import "../../../src/interfaces/niftyapes/INiftyApesEvents.sol";
-import "../../common/Console.sol";
+import "../utils/fixtures/OffersLoansFixtures.sol";
+import "../../src/interfaces/niftyapes/INiftyApesStructs.sol";
+import "../../src/interfaces/seaport/ISeaport.sol";
+import "../../src/interfaces/niftyapes/INiftyApesEvents.sol";
+import "../common/Console.sol";
 
 contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
     uint256[] tokenIds = new uint256[](2);
@@ -60,11 +60,9 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         data[0] = abi.encode(order[0]);
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loanIds[0]);
-        
         vm.expectEmit(true, true, false, false);
         emit InstantSell(offer.collateralItem.token, offer.collateralItem.tokenId, 0);
-        marketplaceIntegration.instantSellBatch(
+        sellerFinancing.instantSellBatch(
             loanIds,
             minProfitAmounts,
             data,
@@ -175,14 +173,11 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         data[1] = abi.encode(orderForClosingLoan1[0]);
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.loanId);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan1.loanId);
-        
         vm.expectEmit(true, true, false, false);
         emit InstantSell(offer.collateralItem.token, tokenIds[0], 0);
         vm.expectEmit(true, true, false, false);
         emit InstantSell(offer.collateralItem.token, tokenIds[1], 0);
-        marketplaceIntegration.instantSellBatch(
+        sellerFinancing.instantSellBatch(
             loanIds,
             minProfitAmounts,
             data,
@@ -209,7 +204,7 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         _test_instantSellBatch_executes_two_loan_case(fixedForSpeed);
     }
 
-    function _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(FuzzedOfferFields memory fuzzed) private {
+    function _test_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfFirstBuyerTicket(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
@@ -292,11 +287,11 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 buyer1BalanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan1.loanId);        
-        // not approving loan0 buyer ticket and expecting the call to not fail and only execute second transaction
+        // moving the buyer ticket to buyer2 to let the instant sell fail
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan0.loanId);        
         vm.expectEmit(true, true, false, false);
         emit InstantSell(offer.collateralItem.token, tokenIds[1], 0);
-        marketplaceIntegration.instantSellBatch(
+        sellerFinancing.instantSellBatch(
             loanIds,
             minProfitAmounts,
             data,
@@ -311,22 +306,22 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         );
 
         assertEq(boredApeYachtClub.ownerOf(tokenIds[0]), address(sellerFinancing));
-        // buyer1 still owns loan0.loanId
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan0.loanId), address(buyer1));
+        // buyer2 owns loan0.loanId
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan0.loanId), address(buyer2));
     }
 
-    function test_fuzz_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(
+    function test_fuzz_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfFirstBuyerTicket(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(fuzzed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfFirstBuyerTicket(fuzzed);
     }
 
-    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails() public {
+    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfFirstBuyerTicket() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_firstBuyerTicketsTransferFails(fixedForSpeed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfFirstBuyerTicket(fixedForSpeed);
     }
 
-    function _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(FuzzedOfferFields memory fuzzed) private {
+    function _test_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfLastBuyerTicket(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
         offer.isCollectionOffer = true;
         offer.collectionOfferLimit = 2;
@@ -412,11 +407,11 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 buyer1BalanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.loanId);        
-        // not approving loan1 buyer ticket and expecting the call to not fail and only execute first transaction
+        // moving the buyer ticket to buyer2 to let the instant sell fail
+        IERC721Upgradeable(address(sellerFinancing)).safeTransferFrom(buyer1, buyer2, loan1.loanId);        
         vm.expectEmit(true, true, false, false);
         emit InstantSell(offer.collateralItem.token, tokenIds[0], 0);
-        marketplaceIntegration.instantSellBatch(
+        sellerFinancing.instantSellBatch(
             loanIds,
             minProfitAmounts,
             data,
@@ -431,19 +426,19 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         );
 
         assertEq(boredApeYachtClub.ownerOf(tokenIds[1]), address(sellerFinancing));
-        // buyer1 still owns loan1.loanId
-        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan1.loanId), address(buyer1));
+        // buyer2 owns loan1.loanId
+        assertEq(IERC721Upgradeable(address(sellerFinancing)).ownerOf(loan1.loanId), address(buyer2));
     }
 
-    function test_fuzz_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(
+    function test_fuzz_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfLastBuyerTicket(
         FuzzedOfferFields memory fuzzed
     ) public validateFuzzedOfferFields(fuzzed) {
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(fuzzed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfLastBuyerTicket(fuzzed);
     }
 
-    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails() public {
+    function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfLastBuyerTicket() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_instantSellBatch_partialExecution_doesnt_revert_if_lastBuyerTicketsTransferFails(fixedForSpeed);
+        _test_instantSellBatch_partialExecution_doesnt_revert_if_notOwnerOfLastBuyerTicket(fixedForSpeed);
     }
 
     function _test_instantSellBatch_partialExecution_doesnt_revert_if_lastInstantSellFails(FuzzedOfferFields memory fuzzed) private {
@@ -519,12 +514,9 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 buyer1BalanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.loanId);  
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan1.loanId);        
-
         vm.expectEmit(true, true, false, false);
         emit InstantSell(offer.collateralItem.token, tokenIds[0], 0);
-        marketplaceIntegration.instantSellBatch(
+        sellerFinancing.instantSellBatch(
             loanIds,
             minProfitAmounts,
             data,
@@ -629,12 +621,9 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         uint256 buyer1BalanceBefore = address(buyer1).balance;
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.loanId);  
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan1.loanId);        
-
         vm.expectEmit(true, true, false, false);
         emit InstantSell(offer.collateralItem.token, tokenIds[1], 0);
-        marketplaceIntegration.instantSellBatch(
+        sellerFinancing.instantSellBatch(
             loanIds,
             minProfitAmounts,
             data,
@@ -662,121 +651,6 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
     function test_unit_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_instantSellBatch_partialExecution_doesnt_revert_if_firstInstantSellFails(fixedForSpeed);
-    }
-
-    function _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(FuzzedOfferFields memory fuzzed) private {
-        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
-        offer.isCollectionOffer = true;
-        offer.collectionOfferLimit = 2;
-
-        bytes memory offerSignature =  signOffer(seller1_private_key, offer);
-
-        vm.prank(SANCTIONED_ADDRESS);
-        boredApeYachtClub.transferFrom(SANCTIONED_ADDRESS, seller1 , 6974);
-
-        vm.startPrank(seller1);
-        boredApeYachtClub.approve(address(sellerFinancing), 8661);
-        boredApeYachtClub.approve(address(sellerFinancing), 6974);
-        vm.stopPrank();
-
-        
-        vm.startPrank(buyer1);
-        uint256[] memory loanIds = new uint256[](2);
-        loanIds[0] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
-            offer,
-            offerSignature,
-            buyer1,
-            tokenIds[0],
-            offer.collateralItem.amount
-        );
-        loanIds[1] = sellerFinancing.buyWithSellerFinancing{ value: offer.loanTerms.downPaymentAmount }(
-            offer,
-            offerSignature,
-            buyer1,
-            tokenIds[1],
-            offer.collateralItem.amount
-        );
-        vm.stopPrank();
-
-        assertionsForExecutedLoan(offer, tokenIds[0], buyer1, loanIds[0]);
-        assertionsForExecutedLoan(offer, tokenIds[1], buyer1, loanIds[1]);
-
-        Loan memory loan0 = sellerFinancing.getLoan(loanIds[0]);
-        Loan memory loan1 = sellerFinancing.getLoan(loanIds[1]);
-
-        (, uint256 periodInterestLoan0,) = sellerFinancing.calculateMinimumPayment(loanIds[0]);
-        (, uint256 periodInterestLoan1,) = sellerFinancing.calculateMinimumPayment(loanIds[1]);
-
-        
-
-        uint256[] memory minProfitAmounts = new uint256[](2);
-        minProfitAmounts[0] = 1 ether;
-        minProfitAmounts[1] = 2 ether;
-
-        // adding 2.5% opnesea fee amount
-        uint256 bidPriceLoan0 = ((loan0.loanTerms.principalAmount + periodInterestLoan0 + minProfitAmounts[0]) *
-            40 +
-            38) / 39;
-        uint256 bidPriceLoan1 = ((loan1.loanTerms.principalAmount + periodInterestLoan1 + minProfitAmounts[1]) *
-            40 +
-            38) / 39;
-
-        ISeaport.Order[] memory orderForClosingLoan0 = _createOrder(
-            offer.collateralItem.token,
-            tokenIds[0],
-            bidPriceLoan0,
-            buyer2,
-            true
-        );
-        ISeaport.Order[] memory orderForClosingLoan1 = _createOrder(
-            offer.collateralItem.token,
-            tokenIds[1],
-            bidPriceLoan1,
-            buyer2,
-            true
-        );
-        mintWeth(buyer2, bidPriceLoan0 + bidPriceLoan1);
-
-        vm.startPrank(buyer2);
-        IERC20Upgradeable(WETH_ADDRESS).approve(SEAPORT_CONDUIT, bidPriceLoan0 + bidPriceLoan1);
-        ISeaport(SEAPORT_ADDRESS).validate(orderForClosingLoan0);
-        ISeaport(SEAPORT_ADDRESS).validate(orderForClosingLoan1);
-        vm.stopPrank();
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encode(orderForClosingLoan0[0]);
-        data[1] = abi.encode(orderForClosingLoan1[0]);
-
-        vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loan0.loanId);        
-        // not approving loan1 buyer ticket and expecting the call to fail
-    
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MarketplaceIntegration.BuyerTicketTransferRevertedAt.selector,
-                1,
-                buyer1,
-                address(marketplaceIntegration)
-            )
-        );
-        marketplaceIntegration.instantSellBatch(
-            loanIds,
-            minProfitAmounts,
-            data,
-            false
-        );
-        vm.stopPrank();
-    }
-
-    function test_fuzz_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(
-        FuzzedOfferFields memory fuzzed
-    ) public validateFuzzedOfferFields(fuzzed) {
-        _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(fuzzed);
-    }
-
-    function test_unit_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace() public {
-        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
-        _test_instantSellBatch_reverts_if_buyerTicketsNotApprovedForMarketplace(fixedForSpeed);
     }
 
     function _test_instantSellBatch_reverts_if_invalidInputLengths(FuzzedOfferFields memory fuzzed) private {
@@ -819,9 +693,8 @@ contract TestInstantSellBatch is Test, OffersLoansFixtures, INiftyApesEvents {
         data[1] = abi.encode(order[0]);
 
         vm.startPrank(buyer1);
-        IERC721Upgradeable(address(sellerFinancing)).approve(address(marketplaceIntegration), loanIds[0]);
-        vm.expectRevert(MarketplaceIntegration.InvalidInputLength.selector);
-        marketplaceIntegration.instantSellBatch(
+        vm.expectRevert(INiftyApesErrors.InvalidInputLength.selector);
+        sellerFinancing.instantSellBatch(
             loanIds,
             minProfitAmounts,
             data,
