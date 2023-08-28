@@ -80,6 +80,47 @@ contract NiftyApesBatchExecutionFacet is INiftyApesStructs, INiftyApesErrors, IB
     }
 
     /// @inheritdoc IBatchExecution
+    function borrowBatch(
+        Offer[] calldata offers,
+        bytes[] calldata signatures,
+        address borrower,
+        uint256[] calldata tokenIds,
+        uint256[] calldata tokenAmounts,
+        bool partialExecution
+    ) external returns (uint256[] memory loanIds) {
+        // requireLengthOfAllInputArraysAreEqual
+        if (
+            offers.length != signatures.length ||
+            offers.length != tokenIds.length ||
+            offers.length != tokenAmounts.length
+        ) {
+            revert InvalidInputLength();
+        }
+        loanIds = new uint256[](offers.length);
+        // loop through list of offers to execute
+        for (uint256 i; i < offers.length; ++i) {
+            // instantiate calldata params to bypass stack too deep error
+            Offer memory offer = offers[i];
+            // bytes calldata signature = signatures[i];
+            // uint256 tokenId = tokenIds[i];
+            // uint256 tokenAmount = tokenAmounts[i];
+            // address buyerRe = buyer;
+            try
+                INiftyApes(address(this)).borrow(offer, signatures[i], borrower, tokenIds[i], tokenAmounts[i])
+            returns (uint256 loanId) {
+                loanIds[i] = loanId;
+            } catch {
+                // if failed
+                // if partial execution is not allowed, revert
+                if (!partialExecution) {
+                    revert BatchCallRevertedAt(i);
+                }
+                loanIds[i] = ~uint256(0);
+            }
+        }
+    }
+
+    /// @inheritdoc IBatchExecution
     function instantSellBatch(
         uint256[] memory loanIds,
         uint256[] memory minProfitAmounts,

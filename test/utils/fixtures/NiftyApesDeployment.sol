@@ -107,10 +107,11 @@ contract NiftyApesDeployment is Test, DiamondDeployment {
         allLoanManagementSelectors[6] = loanManagFacet.makePaymentBatch.selector;
 
         batchFacet = new NiftyApesBatchExecutionFacet();
-        bytes4[] memory allBatchSelectors = new bytes4[](2);
+        bytes4[] memory allBatchSelectors = new bytes4[](3);
         // after loan is created: loan management
         allBatchSelectors[0] = batchFacet.buyWithSellerFinancingBatch.selector;
         allBatchSelectors[1] = batchFacet.instantSellBatch.selector;
+        allBatchSelectors[1] = batchFacet.borrowBatch.selector;
 
         IDiamondCut.FacetCut[] memory diamondCuts = new IDiamondCut.FacetCut[](5);
         diamondCuts[0] = IDiamondCut.FacetCut(address(adminFacet), IDiamondCut.FacetCutAction.Add, allAdminSelectors);
