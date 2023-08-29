@@ -88,23 +88,20 @@ contract NiftyApesBatchExecutionFacet is INiftyApesStructs, INiftyApesErrors, IB
         uint256[] calldata tokenAmounts,
         bool partialExecution
     ) external returns (uint256[] memory loanIds) {
+        uint256 batchLength = offers.length;
         // requireLengthOfAllInputArraysAreEqual
         if (
-            offers.length != signatures.length ||
-            offers.length != tokenIds.length ||
-            offers.length != tokenAmounts.length
+            batchLength != signatures.length ||
+            batchLength != tokenIds.length ||
+            batchLength != tokenAmounts.length
         ) {
             revert InvalidInputLength();
         }
-        loanIds = new uint256[](offers.length);
+        loanIds = new uint256[](batchLength);
         // loop through list of offers to execute
-        for (uint256 i; i < offers.length; ++i) {
+        for (uint256 i; i < batchLength; ++i) {
             // instantiate calldata params to bypass stack too deep error
             Offer memory offer = offers[i];
-            // bytes calldata signature = signatures[i];
-            // uint256 tokenId = tokenIds[i];
-            // uint256 tokenAmount = tokenAmounts[i];
-            // address buyerRe = buyer;
             try
                 INiftyApes(address(this)).borrow(offer, signatures[i], borrower, tokenIds[i], tokenAmounts[i])
             returns (uint256 loanId) {
@@ -117,6 +114,95 @@ contract NiftyApesBatchExecutionFacet is INiftyApesStructs, INiftyApesErrors, IB
                 }
                 loanIds[i] = ~uint256(0);
             }
+        }
+    }
+
+    /// @inheritdoc IBatchExecution
+    function buyWith3rdPartyFinancingBatch(
+        INiftyApesStructs.Offer[] calldata offers,
+        bytes[] calldata signatures,
+        address borrower,
+        uint256[] calldata tokenIds,
+        uint256[] calldata tokenAmounts,
+        bytes[] calldata data,
+        bool partialExecution
+    ) external returns (uint256[] memory loanIds) {
+        // requireLengthOfAllInputArraysAreEqual
+        if (
+            offers.length != signatures.length ||
+            offers.length != tokenIds.length ||
+            offers.length != tokenAmounts.length ||
+            offers.length != data.length
+        ) {
+            revert InvalidInputLength();
+        }
+        loanIds = new uint256[](offers.length);
+        // loop through list of offers to execute
+        for (uint256 i; i < offers.length; ++i) {
+            // instantiate calldata params to bypass stack too deep error
+            Offer memory offer = offers[i];
+            try
+                INiftyApes(address(this)).buyWith3rdPartyFinancing(offer, signatures[i], borrower, tokenIds[i], tokenAmounts[i], data[i])
+            returns (uint256 loanId) {
+                loanIds[i] = loanId;
+            } catch {
+                // if failed
+                // if partial execution is not allowed, revert
+                if (!partialExecution) {
+                    revert BatchCallRevertedAt(i);
+                }
+                loanIds[i] = ~uint256(0);
+            }
+        }
+    }
+
+    /// @inheritdoc IBatchExecution
+    function buyNowBatch(
+        Offer[] memory offers,
+        bytes[] calldata signatures,
+        address buyer,
+        uint256[] calldata tokenIds,
+        uint256[] calldata tokenAmounts,
+        bool partialExecution
+    ) external payable {
+        // requireLengthOfAllInputArraysAreEqual
+        if (
+            offers.length != signatures.length ||
+            offers.length != tokenIds.length ||
+            offers.length != tokenAmounts.length
+        ) {
+            revert InvalidInputLength();
+        }
+
+        uint256 valueConsumed;
+        // loop through list of offers to execute
+        for (uint256 i; i < offers.length; ++i) {
+            // instantiate calldata params to bypass stack too deep error
+            Offer memory offer = offers[i];
+
+            // try executing current offer
+            uint256 balanceBefore = address(this).balance;
+            try
+                INiftyApes(address(this)).buyNow{
+                    value: msg.value - valueConsumed
+                }(offer, signatures[i], buyer, tokenIds[i], tokenAmounts[i])
+            {
+                // if successful
+                // increase valueConsumed
+                if (offer.loanTerms.itemType == ItemType.NATIVE) {
+                    valueConsumed += balanceBefore - address(this).balance;
+                }
+            } catch {
+                // if failed
+                // if partial execution is not allowed, revert
+                if (!partialExecution) {
+                    revert BatchCallRevertedAt(i);
+                }
+            }
+        }
+        // send any unused value back to msg.sender
+        if (msg.value - valueConsumed > 0) {
+            payable(msg.sender).sendValue(msg.value - valueConsumed);
         }
     }
 
