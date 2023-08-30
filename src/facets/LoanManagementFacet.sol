@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.18;
+pragma solidity 0.8.21;
 
 import "../storage/NiftyApesStorage.sol";
 import "../interfaces/niftyapes/loanManagement/ILoanManagement.sol";
@@ -122,7 +122,6 @@ contract NiftyApesLoanManagementFacet is NiftyApesInternal, ILoanManagement {
             .sellerFinancingStorage();
 
         uint256 valueConsumed;
-
         // loop through the list to execute payment
         for (uint256 i; i < batchLength; ++i) {
             // if remaining value is not sufficient to execute ith payment
