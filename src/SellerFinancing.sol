@@ -230,9 +230,6 @@ contract NiftyApesSellerFinancing is
         Loan storage loan = _getLoan(offer.nftContractAddress, nftId);
         // get seller
         address seller = getOfferSigner(offer, signature);
-        if (_callERC1271isValidSignature(offer.creator, getOfferHash(offer), signature)) {
-            seller = offer.creator;
-        }
 
         _require721Owner(offer.nftContractAddress, nftId, seller);
         _requireIsNotSanctioned(seller);
@@ -689,17 +686,6 @@ contract NiftyApesSellerFinancing is
                 );
             }
         }
-    }
-
-    function _callERC1271isValidSignature(
-        address _addr,
-        bytes32 _hash,
-        bytes calldata _signature
-    ) private returns (bool) {
-        (, bytes memory data) = _addr.call(
-            abi.encodeWithSignature("isValidSignature(bytes32,bytes)", _hash, _signature)
-        );
-        return bytes4(data) == 0x1626ba7e;
     }
 
     function _payRoyalties(
