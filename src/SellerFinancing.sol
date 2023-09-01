@@ -210,7 +210,9 @@ contract NiftyApesSellerFinancing is
         Offer memory offer,
         bytes calldata signature,
         address buyer,
-        uint256 nftId
+        uint256 nftId,
+        string calldata buyerTicketMetadataURI,
+        string calldata sellerTicketMetadataURI
     ) external payable whenNotPaused nonReentrant {
         // check for collection offer
         if (offer.nftId != ~uint256(0)) {
@@ -278,28 +280,19 @@ contract NiftyApesSellerFinancing is
         payable(seller).sendValue(offer.downPaymentAmount - totalRoyaltiesPaid);
 
         // mint buyer nft
-        uint256 buyerNftId = loanNftNonce;
+        _safeMint(buyer, loanNftNonce);
+        _setTokenURI(loanNftNonce, buyerTicketMetadataURI);
         loanNftNonce++;
-        _safeMint(buyer, buyerNftId);
-        _setTokenURI(
-            buyerNftId,
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(nftId)
-        );
 
         // mint seller nft
-        // use loanNftNonce to prevent stack too deep error
         _safeMint(seller, loanNftNonce);
+        _setTokenURI(loanNftNonce, sellerTicketMetadataURI);
         loanNftNonce++;
 
+        uint256 principalAmount = offer.price - offer.downPaymentAmount;
+
         // create loan
-        _createLoan(
-            loan,
-            offer,
-            nftId,
-            loanNftNonce - 1,
-            buyerNftId,
-            (offer.price - offer.downPaymentAmount)
-        );
+        _createLoan(loan, offer, nftId, loanNftNonce - 1, loanNftNonce - 2, principalAmount);
 
         // transfer nft from seller to this contract, revert on failure
         _transferNft(offer.nftContractAddress, nftId, seller, address(this));

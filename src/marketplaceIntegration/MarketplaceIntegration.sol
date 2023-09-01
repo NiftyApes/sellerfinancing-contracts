@@ -88,7 +88,9 @@ contract MarketplaceIntegration is Ownable, Pausable {
         ISellerFinancing.Offer memory offer,
         bytes calldata signature,
         address buyer,
-        uint256 nftId
+        uint256 nftId,
+        string calldata buyerTicketMetadataURI,
+        string calldata sellerTicketMetadataURI
     ) external payable whenNotPaused {
         _requireIsNotSanctioned(msg.sender);
         _requireIsNotSanctioned(buyer);
@@ -101,7 +103,7 @@ contract MarketplaceIntegration is Ownable, Pausable {
 
         ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
             value: msg.value - marketplaceFeeAmount
-        }(offer, signature, buyer, nftId);
+        }(offer, signature, buyer, nftId, buyerTicketMetadataURI, sellerTicketMetadataURI);
     }
 
     function _requireNonZeroAddress(address given) internal pure {

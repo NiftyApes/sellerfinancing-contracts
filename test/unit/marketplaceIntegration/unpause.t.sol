@@ -63,7 +63,9 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 
@@ -75,7 +77,9 @@ contract TestUnpauseMarketplace is Test, BaseTest, OffersLoansFixtures {
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 

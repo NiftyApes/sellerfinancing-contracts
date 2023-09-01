@@ -54,12 +54,16 @@ interface ISellerFinancing is
     /// @param offer The details of the financing offer
     /// @param signature A signed offerHash
     /// @param buyer The address of the buyer
+    /// @param buyerTicketMetadataURI The URI for the buyerTicket metadata
+    /// @param sellerTicketMetadataURI The URI for the sellerTicket metadata
     /// @dev   buyer provided as param to allow for 3rd party marketplace integrations
     function buyWithFinancing(
         Offer calldata offer,
         bytes memory signature,
         address buyer,
-        uint256 nftId
+        uint256 nftId,
+        string calldata buyerTicketMetadataURI,
+        string calldata sellerTicketMetadataURI
     ) external payable;
 
     /// @notice Make a partial payment or full repayment of a loan.

@@ -60,7 +60,9 @@ contract TestGetOfferSignatureStatus is
             offer,
             signature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 

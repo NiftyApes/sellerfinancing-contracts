@@ -116,7 +116,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 
@@ -156,7 +158,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -207,7 +211,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            nftId
+            nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 
@@ -250,7 +256,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId + 1
+            offer.nftId + 1,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -288,7 +296,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            nftId
+            nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 
@@ -300,7 +310,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            nftId + 1
+            nftId + 1,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -342,7 +354,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -369,7 +383,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer, offer.nftId);
@@ -392,7 +408,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
     }
 
@@ -421,7 +439,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -450,7 +470,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -484,7 +506,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -519,7 +543,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -554,7 +580,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -587,7 +615,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -620,7 +650,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -647,7 +679,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 
@@ -664,7 +698,9 @@ contract TestBuyWithFinancing is Test, OffersLoansFixtures, ISellerFinancingEven
             offer,
             offerSignature2,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
