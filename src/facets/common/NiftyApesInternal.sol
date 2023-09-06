@@ -1,12 +1,10 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.18;
+pragma solidity 0.8.21;
 
 import "@openzeppelin/contracts/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts/utils/AddressUpgradeable.sol";
@@ -16,6 +14,7 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURIUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSAUpgradeable.sol";
 import "../../storage/NiftyApesStorage.sol";
 import "../../interfaces/niftyapes/INiftyApesErrors.sol";
 import "../../interfaces/niftyapes/INiftyApesStructs.sol";
@@ -23,7 +22,6 @@ import "../../interfaces/niftyapes/INiftyApesEvents.sol";
 import "../../interfaces/sanctions/SanctionsList.sol";
 import "../../interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "../../interfaces/delegateCash/IDelegationRegistry.sol";
-import "../../lib/ECDSABridge.sol";
 
 /// @title NiftyApes abstract contract for common internal functions
 /// @custom:version 2.0
@@ -122,7 +120,7 @@ abstract contract NiftyApesInternal is
         Offer memory offer,
         bytes memory signature
     ) internal view returns (address) {
-        return ECDSABridge.recover(_getOfferHash(offer), signature);
+        return ECDSAUpgradeable.recover(_getOfferHash(offer), signature);
     }
 
     function _getOfferSignatureStatus(
@@ -567,6 +565,62 @@ abstract contract NiftyApesInternal is
                     msg.value - offer.loanTerms.downPaymentAmount - totalMarketPlaceFees
                 );
             }
+        }
+    }
+
+    function _executePurchase(
+        Offer memory offer,
+        address borrower,
+        address lender,
+        bytes calldata data,
+        NiftyApesStorage.SellerFinancingStorage storage sf
+    ) internal {
+        // decode seaport order data
+        ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
+
+        // instantiate weth
+        IERC20Upgradeable asset = IERC20Upgradeable(offer.loanTerms.token);
+
+        // calculate totalConsiderationAmount
+        uint256 totalConsiderationAmount;
+        for (uint256 i = 0; i < order.parameters.totalOriginalConsiderationItems; i++) {
+            totalConsiderationAmount += order.parameters.consideration[i].endAmount;
+        }
+
+        // transferFrom weth from lender
+        asset.safeTransferFrom(lender, address(this), offer.loanTerms.principalAmount);
+
+        // transferFrom downPayment from buyer
+        asset.safeTransferFrom(
+            borrower,
+            address(this),
+            totalConsiderationAmount - offer.loanTerms.principalAmount
+        );
+
+        // set allowance for seaport to transferFrom this contract during .fulfillOrder()
+        asset.approve(sf.seaportContractAddress, totalConsiderationAmount);
+
+        // execute sale on Seaport
+        if (!ISeaport(sf.seaportContractAddress).fulfillOrder(order, bytes32(0))) {
+            revert SeaportOrderNotFulfilled();
+        }
+    }
+
+    function _payMarketplaceFees(
+        Offer memory offer,
+        bytes calldata signature,
+        address payerAddress
+    ) internal returns (uint256 totalFeesPaid) {
+        for (uint256 i = 0; i < offer.marketplaceRecipients.length; i++) {
+            address feeRecipient = offer.marketplaceRecipients[i].recipient;
+            uint256 feeAmount = offer.marketplaceRecipients[i].amount;
+            if (offer.loanTerms.itemType == ItemType.NATIVE) {
+                payable(feeRecipient).sendValue(feeAmount);
+            } else {
+                _transferERC20(offer.loanTerms.token, payerAddress, feeRecipient, feeAmount);
+            }
+            emit MarketplaceFeesPaid(signature, feeRecipient, offer.loanTerms.token, feeAmount);
+            totalFeesPaid += feeAmount;
         }
     }
 }

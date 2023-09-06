@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.18;
+pragma solidity 0.8.21;
 
 import "../storage/NiftyApesStorage.sol";
 import "../interfaces/niftyapes/loanExecution/ILoanExecution.sol";
@@ -151,44 +151,6 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
         return sf.loanId - 2;
     }
 
-    function _executePurchase(
-        Offer memory offer,
-        address borrower,
-        address lender,
-        bytes calldata data,
-        NiftyApesStorage.SellerFinancingStorage storage sf
-    ) private {
-        // decode seaport order data
-        ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
-
-        // instantiate weth
-        IERC20Upgradeable asset = IERC20Upgradeable(offer.loanTerms.token);
-
-        // calculate totalConsiderationAmount
-        uint256 totalConsiderationAmount;
-        for (uint256 i = 0; i < order.parameters.totalOriginalConsiderationItems; i++) {
-            totalConsiderationAmount += order.parameters.consideration[i].endAmount;
-        }
-
-        // transferFrom weth from lender
-        asset.safeTransferFrom(lender, address(this), offer.loanTerms.principalAmount);
-
-        // transferFrom downPayment from buyer
-        asset.safeTransferFrom(
-            borrower,
-            address(this),
-            totalConsiderationAmount - offer.loanTerms.principalAmount
-        );
-
-        // set allowance for seaport to transferFrom this contract during .fulfillOrder()
-        asset.approve(sf.seaportContractAddress, totalConsiderationAmount);
-
-        // execute sale on Seaport
-        if (!ISeaport(sf.seaportContractAddress).fulfillOrder(order, bytes32(0))) {
-            revert SeaportOrderNotFulfilled();
-        }
-    }
-
     /// @inheritdoc ILoanExecution
     function buyNow(
         Offer memory offer,
@@ -249,23 +211,5 @@ contract NiftyApesLoanExecutionFacet is NiftyApesInternal, ILoanExecution {
             offer.loanTerms.token,
             offer.loanTerms.downPaymentAmount
         );
-    }
-
-    function _payMarketplaceFees(
-        Offer memory offer,
-        bytes calldata signature,
-        address payerAddress
-    ) private returns (uint256 totalFeesPaid) {
-        for (uint256 i = 0; i < offer.marketplaceRecipients.length; i++) {
-            address feeRecipient = offer.marketplaceRecipients[i].recipient;
-            uint256 feeAmount = offer.marketplaceRecipients[i].amount;
-            if (offer.loanTerms.itemType == ItemType.NATIVE) {
-                payable(feeRecipient).sendValue(feeAmount);
-            } else {
-                _transferERC20(offer.loanTerms.token, payerAddress, feeRecipient, feeAmount);
-            }
-            emit MarketplaceFeesPaid(signature, feeRecipient, offer.loanTerms.token, feeAmount);
-            totalFeesPaid += feeAmount;
-        }
     }
 }
