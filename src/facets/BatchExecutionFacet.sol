@@ -101,10 +101,6 @@ contract NiftyApesBatchExecutionFacet is INiftyApesStructs, INiftyApesErrors, IB
         for (uint256 i; i < offers.length; ++i) {
             // instantiate calldata params to bypass stack too deep error
             Offer memory offer = offers[i];
-            // bytes calldata signature = signatures[i];
-            // uint256 tokenId = tokenIds[i];
-            // uint256 tokenAmount = tokenAmounts[i];
-            // address buyerRe = buyer;
             try
                 INiftyApes(address(this)).borrow(offer, signatures[i], borrower, tokenIds[i], tokenAmounts[i])
             returns (uint256 loanId) {
