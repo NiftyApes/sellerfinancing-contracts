@@ -78,9 +78,10 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(allFacets[6].functionSelectors[1], loanManagFacet.seizeAsset.selector);
         assertEq(allFacets[6].functionSelectors[6], loanManagFacet.makePaymentBatch.selector);
 
-        assertEq(allFacets[7].functionSelectors.length, 2);
+        assertEq(allFacets[7].functionSelectors.length, 3);
         assertEq(allFacets[7].functionSelectors[0], batchFacet.buyWithSellerFinancingBatch.selector);
         assertEq(allFacets[7].functionSelectors[1], batchFacet.instantSellBatch.selector);
+        assertEq(allFacets[7].functionSelectors[2], batchFacet.borrowBatch.selector);
     }
 
     function test_facetFunctionSelectors_must_return_all_added_selectors_for_each_facet() public {
@@ -125,9 +126,10 @@ contract TestDiamondIntegration is Test, BaseTest, OffersLoansFixtures {
         assertEq(facetFunctionSelectors[6], loanManagFacet.makePaymentBatch.selector);
 
         facetFunctionSelectors = diamondLoupe.facetFunctionSelectors(address(batchFacet));
-        assertEq(facetFunctionSelectors.length, 2);
+        assertEq(facetFunctionSelectors.length, 3);
         assertEq(facetFunctionSelectors[0], batchFacet.buyWithSellerFinancingBatch.selector);
         assertEq(facetFunctionSelectors[1], batchFacet.instantSellBatch.selector);
+        assertEq(facetFunctionSelectors[2], batchFacet.borrowBatch.selector);
     }
 
     function test_facetAddress_must_return_correctAddresses_for_each_selector() public {

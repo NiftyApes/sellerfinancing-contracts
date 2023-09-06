@@ -22,6 +22,23 @@ interface IBatchExecution {
         bool partialExecution
     ) external payable returns (uint256[] memory loanIds);
 
+    /// @notice Execute loan offers in batch for borrower
+    /// @param offers The list of the offers to execute
+    /// @param signatures The list of corresponding signatures from the offer creators
+    /// @param borrower The address of the buyer
+    /// @param tokenIds The tokenIds of the tokens the buyer intends to buy
+    /// @param tokenAmounts The amount of the tokens the buyer intends to buy
+    /// @param partialExecution If set to true, will continue to attempt offer executions regardless
+    ///        if previous offers have failed or had insufficient value available
+    function borrowBatch(
+        INiftyApesStructs.Offer[] calldata offers,
+        bytes[] calldata signatures,
+        address borrower,
+        uint256[] calldata tokenIds,
+        uint256[] calldata tokenAmounts,
+        bool partialExecution
+    ) external returns (uint256[] memory loanIds);
+
     /// @notice Execute instantSell on all the NFTs in the provided input
     /// @param loanIds The list of all the token IDs
     /// @param minProfitAmounts List of minProfitAmount for each `instantSell` call
