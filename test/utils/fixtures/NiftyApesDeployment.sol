@@ -2,7 +2,6 @@
 pragma solidity 0.8.21;
 
 import "@openzeppelin-norm/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-// import "@openzeppelin-norm/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../../../src/interfaces/niftyapes/INiftyApes.sol";
 import "../../../src/facets/AdminFacet.sol";
