@@ -25,12 +25,4 @@ interface ISellerFinancingAdmin {
     function updateDelegateRegistryContractAddress(
         address newDelegateRegistryContractAddress
     ) external;
-
-    /// @notice Updates seaport contract address to new address
-    /// @param newSeaportContractAddress New seaport address
-    function updateSeaportContractAddress(address newSeaportContractAddress) external;
-
-    /// @notice Updates Weth contract address to new address
-    /// @param newWethContractAddress New Weth contract address
-    function updateWethContractAddress(address newWethContractAddress) external;
 }

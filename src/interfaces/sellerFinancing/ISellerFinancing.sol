@@ -38,12 +38,6 @@ interface ISellerFinancing is
     /// @notice Returns value stored in `delegateRegistryContractAddress`
     function delegateRegistryContractAddress() external returns (address);
 
-    /// @notice Returns value stored in `seaportContractAddress`
-    function seaportContractAddress() external returns (address);
-
-    /// @notice Returns value stored in `wethContractAddress`
-    function wethContractAddress() external returns (address);
-
     /// @notice Withdraw a given offer
     /// @dev    Calling this method allows users to withdraw a given offer by cancelling their signature on chain
     /// @param offer The offer to withdraw
@@ -78,21 +72,6 @@ interface ISellerFinancing is
     /// @param nftId The id of a specified NFT
     function seizeAsset(address nftContractAddress, uint256 nftId) external;
 
-    /// @notice Sell the underlying nft and repay the loan using the proceeds of the sale.
-    ///         Transfer remaining funds to the buyer
-    /// @dev    This function is only callable by the buyer address
-    /// @dev    This function only supports valid Seaport orders
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param nftId The id of a specified NFT
-    /// @param minProfitAmount Minimum amount to accept for buyer's profit. Provides slippage control.
-    /// @param data Order encoded as bytes
-    function instantSell(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 minProfitAmount,
-        bytes calldata data
-    ) external;
-
     /// @notice Returns a loan identified by a given nft.
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
@@ -115,8 +94,6 @@ interface ISellerFinancing is
 
     function initialize(
         address newRoyaltiesEngineAddress,
-        address newDelegateRegistryAddress,
-        address newSeaportContractAddress,
-        address newWethContractAddress
+        address newDelegateRegistryAddress
     ) external;
 }

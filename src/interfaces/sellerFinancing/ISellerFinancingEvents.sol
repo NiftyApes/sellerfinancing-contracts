@@ -64,44 +64,4 @@ interface ISellerFinancingEvents {
         uint256 indexed nftId,
         ISellerFinancingStructs.Loan loan
     );
-
-    /// @notice Emitted when an NFT is sold instantly on Seaport
-    /// @param nftContractAddress The nft contract address
-    /// @param nftId The tokenId of the NFT which was put as collateral
-    /// @param saleAmount The sale value
-    event InstantSell(
-        address indexed nftContractAddress,
-        uint256 indexed nftId,
-        uint256 saleAmount
-    );
-
-    /// @notice Emitted when an locked NFT is listed for sale through Seaport
-    /// @param nftContractAddress The nft contract address
-    /// @param nftId The tokenId of the listed NFT
-    /// @param orderHash The hash of the order which listed the NFT
-    /// @param loan The loan details at the time of listing
-    event ListedOnSeaport(
-        address indexed nftContractAddress,
-        uint256 indexed nftId,
-        bytes32 indexed orderHash,
-        ISellerFinancingStructs.Loan loan
-    );
-
-    /// @notice Emitted when a seaport NFT listing thorugh NiftyApes is cancelled by the borrower
-    /// @param nftContractAddress The nft contract address
-    /// @param nftId The tokenId of the listed NFT
-    /// @param orderHash The hash of the order which listed the NFT
-    /// @param loan The loan details at the time of listing
-    event ListingCancelledSeaport(
-        address indexed nftContractAddress,
-        uint256 indexed nftId,
-        bytes32 indexed orderHash,
-        ISellerFinancingStructs.Loan loan
-    );
-
-    /// @notice Emitted when a flashClaim is executed on an NFT
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param nftId The id of the specified NFT
-    /// @param receiverAddress The address of the external contract that will receive and return the nft
-    event FlashClaim(address nftContractAddress, uint256 nftId, address receiverAddress);
 }

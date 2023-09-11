@@ -17,7 +17,6 @@ import "./interfaces/sellerFinancing/ISellerFinancing.sol";
 import "./interfaces/sanctions/SanctionsList.sol";
 import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "./interfaces/delegateCash/IDelegationRegistry.sol";
-import "./interfaces/seaport/ISeaport.sol";
 import "./lib/ECDSABridge.sol";
 
 /// @title NiftyApes Seller Financing
@@ -58,12 +57,6 @@ contract NiftyApesSellerFinancing is
     /// @dev The stored address for the delegate registry contract
     address public delegateRegistryContractAddress;
 
-    /// @dev The stored address for the seaport contract
-    address public seaportContractAddress;
-
-    /// @dev The stored address for the weth contract
-    address public wethContractAddress;
-
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
 
@@ -95,9 +88,7 @@ contract NiftyApesSellerFinancing is
     ///         its state outside of a constructor.
     function initialize(
         address newRoyaltiesEngineContractAddress,
-        address newDelegateRegistryContractAddress,
-        address newSeaportContractAddress,
-        address newWethContractAddress
+        address newDelegateRegistryContractAddress
     ) public initializer {
         EIP712Upgradeable.__EIP712_init("NiftyApes_SellerFinancing", "0.0.1");
         OwnableUpgradeable.__Ownable_init();
@@ -109,8 +100,6 @@ contract NiftyApesSellerFinancing is
 
         royaltiesEngineContractAddress = newRoyaltiesEngineContractAddress;
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
-        seaportContractAddress = newSeaportContractAddress;
-        wethContractAddress = newWethContractAddress;
     }
 
     /// @inheritdoc ISellerFinancingAdmin
@@ -127,18 +116,6 @@ contract NiftyApesSellerFinancing is
     ) external onlyOwner {
         _requireNonZeroAddress(newDelegateRegistryContractAddress);
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
-    }
-
-    /// @inheritdoc ISellerFinancingAdmin
-    function updateSeaportContractAddress(address newSeaportContractAddress) external onlyOwner {
-        _requireNonZeroAddress(newSeaportContractAddress);
-        seaportContractAddress = newSeaportContractAddress;
-    }
-
-    /// @inheritdoc ISellerFinancingAdmin
-    function updateWethContractAddress(address newWethContractAddress) external onlyOwner {
-        _requireNonZeroAddress(newWethContractAddress);
-        wethContractAddress = newWethContractAddress;
     }
 
     function pause() external onlyOwner {
@@ -477,99 +454,6 @@ contract NiftyApesSellerFinancing is
         _transferNft(nftContractAddress, nftId, address(this), sellerAddress);
     }
 
-    /// @inheritdoc ISellerFinancing
-    function instantSell(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 minProfitAmount,
-        bytes calldata data
-    ) external whenNotPaused nonReentrant {
-        // instantiate loan
-        Loan storage loan = _getLoan(nftContractAddress, nftId);
-        // get buyer
-        address buyerAddress = ownerOf(loan.buyerNftId);
-
-        _requireIsNotSanctioned(msg.sender);
-        // requireMsgSenderIsBuyer
-        _requireMsgSenderIsValidCaller(buyerAddress);
-        // requireLoanNotInHardDefault
-        _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
-
-        // calculate period interest
-        (, uint256 periodInterest) = calculateMinimumPayment(loan);
-        // calculate total payment required to close the loan
-        uint256 totalPaymentRequired = loan.remainingPrincipal + periodInterest;
-
-        // sell the asset to get sufficient funds to repay loan
-        uint256 saleAmountReceived = _sellAsset(
-            nftContractAddress,
-            nftId,
-            totalPaymentRequired + minProfitAmount,
-            data
-        );
-
-        // make payment to close the loan and transfer remainder to the buyer
-        _makePayment(nftContractAddress, nftId, saleAmountReceived);
-
-        // emit instant sell event
-        emit InstantSell(nftContractAddress, nftId, saleAmountReceived);
-    }
-
-    function _sellAsset(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 minSaleAmount,
-        bytes calldata data
-    ) private returns (uint256 saleAmountReceived) {
-        // approve the NFT for Seaport conduit
-        IERC721Upgradeable(nftContractAddress).approve(seaportContractAddress, nftId);
-
-        // decode seaport order data
-        ISeaport.Order memory order = abi.decode(data, (ISeaport.Order));
-
-        // validate order
-        _validateSaleOrder(order, nftContractAddress, nftId);
-
-        // instantiate weth
-        IERC20Upgradeable asset = IERC20Upgradeable(wethContractAddress);
-
-        // calculate totalConsiderationAmount
-        uint256 totalConsiderationAmount;
-        for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
-            totalConsiderationAmount += order.parameters.consideration[i].endAmount;
-        }
-
-        // set allowance for seaport to transferFrom this contract during .fulfillOrder()
-        asset.approve(seaportContractAddress, totalConsiderationAmount);
-
-        // cache this contract eth balance before the sale
-        uint256 contractBalanceBefore = address(this).balance;
-
-        // execute sale on Seaport
-        if (!ISeaport(seaportContractAddress).fulfillOrder(order, bytes32(0))) {
-            revert SeaportOrderNotFulfilled();
-        }
-
-        // convert weth to eth
-        (bool success, ) = wethContractAddress.call(
-            abi.encodeWithSignature(
-                "withdraw(uint256)",
-                order.parameters.offer[0].endAmount - totalConsiderationAmount
-            )
-        );
-        if (!success) {
-            revert WethConversionFailed();
-        }
-
-        // calculate saleAmountReceived
-        saleAmountReceived = address(this).balance - contractBalanceBefore;
-
-        // check amount received is more than minSaleAmount
-        if (saleAmountReceived < minSaleAmount) {
-            revert InsufficientAmountReceivedFromSale(saleAmountReceived, minSaleAmount);
-        }
-    }
-
     function _transfer(address from, address to, uint256 tokenId) internal override {
         _requireIsNotSanctioned(from);
         _requireIsNotSanctioned(to);
@@ -623,61 +507,6 @@ contract NiftyApesSellerFinancing is
             }
 
             minimumPayment = minimumPrincipalPayment + periodInterest;
-        }
-    }
-
-    function _validateSaleOrder(
-        ISeaport.Order memory order,
-        address nftContractAddress,
-        uint256 nftId
-    ) internal view {
-        if (order.parameters.consideration[0].itemType != ISeaport.ItemType.ERC721) {
-            revert InvalidConsiderationItemType(
-                0,
-                order.parameters.consideration[0].itemType,
-                ISeaport.ItemType.ERC721
-            );
-        }
-        if (order.parameters.consideration[0].token != nftContractAddress) {
-            revert InvalidConsiderationToken(
-                0,
-                order.parameters.consideration[0].token,
-                nftContractAddress
-            );
-        }
-        if (order.parameters.consideration[0].identifierOrCriteria != nftId) {
-            revert InvalidConsideration0Identifier(
-                order.parameters.consideration[0].identifierOrCriteria,
-                nftId
-            );
-        }
-        if (order.parameters.offer[0].itemType != ISeaport.ItemType.ERC20) {
-            revert InvalidOffer0ItemType(
-                order.parameters.offer[0].itemType,
-                ISeaport.ItemType.ERC20
-            );
-        }
-        if (order.parameters.offer[0].token != wethContractAddress) {
-            revert InvalidOffer0Token(order.parameters.offer[0].token, wethContractAddress);
-        }
-        if (order.parameters.offer.length != 1) {
-            revert InvalidOfferLength(order.parameters.offer.length, 1);
-        }
-        for (uint256 i = 1; i < order.parameters.totalOriginalConsiderationItems; i++) {
-            if (order.parameters.consideration[i].itemType != ISeaport.ItemType.ERC20) {
-                revert InvalidConsiderationItemType(
-                    i,
-                    order.parameters.consideration[i].itemType,
-                    ISeaport.ItemType.ERC20
-                );
-            }
-            if (order.parameters.consideration[i].token != wethContractAddress) {
-                revert InvalidConsiderationToken(
-                    i,
-                    order.parameters.consideration[i].token,
-                    wethContractAddress
-                );
-            }
         }
     }
 
