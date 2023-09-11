@@ -38,7 +38,7 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
         //buyer nftId has tokenURI same as original nft
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId),
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(offer.nftId)
+            buyerTicketMetadataURI
         );
         Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
 
