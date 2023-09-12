@@ -77,7 +77,8 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+        (, uint256 periodInterest, uint256 protocolInterest) = sellerFinancing
+            .calculateMinimumPayment(loan);
 
         vm.prank(owner);
         sellerFinancing.unpauseSanctions();

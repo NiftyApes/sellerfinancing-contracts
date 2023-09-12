@@ -134,7 +134,8 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+        (, uint256 periodInterest, uint256 protocolInterest) = sellerFinancing
+            .calculateMinimumPayment(loan);
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(

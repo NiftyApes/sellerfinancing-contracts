@@ -88,9 +88,14 @@ interface ISellerFinancing is
     /// @param loan Loan struct details
     /// @return minimumPayment Minimum payment required for the current period
     /// @return periodInterest Unpaid interest amount for the current period
+    /// @return protocolInterest Unpaid protocol interest amount for the current period
+
     function calculateMinimumPayment(
         Loan memory loan
-    ) external view returns (uint256 minimumPayment, uint256 periodInterest);
+    )
+        external
+        view
+        returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolInterest);
 
     function initialize(
         address newRoyaltiesEngineAddress,

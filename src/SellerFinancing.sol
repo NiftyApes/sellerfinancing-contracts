@@ -126,7 +126,7 @@ contract NiftyApesSellerFinancing is
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
     }
 
-    function updateProtocolInterestBPS(address newProtocolInterestBPS) external onlyOwner {
+    function updateProtocolInterestBPS(uint96 newProtocolInterestBPS) external onlyOwner {
         protocolInterestBPS = newProtocolInterestBPS;
     }
 
@@ -134,7 +134,7 @@ contract NiftyApesSellerFinancing is
         address newProtocolInterestRecipient
     ) external onlyOwner {
         _requireNonZeroAddress(newProtocolInterestRecipient);
-        protocolInterestRecipient = newProtocolInterestRecipient;
+        protocolInterestRecipient = payable(newProtocolInterestRecipient);
     }
 
     function pause() external onlyOwner {
@@ -515,7 +515,11 @@ contract NiftyApesSellerFinancing is
     /// @inheritdoc ISellerFinancing
     function calculateMinimumPayment(
         Loan memory loan
-    ) public view returns (uint256 minimumPayment, uint256 periodInterest, protocolInterest) {
+    )
+        public
+        view
+        returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolInterest)
+    {
         // if in the current period, else prior to period minimumPayment and interest should remain 0
         if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
             // calculate periods passed
