@@ -76,9 +76,17 @@ contract NiftyApesSellerFinancing is
     ///      The mapping allows users to withdraw offers that they made by signature.
     mapping(bytes => bool) private _cancelledOrFinalized;
 
+    /// NEW VARIABLES FOR V1.1
+
+    /// @dev Protocol fee basis points
+    uint96 protocolInterestBPS;
+
+    /// @dev Protocol fee recipient address
+    address payable protocolInterestRecipient;
+
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting storage.
-    uint256[500] private __gap;
+    uint256[498] private __gap;
 
     /// @dev Empty constructor ensures no 3rd party can call initialize before the NiftyApes team on the implementation contract.
     constructor() initializer {}
@@ -116,6 +124,17 @@ contract NiftyApesSellerFinancing is
     ) external onlyOwner {
         _requireNonZeroAddress(newDelegateRegistryContractAddress);
         delegateRegistryContractAddress = newDelegateRegistryContractAddress;
+    }
+
+    function updateProtocolInterestBPS(address newProtocolInterestBPS) external onlyOwner {
+        protocolInterestBPS = newProtocolInterestBPS;
+    }
+
+    function updateProtocolInterestRecipient(
+        address newProtocolInterestRecipient
+    ) external onlyOwner {
+        _requireNonZeroAddress(newProtocolInterestRecipient);
+        protocolInterestRecipient = newProtocolInterestRecipient;
     }
 
     function pause() external onlyOwner {
@@ -317,10 +336,14 @@ contract NiftyApesSellerFinancing is
         _requireLoanNotInHardDefault(loan.periodEndTimestamp + loan.periodDuration);
 
         // get minimum payment and period interest values
-        (uint256 totalMinimumPayment, uint256 periodInterest) = calculateMinimumPayment(loan);
+        (
+            uint256 totalMinimumPayment,
+            uint256 periodInterest,
+            uint256 protocolInterest
+        ) = calculateMinimumPayment(loan);
 
         // calculate the total possible payment
-        uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest;
+        uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest + protocolInterest;
 
         //require amountReceived to be larger than the total minimum payment
         if (amountReceived < totalMinimumPayment) {
@@ -345,10 +368,17 @@ contract NiftyApesSellerFinancing is
         );
 
         // payout seller
-        _conditionalSendValue(sellerAddress, buyerAddress, amountReceived - totalRoyaltiesPaid);
+        _conditionalSendValue(
+            sellerAddress,
+            buyerAddress,
+            amountReceived - totalRoyaltiesPaid - protocolInterest
+        );
+
+        //payout protocol
+        payable(protocolInterestRecipient).sendValue(protocolInterest);
 
         // update loan struct
-        loan.remainingPrincipal -= uint128(amountReceived - periodInterest);
+        loan.remainingPrincipal -= uint128(amountReceived - periodInterest - protocolInterest);
 
         // check if remainingPrincipal is 0
         if (loan.remainingPrincipal == 0) {
@@ -485,7 +515,7 @@ contract NiftyApesSellerFinancing is
     /// @inheritdoc ISellerFinancing
     function calculateMinimumPayment(
         Loan memory loan
-    ) public view returns (uint256 minimumPayment, uint256 periodInterest) {
+    ) public view returns (uint256 minimumPayment, uint256 periodInterest, protocolInterest) {
         // if in the current period, else prior to period minimumPayment and interest should remain 0
         if (_currentTimestamp32() >= loan.periodBeginTimestamp) {
             // calculate periods passed
@@ -506,7 +536,12 @@ contract NiftyApesSellerFinancing is
                     numPeriodsPassed;
             }
 
-            minimumPayment = minimumPrincipalPayment + periodInterest;
+            //calculate protocol interest
+            protocolInterest =
+                ((loan.remainingPrincipal * protocolInterestBPS) / BASE_BPS) *
+                numPeriodsPassed;
+
+            minimumPayment = minimumPrincipalPayment + periodInterest + protocolInterest;
         }
     }
 
