@@ -210,8 +210,11 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (uint256 totalMinimumPayment, , uint256 periodInterest) = sellerFinancing
-            .calculateMinimumPayment(loan);
+        (
+            uint256 totalMinimumPayment,
+            uint256 periodInterest,
+            uint256 protocolInterest
+        ) = sellerFinancing.calculateMinimumPayment(loan);
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -251,7 +254,7 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         assertEq(
             loanAfter.remainingPrincipal,
-            loan.remainingPrincipal - (totalMinimumPayment - periodInterest)
+            loan.remainingPrincipal - (totalMinimumPayment - periodInterest - protocolInterest)
         );
 
         assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.periodDuration);
@@ -267,6 +270,85 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
     function test_unit_makePayment_partialRepayment_simplest_case() public {
         FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
         _test_makePayment_partialRepayment_simplest_case(fixedForSpeed);
+    }
+
+    function _test_makePayment_partialRepayment_withProtocolFee(
+        FuzzedOfferFields memory fuzzed
+    ) private {
+        Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        vm.assume(offer.downPaymentAmount < ~uint128(0));
+
+        vm.startPrank(owner);
+        sellerFinancing.updateProtocolInterestBPS(100);
+        sellerFinancing.updateProtocolInterestRecipient(owner);
+        vm.stopPrank();
+
+        createOfferAndBuyWithFinancing(offer);
+        assertionsForExecutedLoan(offer);
+
+        Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        (
+            uint256 totalMinimumPayment,
+            uint256 periodInterest,
+            uint256 protocolInterest
+        ) = sellerFinancing.calculateMinimumPayment(loan);
+
+        (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
+            0x0385603ab55642cb4Dd5De3aE9e306809991804f
+        ).getRoyalty(offer.nftContractAddress, offer.nftId, totalMinimumPayment - protocolInterest);
+
+        uint256 sellerBalanceBefore = address(seller1).balance;
+        uint256 royaltiesBalanceBefore = address(recipients[0]).balance;
+        uint256 totalRoyaltiesPaid = amounts[0];
+
+        vm.startPrank(buyer1);
+        vm.expectEmit(true, true, false, false);
+        emit PaymentMade(
+            offer.nftContractAddress,
+            offer.nftId,
+            totalMinimumPayment,
+            totalRoyaltiesPaid,
+            periodInterest,
+            loan
+        );
+        sellerFinancing.makePayment{ value: totalMinimumPayment }(
+            offer.nftContractAddress,
+            offer.nftId
+        );
+        vm.stopPrank();
+
+        Loan memory loanAfter = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
+
+        uint256 sellerBalanceAfter = address(seller1).balance;
+        uint256 royaltiesBalanceAfter = address(recipients[0]).balance;
+
+        assertEq(
+            sellerBalanceAfter,
+            (sellerBalanceBefore + totalMinimumPayment - totalRoyaltiesPaid - protocolInterest)
+        );
+
+        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
+
+        assertEq(
+            loanAfter.remainingPrincipal,
+            loan.remainingPrincipal - (totalMinimumPayment - periodInterest - protocolInterest)
+        );
+
+        assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + loan.periodDuration);
+        assertEq(loanAfter.periodBeginTimestamp, loan.periodBeginTimestamp + loan.periodDuration);
+    }
+
+    function test_fuzz_makePayment_partialRepayment_withProtocolFee(
+        FuzzedOfferFields memory fuzzed
+    ) public validateFuzzedOfferFields(fuzzed) {
+        _test_makePayment_partialRepayment_withProtocolFee(fuzzed);
+    }
+
+    function test_unit_makePayment_partialRepayment_withProtocolFee() public {
+        FuzzedOfferFields memory fixedForSpeed = defaultFixedFuzzedFieldsForFastUnitTesting;
+        _test_makePayment_partialRepayment_withProtocolFee(fixedForSpeed);
     }
 
     function _test_makePayment_fullRepayment_in_gracePeriod(
@@ -365,13 +447,22 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         skip(loan.periodDuration);
 
-        (uint256 totalMinimumPayment, , uint256 totalInterest) = sellerFinancing
-            .calculateMinimumPayment(loan);
+        (
+            uint256 totalMinimumPayment,
+            uint256 totalPeriodInterest,
+            uint256 totalProtocolInterest
+        ) = sellerFinancing.calculateMinimumPayment(loan);
 
         vm.assume(loan.remainingPrincipal > 2 * loan.minimumPrincipalPerPeriod);
 
-        assertEq(totalInterest, 2 * periodInterest);
-        assertEq(totalMinimumPayment, 2 * loan.minimumPrincipalPerPeriod + totalInterest);
+        assertEq(
+            totalPeriodInterest + totalProtocolInterest,
+            2 * (periodInterest + protocolInterest)
+        );
+        assertEq(
+            totalMinimumPayment,
+            2 * loan.minimumPrincipalPerPeriod + totalPeriodInterest + totalProtocolInterest
+        );
 
         (address payable[] memory recipients, uint256[] memory amounts) = IRoyaltyEngineV1(
             0x0385603ab55642cb4Dd5De3aE9e306809991804f
@@ -379,7 +470,6 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         uint256 sellerBalanceBefore = address(seller1).balance;
         uint256 royaltiesBalanceBefore = address(recipients[0]).balance;
-        uint256 totalRoyaltiesPaid = amounts[0];
 
         vm.startPrank(buyer1);
         sellerFinancing.makePayment{ value: totalMinimumPayment }(
@@ -393,16 +483,14 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
         uint256 sellerBalanceAfter = address(seller1).balance;
         uint256 royaltiesBalanceAfter = address(recipients[0]).balance;
 
-        assertEq(
-            sellerBalanceAfter,
-            (sellerBalanceBefore + totalMinimumPayment - totalRoyaltiesPaid)
-        );
+        assertEq(sellerBalanceAfter, (sellerBalanceBefore + totalMinimumPayment - amounts[0]));
 
-        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + totalRoyaltiesPaid));
+        assertEq(royaltiesBalanceAfter, (royaltiesBalanceBefore + amounts[0]));
 
         assertEq(
             loanAfter.remainingPrincipal,
-            loan.remainingPrincipal - (totalMinimumPayment - totalInterest)
+            loan.remainingPrincipal -
+                (totalMinimumPayment - totalPeriodInterest - totalProtocolInterest)
         );
 
         assertEq(loanAfter.periodEndTimestamp, loan.periodEndTimestamp + 2 * loan.periodDuration);
@@ -441,10 +529,9 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + periodInterest + protocolInterest)
+        }(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
     }
 

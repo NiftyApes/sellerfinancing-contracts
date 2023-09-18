@@ -25,4 +25,12 @@ interface ISellerFinancingAdmin {
     function updateDelegateRegistryContractAddress(
         address newDelegateRegistryContractAddress
     ) external;
+
+    /// @notice Updates protocol interest basis points to new protocol interest basis points
+    /// @param newProtocolInterestBPS New protocol interest basis points
+    function updateProtocolInterestBPS(uint96 newProtocolInterestBPS) external;
+
+    /// @notice Updates protocol interest recipient address to new address
+    /// @param newProtocolInterestRecipient New protocol interest recipient address
+    function updateProtocolInterestRecipient(address newProtocolInterestRecipient) external;
 }
