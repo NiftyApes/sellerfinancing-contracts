@@ -222,8 +222,6 @@ contract TestMakePayment is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
         assertionsForClosedLoan(offer, buyer1);
 
-        Console.log("protocolInterest", protocolInterest);
-
         // protocol owner paid out correctly
         assertEq(address(owner).balance, (ownerBalanceBefore + protocolInterest));
     }

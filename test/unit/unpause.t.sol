@@ -40,7 +40,6 @@ contract TestUnpause is Test, BaseTest, OffersLoansFixtures {
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId),
             buyerTicketMetadataURI
         );
-        Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
 
         // check loan struct values
         assertEq(loan.buyerNftId, 0);

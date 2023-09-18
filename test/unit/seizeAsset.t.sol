@@ -129,6 +129,12 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
 
     function _test_seizeAsset_reverts_if_loanClosed(FuzzedOfferFields memory fuzzed) private {
         Offer memory offer = offerStructFromFields(fuzzed, defaultFixedOfferFields);
+
+        vm.startPrank(owner);
+        sellerFinancing.updateProtocolInterestBPS(100);
+        sellerFinancing.updateProtocolInterestRecipient(owner);
+        vm.stopPrank();
+
         createOfferAndBuyWithFinancing(offer);
         assertionsForExecutedLoan(offer);
 
@@ -138,10 +144,9 @@ contract TestSeizeAsset is Test, OffersLoansFixtures, ISellerFinancingEvents {
             .calculateMinimumPayment(loan);
 
         vm.startPrank(buyer1);
-        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + periodInterest + protocolInterest)
+        }(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
 
         assertionsForClosedLoan(offer, buyer1);

@@ -60,8 +60,11 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        vm.prank(owner);
+        vm.startPrank(owner);
+        sellerFinancing.updateProtocolInterestBPS(100);
+        sellerFinancing.updateProtocolInterestRecipient(owner);
         sellerFinancing.pauseSanctions();
+        vm.stopPrank();
 
         vm.startPrank(SANCTIONED_ADDRESS);
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
@@ -90,10 +93,9 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + periodInterest + protocolInterest)
+        }(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
     }
 }
