@@ -19,7 +19,8 @@ contract DeploySellerFinancingScript is Script {
         // deploy and initialize implementation contract
         sellerFinancing = new NiftyApesSellerFinancing();
 
-        sellerFinancing.initialize(goerliRoyaltiesEngineAddress, goerliDelegateRegistryAddress);
+        sellerFinancing.updateDelegateRegistryContractAddress(goerliDelegateRegistryAddress);
+        sellerFinancing.updateRoyaltiesEngineContractAddress(goerliRoyaltiesEngineAddress);
 
         sellerFinancing.updateProtocolInterestBPS(100);
         sellerFinancing.updateProtocolInterestRecipient(0xC1200B5147ba1a0348b8462D00d237016945Dfff);
