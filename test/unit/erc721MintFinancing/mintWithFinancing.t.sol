@@ -61,7 +61,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.startPrank(buyer1);
         uint256[] memory tokenIds = erc721MintFinancing.mintWithFinancing{
             value: offer.downPaymentAmount
-        }(offer, offerSignature, 1);
+        }(offer, offerSignature, 1, buyerTicketMetadataURI, sellerTicketMetadataURI);
         vm.stopPrank();
         assertionsForExecutedLoan(offer, 1);
         assertEq(tokenIds[0], 1);
@@ -93,7 +93,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         vm.startPrank(buyer1);
         uint256[] memory tokenIds = erc721MintFinancing.mintWithFinancing{
             value: (offer.downPaymentAmount * offer.collectionOfferLimit)
-        }(offer, offerSignature, 3);
+        }(offer, offerSignature, 3, buyerTicketMetadataURI, sellerTicketMetadataURI);
         vm.stopPrank();
         assertionsForExecutedLoan(offer, 1);
         assertEq(tokenIds[0], 1);
@@ -136,7 +136,7 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         );
         erc721MintFinancing.mintWithFinancing{
             value: (offer.downPaymentAmount * offer.collectionOfferLimit) - 1
-        }(offer, offerSignature, 3);
+        }(offer, offerSignature, 3, buyerTicketMetadataURI, sellerTicketMetadataURI);
         vm.stopPrank();
     }
 
@@ -176,7 +176,9 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            1
+            1,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -216,7 +218,9 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            1
+            1,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -248,7 +252,9 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            0
+            0,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }
@@ -284,7 +290,9 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount * 2 }(
             offer,
             offerSignature,
-            2
+            2,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 
@@ -292,7 +300,9 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount * 2 }(
             offer,
             offerSignature,
-            2
+            2,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
 
@@ -335,7 +345,9 @@ contract TestMintWithFinancing is Test, OffersLoansFixtures {
         erc721MintFinancing.mintWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
-            1
+            1,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
     }

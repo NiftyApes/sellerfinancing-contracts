@@ -38,12 +38,6 @@ interface ISellerFinancing is
     /// @notice Returns value stored in `delegateRegistryContractAddress`
     function delegateRegistryContractAddress() external returns (address);
 
-    /// @notice Returns value stored in `seaportContractAddress`
-    function seaportContractAddress() external returns (address);
-
-    /// @notice Returns value stored in `wethContractAddress`
-    function wethContractAddress() external returns (address);
-
     /// @notice Withdraw a given offer
     /// @dev    Calling this method allows users to withdraw a given offer by cancelling their signature on chain
     /// @param offer The offer to withdraw
@@ -54,12 +48,16 @@ interface ISellerFinancing is
     /// @param offer The details of the financing offer
     /// @param signature A signed offerHash
     /// @param buyer The address of the buyer
+    /// @param buyerTicketMetadataURI The URI for the buyerTicket metadata
+    /// @param sellerTicketMetadataURI The URI for the sellerTicket metadata
     /// @dev   buyer provided as param to allow for 3rd party marketplace integrations
     function buyWithFinancing(
         Offer calldata offer,
         bytes memory signature,
         address buyer,
-        uint256 nftId
+        uint256 nftId,
+        string calldata buyerTicketMetadataURI,
+        string calldata sellerTicketMetadataURI
     ) external payable;
 
     /// @notice Make a partial payment or full repayment of a loan.
@@ -73,21 +71,6 @@ interface ISellerFinancing is
     /// @param nftContractAddress The address of the NFT collection
     /// @param nftId The id of a specified NFT
     function seizeAsset(address nftContractAddress, uint256 nftId) external;
-
-    /// @notice Sell the underlying nft and repay the loan using the proceeds of the sale.
-    ///         Transfer remaining funds to the buyer
-    /// @dev    This function is only callable by the buyer address
-    /// @dev    This function only supports valid Seaport orders
-    /// @param nftContractAddress The address of the NFT collection
-    /// @param nftId The id of a specified NFT
-    /// @param minProfitAmount Minimum amount to accept for buyer's profit. Provides slippage control.
-    /// @param data Order encoded as bytes
-    function instantSell(
-        address nftContractAddress,
-        uint256 nftId,
-        uint256 minProfitAmount,
-        bytes calldata data
-    ) external;
 
     /// @notice Returns a loan identified by a given nft.
     /// @param nftContractAddress The address of the NFT collection
@@ -105,14 +88,17 @@ interface ISellerFinancing is
     /// @param loan Loan struct details
     /// @return minimumPayment Minimum payment required for the current period
     /// @return periodInterest Unpaid interest amount for the current period
+    /// @return protocolInterest Unpaid protocol interest amount for the current period
+
     function calculateMinimumPayment(
         Loan memory loan
-    ) external view returns (uint256 minimumPayment, uint256 periodInterest);
+    )
+        external
+        view
+        returns (uint256 minimumPayment, uint256 periodInterest, uint256 protocolInterest);
 
     function initialize(
         address newRoyaltiesEngineAddress,
-        address newDelegateRegistryAddress,
-        address newSeaportContractAddress,
-        address newWethContractAddress
+        address newDelegateRegistryAddress
     ) external;
 }

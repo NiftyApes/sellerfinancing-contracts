@@ -27,7 +27,9 @@ contract TestPauseMarketplace is Test, BaseTest, OffersLoansFixtures {
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
     }
 }

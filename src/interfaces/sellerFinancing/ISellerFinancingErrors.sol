@@ -1,8 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "../seaport/ISeaport.sol";
-
 /// @title The SellerFinancing interface defining custom errors
 interface ISellerFinancingErrors {
     error ZeroAddress();
@@ -26,22 +24,6 @@ interface ISellerFinancingErrors {
     error NftIdsMustMatch();
 
     error CollectionOfferLimitReached();
-
-    error InvalidOffer0ItemType(ISeaport.ItemType given, ISeaport.ItemType expected);
-
-    error InvalidOffer0Token(address given, address expected);
-
-    error InvalidOfferLength(uint256 given, uint256 expected);
-
-    error InvalidConsideration0Identifier(uint256 given, uint256 expected);
-
-    error InvalidConsiderationItemType(
-        uint256 index,
-        ISeaport.ItemType given,
-        ISeaport.ItemType expected
-    );
-
-    error InvalidConsiderationToken(uint256 index, address given, address expected);
 
     error InvalidPeriodDuration();
 

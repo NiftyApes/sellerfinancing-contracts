@@ -31,6 +31,10 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
         uint64 collectionOfferLimit;
     }
 
+    string buyerTicketMetadataURI = " ";
+
+    string sellerTicketMetadataURI = " ";
+
     FixedOfferFields internal defaultFixedOfferFields;
 
     FuzzedOfferFields internal defaultFixedFuzzedFieldsForFastUnitTesting;
@@ -116,7 +120,9 @@ contract OffersLoansFixtures is Test, BaseTest, ISellerFinancingStructs, SellerF
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            " ",
+            " "
         );
         vm.stopPrank();
     }

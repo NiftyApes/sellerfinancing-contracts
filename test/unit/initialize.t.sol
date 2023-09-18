@@ -28,11 +28,7 @@ contract TestSellerFinancingInitialize is Test, BaseTest, OffersLoansFixtures {
         // initialize proxies
         sellerFinancingTest.initialize(
             mainnetRoyaltiesEngineAddress,
-            mainnetDelegateRegistryAddress,
-            SEAPORT_ADDRESS,
-            WETH_ADDRESS
+            mainnetDelegateRegistryAddress
         );
-        assertEq(sellerFinancingTest.seaportContractAddress(), SEAPORT_ADDRESS);
-        assertEq(sellerFinancingTest.wethContractAddress(), WETH_ADDRESS);
     }
 }

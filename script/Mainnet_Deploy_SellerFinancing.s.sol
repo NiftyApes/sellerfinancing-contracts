@@ -16,10 +16,6 @@ contract DeploySellerFinancingScript is Script {
     TransparentUpgradeableProxy sellerFinancingProxy;
     ISellerFinancing sellerFinancing;
 
-    // seaport v1.5
-    address SEAPORT_ADDRESS = 0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC;
-    address WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
     function run() external {
         address mainnetRoyaltiesEngineAddress = 0x0385603ab55642cb4Dd5De3aE9e306809991804f;
         address mainnetDelegateRegistryAddress = 0x00000000000076A84feF008CDAbe6409d2FE638B;
@@ -44,12 +40,7 @@ contract DeploySellerFinancingScript is Script {
         sellerFinancing = ISellerFinancing(address(sellerFinancingProxy));
 
         // initialize proxies
-        sellerFinancing.initialize(
-            mainnetRoyaltiesEngineAddress,
-            mainnetDelegateRegistryAddress,
-            SEAPORT_ADDRESS,
-            WETH_ADDRESS
-        );
+        sellerFinancing.initialize(mainnetRoyaltiesEngineAddress, mainnetDelegateRegistryAddress);
 
         // removed implementation transferOwnership because of empty constructor alleviating the need
 

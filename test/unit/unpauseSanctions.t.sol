@@ -38,7 +38,7 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
         //buyer nftId has tokenURI same as original nft
         assertEq(
             IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId),
-            IERC721MetadataUpgradeable(offer.nftContractAddress).tokenURI(offer.nftId)
+            buyerTicketMetadataURI
         );
         Console.log(IERC721MetadataUpgradeable(address(sellerFinancing)).tokenURI(loan.buyerNftId));
 
@@ -60,22 +60,28 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
         );
         bytes memory offerSignature = seller1CreateOffer(offer);
 
-        vm.prank(owner);
+        vm.startPrank(owner);
+        sellerFinancing.updateProtocolInterestBPS(100);
+        sellerFinancing.updateProtocolInterestRecipient(owner);
         sellerFinancing.pauseSanctions();
+        vm.stopPrank();
 
         vm.startPrank(SANCTIONED_ADDRESS);
         sellerFinancing.buyWithFinancing{ value: offer.downPaymentAmount }(
             offer,
             offerSignature,
             SANCTIONED_ADDRESS,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer, SANCTIONED_ADDRESS);
 
         Loan memory loan = sellerFinancing.getLoan(offer.nftContractAddress, offer.nftId);
 
-        (, uint256 periodInterest) = sellerFinancing.calculateMinimumPayment(loan);
+        (, uint256 periodInterest, uint256 protocolInterest) = sellerFinancing
+            .calculateMinimumPayment(loan);
 
         vm.prank(owner);
         sellerFinancing.unpauseSanctions();
@@ -87,10 +93,9 @@ contract TestUnpauseSanctions is Test, BaseTest, OffersLoansFixtures {
                 SANCTIONED_ADDRESS
             )
         );
-        sellerFinancing.makePayment{ value: (loan.remainingPrincipal + periodInterest) }(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        sellerFinancing.makePayment{
+            value: (loan.remainingPrincipal + periodInterest + protocolInterest)
+        }(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
     }
 }

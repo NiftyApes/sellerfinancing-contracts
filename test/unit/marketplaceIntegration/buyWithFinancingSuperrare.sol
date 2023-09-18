@@ -62,7 +62,9 @@ contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
             offer,
             offerSignature,
             buyer1,
-            offer.nftId
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
         );
         vm.stopPrank();
         assertionsForExecutedLoan(offer);
@@ -101,7 +103,14 @@ contract TestBuyWithFinancingMarketplace is Test, OffersLoansFixtures {
         );
         marketplaceIntegration.buyWithFinancing{
             value: offer.downPaymentAmount + marketplaceFee - 1
-        }(offer, offerSignature, buyer1, offer.nftId);
+        }(
+            offer,
+            offerSignature,
+            buyer1,
+            offer.nftId,
+            buyerTicketMetadataURI,
+            sellerTicketMetadataURI
+        );
         vm.stopPrank();
     }
 

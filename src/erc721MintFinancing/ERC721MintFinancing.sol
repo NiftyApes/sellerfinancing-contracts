@@ -67,15 +67,14 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
     function mintWithFinancing(
         ISellerFinancing.Offer memory offer,
         bytes calldata signature,
-        uint256 count
+        uint256 count,
+        string calldata buyerTicketMetadataURI,
+        string calldata sellerTicketMetadataURI
     ) external payable nonReentrant returns (uint256[] memory tokenIds) {
         address signer = ISellerFinancing(sellerFinancingContractAddress).getOfferSigner(
             offer,
             signature
         );
-
-        uint64 collectionOfferLimitCount = ISellerFinancing(sellerFinancingContractAddress)
-            .getCollectionOfferCount(signature);
 
         tokenIds = new uint256[](count);
 
@@ -95,18 +94,20 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
         if (count == 0) {
             revert CannotMint0();
         }
-        // requireCollectionOfferLimitNotReached
-        if (collectionOfferLimitCount >= offer.collectionOfferLimit) {
-            revert CollectionOfferLimitReached();
-        }
 
         // calculate number of nfts to mint
         uint256 nftsToMint = Math.min(
             count,
-            (offer.collectionOfferLimit - collectionOfferLimitCount)
+            (offer.collectionOfferLimit -
+                ISellerFinancing(sellerFinancingContractAddress).getCollectionOfferCount(signature))
         );
 
-        // loop through and mint nfts
+        // requireCollectionOfferLimitNotReached
+        if (nftsToMint == 0) {
+            revert CollectionOfferLimitReached();
+        }
+
+        // // loop through and mint nfts
         for (uint i; i < nftsToMint; ++i) {
             // increment nftid tracker
             _tokenIdTracker.increment();
@@ -118,7 +119,14 @@ contract ERC721MintFinancing is ERC721, Ownable, ReentrancyGuard {
             // Execute loan
             ISellerFinancing(sellerFinancingContractAddress).buyWithFinancing{
                 value: offer.downPaymentAmount
-            }(offer, signature, msg.sender, _tokenIdTracker.current());
+            }(
+                offer,
+                signature,
+                msg.sender,
+                _tokenIdTracker.current(),
+                buyerTicketMetadataURI,
+                sellerTicketMetadataURI
+            );
         }
 
         // if there is a greater number of NFTs requested than available return value

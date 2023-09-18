@@ -26,11 +26,11 @@ interface ISellerFinancingAdmin {
         address newDelegateRegistryContractAddress
     ) external;
 
-    /// @notice Updates seaport contract address to new address
-    /// @param newSeaportContractAddress New seaport address
-    function updateSeaportContractAddress(address newSeaportContractAddress) external;
+    /// @notice Updates protocol interest basis points to new protocol interest basis points
+    /// @param newProtocolInterestBPS New protocol interest basis points
+    function updateProtocolInterestBPS(uint96 newProtocolInterestBPS) external;
 
-    /// @notice Updates Weth contract address to new address
-    /// @param newWethContractAddress New Weth contract address
-    function updateWethContractAddress(address newWethContractAddress) external;
+    /// @notice Updates protocol interest recipient address to new address
+    /// @param newProtocolInterestRecipient New protocol interest recipient address
+    function updateProtocolInterestRecipient(address newProtocolInterestRecipient) external;
 }
