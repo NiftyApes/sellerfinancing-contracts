@@ -89,7 +89,7 @@ contract NiftyApesSellerFinancing is
     uint256[498] private __gap;
 
     /// @dev Empty constructor ensures no 3rd party can call initialize before the NiftyApes team on the implementation contract.
-    // constructor() initializer {}
+    constructor() initializer {}
 
     /// @notice The initializer for the NiftyApes protocol.
     ///         NiftyApes is intended to be deployed behind a proxy and thus needs to initialize
