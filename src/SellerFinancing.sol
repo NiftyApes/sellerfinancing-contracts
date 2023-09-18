@@ -19,8 +19,6 @@ import "./interfaces/royaltyRegistry/IRoyaltyEngineV1.sol";
 import "./interfaces/delegateCash/IDelegationRegistry.sol";
 import "./lib/ECDSABridge.sol";
 
-import "../test/common/Console.sol";
-
 /// @title NiftyApes Seller Financing
 /// @custom:version 1.0
 /// @author captnseagraves (captnseagraves.eth)
@@ -344,12 +342,8 @@ contract NiftyApesSellerFinancing is
             uint256 protocolInterest
         ) = calculateMinimumPayment(loan);
 
-        Console.log("1");
-
         // calculate the total possible payment
         uint256 totalPossiblePayment = loan.remainingPrincipal + periodInterest + protocolInterest;
-
-        Console.log("totalPossiblePayment", totalPossiblePayment);
 
         //require amountReceived to be larger than the total minimum payment
         if (amountReceived < totalMinimumPayment) {
@@ -366,20 +360,12 @@ contract NiftyApesSellerFinancing is
             amountReceived = totalPossiblePayment;
         }
 
-        Console.log("1.5");
-
         uint256 totalRoyaltiesPaid = _payRoyalties(
             nftContractAddress,
             nftId,
             buyerAddress,
             amountReceived - protocolInterest
         );
-
-        Console.log("2");
-        Console.log("amountReceived", amountReceived);
-        Console.log("totalRoyaltiesPaid", totalRoyaltiesPaid);
-        Console.log("protocolInterest", protocolInterest);
-        Console.log("loan.minimumPrincipalPerPeriod", loan.minimumPrincipalPerPeriod);
 
         // payout seller
         _conditionalSendValue(
@@ -388,17 +374,11 @@ contract NiftyApesSellerFinancing is
             amountReceived - totalRoyaltiesPaid - protocolInterest
         );
 
-        Console.log("3");
-
         //payout protocol
         payable(protocolInterestRecipient).sendValue(protocolInterest);
 
-        Console.log("4");
-
         // update loan struct
         loan.remainingPrincipal -= uint128(amountReceived - periodInterest - protocolInterest);
-
-        Console.log("5");
 
         // check if remainingPrincipal is 0
         if (loan.remainingPrincipal == 0) {
@@ -559,13 +539,6 @@ contract NiftyApesSellerFinancing is
                     ((loan.remainingPrincipal * loan.periodInterestRateBps) / BASE_BPS) *
                     numPeriodsPassed;
             }
-
-            Console.log("loan.remainingPrincipal", loan.remainingPrincipal);
-            Console.log("protocolInterestBPS", protocolInterestBPS);
-
-            Console.log("BASE_BPS", BASE_BPS);
-
-            Console.log("numPeriodsPassed", numPeriodsPassed);
 
             //calculate protocol interest
             protocolInterest =

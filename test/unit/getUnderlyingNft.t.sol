@@ -118,10 +118,9 @@ contract TestGetUnderlyingNft is Test, BaseTest, ISellerFinancingStructs, Offers
             .calculateMinimumPayment(loan);
 
         vm.startPrank(buyer1);
-        sellerFinancing.makePayment{ value: ((loan.remainingPrincipal + periodInterest)) }(
-            offer.nftContractAddress,
-            offer.nftId
-        );
+        sellerFinancing.makePayment{
+            value: ((loan.remainingPrincipal + periodInterest + protocolInterest))
+        }(offer.nftContractAddress, offer.nftId);
         vm.stopPrank();
 
         underlyingBuyer = sellerFinancing.getUnderlyingNft(loan.buyerNftId);
