@@ -57,10 +57,18 @@ contract NiftyApesSellerFinancing is
     /// @dev The stored address for the delegate registry contract
     address public delegateRegistryContractAddress;
 
+    /// DEPRECATED for v1.1
+    /// @dev The stored address for the seaport contract
+    address public seaportContractAddress;
+
+    /// DEPRECATED for v1.1
+    /// @dev The stored address for the weth contract
+    address public wethContractAddress;
+
     /// @dev The status of sanctions checks
     bool internal _sanctionsPause;
 
-    /// @dev A mapping for a NFT to a loan .
+    /// @dev A mapping for an NFT to a loan.
     ///      The mapping has to be broken into two parts since an NFT is denominated by its address (first part)
     ///      and its nftId (second part) in our code base.
     mapping(address => mapping(uint256 => Loan)) private _loans;
