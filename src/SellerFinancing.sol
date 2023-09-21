@@ -87,10 +87,10 @@ contract NiftyApesSellerFinancing is
     /// NEW VARIABLES FOR V1.1
 
     /// @dev Protocol fee basis points
-    uint96 protocolInterestBPS;
+    uint96 public protocolInterestBPS;
 
     /// @dev Protocol fee recipient address
-    address payable protocolInterestRecipient;
+    address payable public protocolInterestRecipient;
 
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting storage.
